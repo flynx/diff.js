@@ -31,7 +31,13 @@
 var EMPTY = {type: 'EMPTY'}
 
 
+//---------------------------------------------------------------------
 // Helpers...
+
+// XXX need to account for array insertions...
+// 		i.e. in the current state if a long array gets an item(s) spliced 
+// 		in/out, a really big diff will be produced simply moving all 
+// 		subsequent items by a fixed number of positions...
 // XXX should we handle properties???
 var _diff_items = function(diff, A, B, options, filter){
 	// JSON mode -> ignore attr order...
@@ -95,6 +101,84 @@ var _diff_item_order = function(diff, A, B, options, filter){
 
 
 // Format:
+// 	Map([
+// 		[<value>, [<index>, ...]],
+// 		...
+// 	])
+var makeIndex = function(L){
+	return L
+		.reduce(function(res, e, i){ 
+			res.has(e) ? 
+				res.get(e).push(i) 
+				: res.set(e, [i])
+			return res 
+		}, new Map()) }
+
+// get common chuncs...
+// XXX Optimize search tree...
+// 		...worst case: 12345 / 54321
+// XXX need to balance the minimum number of chunks and maximum number 
+// 		of elements here...
+// XXX add chunk offsets to results...
+var getCommonSections = function(A, B, a, b, min_chunk){
+	a = a || 0
+	b = b || 0
+	min_chunk = min_chunk || 2
+
+	// get common chunk...
+	var l = 0
+	var chunk = []
+	while(a+l < A.length 
+			&& b+l < B.length
+			&& A[a+l] == B[b+l]){
+		chunk.push(A[a+l])
+		l++
+	}
+
+	// discard small chunks...
+	if(l < min_chunk){
+		chunk = []
+		l = 0
+	}
+
+	// get next chunks...
+	// XXX this repeats checks, need to optimize...
+	var L = A.length > a+l + min_chunk ? 
+		getCommonSections(A, B, l+a+1, l+b, min_chunk) 
+		: [0]
+	var R = B.length > b+l + min_chunk ? 
+		getCommonSections(A, B, l+a, l+b+1, min_chunk) 
+		: [0]
+
+	// select the best chunk-set...
+	// XXX need to balance the minimum number of chunks and maximum 
+	// 		number of elements here...
+	var next = L[0] == R[0] ? 
+			(L.length < R.length ? L : R)
+		: L[0] > R[0] ? 
+			L 
+		: R
+
+	return next[0] > 0 && l > 0 ? 
+			[l + next[0], chunk].concat(next.slice(1)) 
+		: l > 0 ? 
+			[l, chunk]
+		: next
+}
+
+
+// XXX this would require a new diff structure...
+// 		...might be a good idea to treat this as an index diff...
+var _diff_arrays = function(diff, A, B, options){
+	var A_index = makeIndex(A) 
+	var B_index = makeIndex(B) 
+}
+
+
+
+//---------------------------------------------------------------------
+//
+// Format:
 // 	- no difference...
 // 		null
 // 		
@@ -134,6 +218,7 @@ var _diff_item_order = function(diff, A, B, options, filter){
 // NOTE: this will include direct links to items.
 // XXX check seen -- avoid recursion...
 // XXX revise format...
+// XXX support Map(..) and other new-style types...
 var _diff =
 function(A, B, options){
 	options = options || {}
@@ -204,7 +289,9 @@ function(A, B, options){
 			// XXX .__proto___ (???)
 		}
 
-		return ((res.item_order || []).length + (res.items || []).length) == 0 ? null : res
+		return ((res.item_order || []).length + (res.items || []).length) == 0 ? 
+			null 
+			: res
 	}
 }
 
@@ -257,15 +344,19 @@ function(diff, res, path){
 }
 
 
+
+//---------------------------------------------------------------------
 var diff =
 module.diff = 
 function(A, B, options){
+	// XXX
 }
 
 
 var patch =
 module.patch = 
 function(diff, obj){
+	// XXX
 }
 
 
