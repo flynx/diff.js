@@ -142,17 +142,23 @@ var getCommonSections = function(A, B, a, b, min_chunk){
 	}
 
 	// get next chunks...
-	// XXX this repeats checks, need to optimize...
+	// XXX this repeats checks ( O(n^2) ), need to optimize...
 	var L = A.length > a+l + min_chunk ? 
-		getCommonSections(A, B, l+a+1, l+b, min_chunk) 
+		getCommonSections(
+			A, B, 
+			l+a+1, l+b, 
+			min_chunk) 
 		: [0]
 	var R = B.length > b+l + min_chunk ? 
-		getCommonSections(A, B, l+a, l+b+1, min_chunk) 
+		getCommonSections(
+			A, B, 
+			l+a, l+b+1, 
+			min_chunk) 
 		: [0]
 
 	// select the best chunk-set...
-	// XXX need to balance the minimum number of chunks and maximum 
-	// 		number of elements here...
+	// NOTE: we maximize the number of elements in a chunk set then 
+	// 		minimize the number of chunks per set...
 	var next = L[0] == R[0] ? 
 			(L.length < R.length ? L : R)
 		: L[0] > R[0] ? 
