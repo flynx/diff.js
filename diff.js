@@ -100,6 +100,91 @@ var _diff_item_order = function(diff, A, B, options, filter){
 }
 
 
+// get common chuncs...
+// XXX add chunk offsets to results...
+var getCommonSections = 
+function(A, B, a, b, min_chunk, cmp, index){
+	a = a || 0
+	b = b || 0
+	min_chunk = min_chunk || 2
+	cmp = cmp || function(a, b){
+		return a === b || a == b }
+	index = index || []
+
+	// index...
+	var res = (index[a] || [])[b]
+	if(res != null){
+		return res
+	}
+
+	// get common chunk...
+	var l = 0
+	var chunk = []
+	while(a+l < A.length 
+			&& b+l < B.length
+			&& cmp(A[a+l], B[b+l])){
+		chunk.push(A[a+l])
+		l++
+	}
+	// discard small chunks...
+	if(l < min_chunk){
+		chunk = []
+		l = 0
+	}
+
+	// get next chunks...
+	var L = A.length > a+l + min_chunk ? 
+		getCommonSections(
+			A, B, 
+			l+a+1, l+b, 
+			min_chunk, cmp, index) 
+		: [0]
+	var R = B.length > b+l + min_chunk ? 
+		getCommonSections(
+			A, B, 
+			l+a, l+b+1, 
+			min_chunk, cmp, index) 
+		: [0]
+
+	// select the best chunk-set...
+	// NOTE: we maximize the number of elements in a chunk set then 
+	// 		minimize the number of chunks per set...
+	var next = L[0] == R[0] ? 
+			(L.length < R.length ? L : R)
+		: L[0] > R[0] ? 
+			L 
+		: R
+	var res = next[0] > 0 && l > 0 ? 
+			[l + next[0], chunk].concat(next.slice(1)) 
+		: l > 0 ? 
+			[l, chunk]
+		: next
+
+	// index...
+	index[a] = index[a] || []
+	index[a][b] = res
+
+	return res
+}
+
+
+var getCommonSections2 = function(A, B, a, b, min_chunk, cmp){
+	a = a || 0
+	b = b || 0
+	min_chunk = min_chunk || 2
+	cmp = cmp || function(a, b){
+		return a === b || a == b}
+
+	// - get chunk (AB)...
+	// 		- find match...
+	// 		- collect chunk > min_chunk...
+	// - get next chunks
+	// 		- BA offset by checked element at B (or A?)
+	// 		- AB offset by chunk size if found
+
+}
+
+
 // Format:
 // 	Map([
 // 		[<value>, [<index>, ...]],
@@ -114,70 +199,33 @@ var makeIndex = function(L){
 			return res 
 		}, new Map()) }
 
-// get common chuncs...
-// XXX Optimize search tree...
-// 		...worst case: 12345 / 54321
-// XXX need to balance the minimum number of chunks and maximum number 
-// 		of elements here...
-// XXX add chunk offsets to results...
-var getCommonSections = function(A, B, a, b, min_chunk){
-	a = a || 0
-	b = b || 0
-	min_chunk = min_chunk || 2
 
-	// get common chunk...
-	var l = 0
-	var chunk = []
-	while(a+l < A.length 
-			&& b+l < B.length
-			&& A[a+l] == B[b+l]){
-		chunk.push(A[a+l])
-		l++
-	}
+var getCommonSections3 = function(A, B){
+	var A_index = makeIndex(A) 
+	var B_index = makeIndex(B) 
 
-	// discard small chunks...
-	if(l < min_chunk){
-		chunk = []
-		l = 0
-	}
+	// remove indexed items not present in the other index...
+	// XXX might be good to also remove elements not at start/end of a chunk,
+	// 		i.e. those that have on match before/after...
+	;[...A_index.keys()]
+		.forEach(function(e){
+			B_index.has(e) 
+				|| B_index.delete(e) })
+	;[...B_index.keys()]
+		.forEach(function(e){
+			A_index.has(e) 
+				|| A_index.delete(e) })
 
-	// get next chunks...
-	// XXX this repeats checks ( O(n^2) ), need to optimize...
-	var L = A.length > a+l + min_chunk ? 
-		getCommonSections(
-			A, B, 
-			l+a+1, l+b, 
-			min_chunk) 
-		: [0]
-	var R = B.length > b+l + min_chunk ? 
-		getCommonSections(
-			A, B, 
-			l+a, l+b+1, 
-			min_chunk) 
-		: [0]
-
-	// select the best chunk-set...
-	// NOTE: we maximize the number of elements in a chunk set then 
-	// 		minimize the number of chunks per set...
-	var next = L[0] == R[0] ? 
-			(L.length < R.length ? L : R)
-		: L[0] > R[0] ? 
-			L 
-		: R
-
-	return next[0] > 0 && l > 0 ? 
-			[l + next[0], chunk].concat(next.slice(1)) 
-		: l > 0 ? 
-			[l, chunk]
-		: next
+	// build chunks...
+	A_index.forEach(function(e){
+		// XXX
+	})
 }
 
 
 // XXX this would require a new diff structure...
 // 		...might be a good idea to treat this as an index diff...
 var _diff_arrays = function(diff, A, B, options){
-	var A_index = makeIndex(A) 
-	var B_index = makeIndex(B) 
 }
 
 
