@@ -103,7 +103,7 @@ var _diff_item_order = function(diff, A, B, options, filter){
 // get common chuncs (LCS)...
 var getCommonSections = function(A, B, cmp, min_chunk){
 	cmp = cmp || function(a, b){
-		return a === b || a == b ? a : false }
+		return a === b || a == b }
 
 	var index = index || []
 	// XXX do we actually need this???
@@ -117,22 +117,21 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 		}
 
 		// collect common chunk...
-		var l = 0
 		var chunk = {
 			A: a,
 			B: b,
-			chunk: [],
+			length: 0,
 		}
-		while(a+l < A.length && b+l < B.length){
-			var e = cmp(A[a+l], B[b+l])
-			if(!e){
-				break
-			}
-			chunk.chunk.push(e)
-			l++
+		var l = chunk.length
+		while(a+l < A.length 
+				&& b+l < B.length 
+				&& cmp(A[a+l], B[b+l])){
+			l = chunk.length += 1
 		}
-		// discard small chunks...
-		l = l < min_chunk ? 0 : l
+		// ignore small chunks...
+		l = chunk.length >= min_chunk ? 
+			chunk.length
+			: 0 
 
 		// get next chunks...
 		var L = A.length > a+l + min_chunk ? 
@@ -168,72 +167,6 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 	} 
 
 	return _getCommonSections(0, 0)
-}
-
-
-
-
-
-// XXX
-var getCommonSections2 = function(A, B, a, b, min_chunk, cmp){
-	a = a || 0
-	b = b || 0
-	min_chunk = min_chunk || 2
-	cmp = cmp || function(a, b){
-		return a === b || a == b}
-
-	// - get chunk (AB)...
-	// 		- find match...
-	// 		- collect chunk > min_chunk...
-	// - get next chunks
-	// 		- BA offset by checked element at B (or A?)
-	// 		- AB offset by chunk size if found
-
-}
-
-
-// Format:
-// 	Map([
-// 		[<value>, [<index>, ...]],
-// 		...
-// 	])
-var makeIndex = function(L){
-	return L
-		.reduce(function(res, e, i){ 
-			res.has(e) ? 
-				res.get(e).push(i) 
-				: res.set(e, [i])
-			return res 
-		}, new Map()) }
-
-
-// XXX
-var getCommonSections3 = function(A, B){
-	var A_index = makeIndex(A) 
-	var B_index = makeIndex(B) 
-
-	// remove indexed items not present in the other index...
-	// XXX might be good to also remove elements not at start/end of a chunk,
-	// 		i.e. those that have on match before/after...
-	;[...A_index.keys()]
-		.forEach(function(e){
-			B_index.has(e) 
-				|| B_index.delete(e) })
-	;[...B_index.keys()]
-		.forEach(function(e){
-			A_index.has(e) 
-				|| A_index.delete(e) })
-
-	// build chunks...
-	A_index.forEach(function(e){
-		// XXX
-	})
-}
-
-
-// XXX this would require a new diff structure...
-// 		...might be a good idea to treat this as an index diff...
-var _diff_arrays = function(diff, A, B, options){
 }
 
 
