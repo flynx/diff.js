@@ -23,21 +23,22 @@
 // Diff format:
 //	[
 //	]
-//
-//
+// 
+// 
 //
 /*********************************************************************/
 
+// Inseted when an item exists one one side and does not on the other.
+// 
+// NOTE: for Array items this does not shift positions of other item
+// 		positions nor does it affect the the array lengths.
 var EMPTY = {type: 'EMPTY'}
+
 
 
 //---------------------------------------------------------------------
 // Helpers...
 
-// XXX need to account for array insertions...
-// 		i.e. in the current state if a long array gets an item(s) spliced 
-// 		in/out, a really big diff will be produced simply moving all 
-// 		subsequent items by a fixed number of positions...
 // XXX should we handle properties???
 var _diff_items = function(diff, A, B, options, filter){
 	// JSON mode -> ignore attr order...
@@ -104,10 +105,9 @@ var _diff_item_order = function(diff, A, B, options, filter){
 var getCommonSections = function(A, B, cmp, min_chunk){
 	cmp = cmp || function(a, b){
 		return a === b || a == b }
-
-	var index = index || []
 	// XXX do we actually need this???
 	min_chunk = min_chunk || 1
+	var index = index || []
 
 	var _getCommonSections = function(a, b){
 		// index...
@@ -188,10 +188,21 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 // 	- A and B are arrays...
 // 		{
 // 			type: 'Array',
-// 			// holds both index and attribute keys (mode-dependant)...
 // 			
+// 			length: [A, B],
+// 			
+// 			// holds both index and attribute keys (mode-dependant)...
 // 			items: [
+// 				// Simple item diff...
 // 				[<key>, <diff>],
+//
+// 				// [S]plice section starting at key...
+// 				//	The <diff> should contain two array sections.
+// 				//	The section is treated as a seporate array, diffed
+// 				//	and spliced into the target array at <key>.
+// 				// XXX is this too complicated???
+// 				['S', <key>, <diff>],
+// 				
 // 				...
 // 			],
 // 			// only for non-index keys...
@@ -232,7 +243,6 @@ function(A, B, options){
 	if(typeof(A) != 'object' || typeof(B) != 'object'){
 		return {
 			type: 'Basic',
-			//values: [A, B],
 			A: A,
 			B: B,
 		}
@@ -243,13 +253,23 @@ function(A, B, options){
 	if(A instanceof Array && B instanceof Array){
 		var res = {
 			type: 'Array',
+			length: [A.length, B.length],
 		}
+
+		// find the common sections...
+		var common_sections = getCommonSections(A, B,
+			function(a, b){
+				// XXX cache _diff(..) results...
+				return a === b || a == b || _diff(a, b) })
+		// XXX diff only the sections that differ...
+		// XXX
 
 		// indexed items...
 		_diff_items(res, A, B, options, 
 			function(e){ return e == 0 || !!(e*1) })
 
 		// attributes... 
+		// XXX make this more configurable... (order needs to be optional in JSON)
 		options.mode != 'JSON'
 			&& _diff_items(res, A, B, options, 
 				function(e){ return !(e == 0 || !!(e*1)) })
