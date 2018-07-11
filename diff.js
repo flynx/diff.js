@@ -235,7 +235,6 @@ function(A, B, options){
 	//		...would need to also include .value (i.e. .valueOf()) and 
 	//		treat the thing as object...
 	if(A === B || A == B){
-	//if(A === B || (options.mode == 'JSON' && A == B)){
 		return null
 	}
 
@@ -261,8 +260,34 @@ function(A, B, options){
 			function(a, b){
 				// XXX cache _diff(..) results...
 				return a === b || a == b || _diff(a, b) })
-		// XXX diff only the sections that differ...
+		// collect gaps between common sections...
+		common_sections.shift()
+		var a = 0
+		var b = 0
+		var gaps = []
+		common_sections
+			// make this consider the tail gap...
+			.concat({
+				A: A.length,
+				B: B.length,
+				length: 0,
+			})
+			.forEach(function(e){
+				// store the gap...
+				a != e.A && b != e.B
+					&& gaps.push([
+						[a, A.slice(a, e.A)],
+						[b: B.slice(b, e.B)],
+					])
+				// go to next gap...
+				a = e.A + e.length
+				b = e.B + e.length
+			})
+
+		// XXX diff the gaps...
 		// XXX
+
+
 
 		// indexed items...
 		_diff_items(res, A, B, options, 
