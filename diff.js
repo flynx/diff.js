@@ -107,11 +107,11 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 		return a === b || a == b }
 	// XXX do we actually need this???
 	min_chunk = min_chunk || 1
-	var index = index || []
+	var cache = cache || []
 
 	var _getCommonSections = function(a, b){
-		// index...
-		var res = (index[a] || [])[b]
+		// cache...
+		var res = (cache[a] || [])[b]
 		if(res != null){
 			return res
 		}
@@ -159,9 +159,9 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 			// empty chunk...
 			: next
 
-		// index...
-		index[a] = index[a] || []
-		index[a][b] = res
+		// cache...
+		cache[a] = cache[a] || []
+		cache[a][b] = res
 
 		return res
 	} 
@@ -247,6 +247,16 @@ function(A, B, options){
 		}
 	}
 
+	// cache...
+	// XXX use this everywhere we use _diff...
+	var cache = new Map()
+	var cacheDiff = function(a, b){
+		var l2 = cache.get(a) || new Map()
+		var d = l2.get(b) || _diff(a, b)
+		cache.set(a, l2.set(b, d))
+		return d
+	}
+
 	// Array...
 	// XXX check seen -- avoid recursion...
 	if(A instanceof Array && B instanceof Array){
@@ -256,10 +266,10 @@ function(A, B, options){
 		}
 
 		// find the common sections...
+		// XXX cache _diff(..) results...
 		var common_sections = getCommonSections(A, B,
 			function(a, b){
-				// XXX cache _diff(..) results...
-				return a === b || a == b || _diff(a, b) })
+				return a === b || a == b || cacheDiff(a, b) })
 		// collect gaps between common sections...
 		common_sections.shift()
 		var a = 0
