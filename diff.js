@@ -246,6 +246,7 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 // 			// holds both index and attribute keys (mode-dependant)...
 // 			items: [
 // 				// Simple item diff...
+// 				// XXX unused....
 // 				[<key>, <diff>],
 //
 // 				// [S]plice section starting at key...
@@ -263,6 +264,9 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 // 			
 // 			items: [
 // 				[<key>, <diff>],
+//
+// 				// XXX unused....
+// 				[<key-a>, <key-b>, <diff>],
 // 				...
 // 			],
 // 			item_order: <array-diff>,
@@ -318,30 +322,31 @@ function(A, B, options, cache){
 			length: [A.length, B.length],
 		}
 
-		// XXX diff the gaps...
+		// diff the gaps...
 		res.items = getDiffSections(A, B, cmp)
 			.map(function(gap){
+				var i = gap[0][0]
+				var j = gap[1][0]
 				var a = gap[0][1]
 				var b = gap[1][1]
 
-				var i = gap[0][0]
-				var j = gap[1][0]
-
 				return a
 					.map(function(e, n){
-						return {
-							A: i+n,
-							B: j+n,
-							diff: cacheDiff(e, b.length > n ? b[n] : NONE) 
-						} })
+						return [
+							i+n, 
+							j+n,
+							cacheDiff(e, b.length > n ? b[n] : NONE) 
+						] })
 					.concat(b.slice(a.length)
 						.map(function(e, n){
-							return {
-								A: a.length + i+n,
-								B: a.length + j+n,
-								diff: cacheDiff(a.length > n ? a[n] : NONE, e)
-							} }))
+							return [
+								a.length + i+n, 
+								a.length + j+n,
+								cacheDiff(a.length > n ? a[n] : NONE, e)
+							] }))
 			})
+			.reduce(function(res, e){ 
+				return res.concat(e) }, [])
 
 
 
@@ -373,6 +378,7 @@ function(A, B, options, cache){
 
 		_diff_items(cacheDiff, res, A, B, options)
 
+		/* XXX
 		// XXX this should be applicable to JSON too...
 		options.mode != 'JSON'
 			&& _diff_item_order(cacheDiff, res, A, B, options)
@@ -386,8 +392,10 @@ function(A, B, options, cache){
 
 			// XXX .__proto___ (???)
 		}
+		//*/
 
-		return ((res.item_order || []).length + (res.items || []).length) == 0 ? 
+		return ((res.item_order || []).length 
+				+ (res.items || []).length) == 0 ? 
 			null 
 			: res
 	}
@@ -414,23 +422,25 @@ function(diff, res, path){
 
 	// Array...
 	} else if(diff.type == 'Array'){
-		diff.items.forEach(function(e){
-			var i = e[0]
-			var v = e[1]
-			var p = path.concat([i])
+		diff.items
+			.forEach(function(e){
+				var i = [e[0], e[1]]
+				var v = e[2]
+				var p = path.concat([i])
 
-			flatten(v, res, p)
-		})
+				flatten(v, res, p)
+			})
 
 	// Object...
 	} else if(diff.type == 'Object'){
-		diff.items.forEach(function(e){
-			var i = e[0]
-			var v = e[1]
-			var p = path.concat([i])
+		diff.items
+			.forEach(function(e){
+				var i = e[0]
+				var v = e[1]
+				var p = path.concat([i])
 
-			flatten(v, res, p)
-		})
+				flatten(v, res, p)
+			})
 
 	// Other...
 	// XXX revise this...
