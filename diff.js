@@ -34,20 +34,26 @@
 // 		positions nor does it affect the the array lengths.
 var EMPTY = {type: 'EMPTY'}
 
+var NONE = {type: 'NONE'}
+
 
 
 //---------------------------------------------------------------------
 // Helpers...
 
 // XXX should we handle properties???
-var _diff_items = function(diff, A, B, options, filter){
+var _diff_items = function(diff, res, A, B, options, filter){
 	// JSON mode -> ignore attr order...
 	var kA = Object.keys(A)
 	var kB = Object.keys(B)
 
 	if(filter){
-		kA = kA.filter(filter)
-		kB = kB.filter(filter)
+		kA = filter instanceof Array ? 
+			filter.slice() 
+			: kA.filter(filter)
+		kB = filter instanceof Array ? 
+			filter.slice() 
+			: kB.filter(filter)
 	}
 
 	var B_index = kB.reduce(function(res, k){
@@ -60,7 +66,7 @@ var _diff_items = function(diff, A, B, options, filter){
 			// A keys...
 			.map(function(ka){
 				var res = [ka, 
-					_diff(
+					diff(
 						A[ka], 
 						ka in B_index ? B[ka] : EMPTY, 
 						options)] 
@@ -72,7 +78,7 @@ var _diff_items = function(diff, A, B, options, filter){
 			.concat(Object.keys(B_index)
 				.map(function(kb){
 					return [kb, 
-						_diff(
+						diff(
 							EMPTY, 
 							B[kb],
 							options)]}))
@@ -80,24 +86,28 @@ var _diff_items = function(diff, A, B, options, filter){
 			.filter(function(e){
 				return e[1] !== null })
 	items.length > 0
-		&& (diff.items = (diff.items || []).concat(items))
+		&& (res.items = (res.items || []).concat(items))
 
-	return diff
+	return res
 }
-var _diff_item_order = function(diff, A, B, options, filter){
+var _diff_item_order = function(diff, res, A, B, options, filter){
 	var kA = Object.keys(A)
 	var kB = Object.keys(B)
 
 	if(filter){
-		kA = kA.filter(filter)
-		kB = kB.filter(filter)
+		kA = filter instanceof Array ? 
+			filter.slice() 
+			: kA.filter(filter)
+		kB = filter instanceof Array ? 
+			filter.slice() 
+			: kB.filter(filter)
 	}
 
-	var item_order = _diff(kA, kB, {mode: 'JSON'})
+	var item_order = diff(kA, kB, {mode: 'JSON'})
 	item_order != null 
-		&& (diff.item_order = item_order)
+		&& (res.item_order = item_order)
 
-	return diff
+	return res
 }
 
 
@@ -170,6 +180,48 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 }
 
 
+// Format:
+// 	[
+// 		[
+// 			[<gap-offset-A>, 
+// 				[ item, ... ]],
+// 			[<gap-offset-B>, 
+// 				[ item, ... ]],
+// 		],
+// 		...
+// 	]
+var getDiffSections = function(A, B, cmp, min_chunk){
+	// find the common sections...
+	var common_sections = getCommonSections(A, B, cmp, min_chunk)
+	common_sections.shift()
+
+	// collect gaps between common sections...
+	var a = 0
+	var b = 0
+	var gaps = []
+	common_sections
+		// make this consider the tail gap...
+		.concat({
+			A: A.length,
+			B: B.length,
+			length: 0,
+		})
+		.forEach(function(e){
+			// store the gap...
+			;(a != e.A || b != e.B)
+				&& gaps.push([
+					[a, A.slice(a, e.A)],
+					[b, B.slice(b, e.B)],
+				])
+			// go to next gap...
+			a = e.A + e.length
+			b = e.B + e.length
+		})
+
+	return gaps
+}
+
+
 
 //---------------------------------------------------------------------
 //
@@ -197,11 +249,7 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 // 				[<key>, <diff>],
 //
 // 				// [S]plice section starting at key...
-// 				//	The <diff> should contain two array sections.
-// 				//	The section is treated as a seporate array, diffed
-// 				//	and spliced into the target array at <key>.
-// 				// XXX is this too complicated???
-// 				['S', <key>, <diff>],
+// 				[<key-a>, <key-b>, <diff>],
 // 				
 // 				...
 // 			],
@@ -226,7 +274,7 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 // XXX revise format...
 // XXX support Map(..) and other new-style types...
 var _diff =
-function(A, B, options){
+function(A, B, options, cache){
 	options = options || {}
 
 	// same object...
@@ -249,12 +297,17 @@ function(A, B, options){
 
 	// cache...
 	// XXX use this everywhere we use _diff...
-	var cache = new Map()
-	var cacheDiff = function(a, b){
+	cache = cache || new Map()
+	var cacheDiff = cache.diff = cache.diff || function(a, b){
 		var l2 = cache.get(a) || new Map()
-		var d = l2.get(b) || _diff(a, b)
+		var d = l2.get(b) || _diff(a, b, options, cache)
 		cache.set(a, l2.set(b, d))
 		return d
+	}
+	var cmp = function(a, b){
+		return a === b 
+			|| a == b 
+			|| (cacheDiff(a, b) == null)
 	}
 
 	// Array...
@@ -265,52 +318,47 @@ function(A, B, options){
 			length: [A.length, B.length],
 		}
 
-		// find the common sections...
-		// XXX cache _diff(..) results...
-		var common_sections = getCommonSections(A, B,
-			function(a, b){
-				return a === b || a == b || cacheDiff(a, b) })
-		// collect gaps between common sections...
-		common_sections.shift()
-		var a = 0
-		var b = 0
-		var gaps = []
-		common_sections
-			// make this consider the tail gap...
-			.concat({
-				A: A.length,
-				B: B.length,
-				length: 0,
-			})
-			.forEach(function(e){
-				// store the gap...
-				a != e.A && b != e.B
-					&& gaps.push([
-						[a, A.slice(a, e.A)],
-						[b: B.slice(b, e.B)],
-					])
-				// go to next gap...
-				a = e.A + e.length
-				b = e.B + e.length
-			})
-
 		// XXX diff the gaps...
-		// XXX
+		res.items = getDiffSections(A, B, cmp)
+			.map(function(gap){
+				var a = gap[0][1]
+				var b = gap[1][1]
+
+				var i = gap[0][0]
+				var j = gap[1][0]
+
+				return a
+					.map(function(e, n){
+						return {
+							A: i+n,
+							B: j+n,
+							diff: cacheDiff(e, b.length > n ? b[n] : NONE) 
+						} })
+					.concat(b.slice(a.length)
+						.map(function(e, n){
+							return {
+								A: a.length + i+n,
+								B: a.length + j+n,
+								diff: cacheDiff(a.length > n ? a[n] : NONE, e)
+							} }))
+			})
 
 
 
+		/* XXX
 		// indexed items...
-		_diff_items(res, A, B, options, 
+		_diff_items(cacheDiff, res, A, B, options, 
 			function(e){ return e == 0 || !!(e*1) })
 
 		// attributes... 
 		// XXX make this more configurable... (order needs to be optional in JSON)
 		options.mode != 'JSON'
-			&& _diff_items(res, A, B, options, 
+			&& _diff_items(cacheDiff, res, A, B, options, 
 				function(e){ return !(e == 0 || !!(e*1)) })
 			// attributes order...
-			&& _diff_item_order(res, A, B, options, 
+			&& _diff_item_order(cacheDiff, res, A, B, options, 
 				function(e){ return !(e == 0 || !!(e*1)) })
+		//*/
 
 		return (res.items || []).length > 0 ? res : null
 
@@ -323,11 +371,11 @@ function(A, B, options){
 			type: 'Object',
 		}
 
-		_diff_items(res, A, B, options)
+		_diff_items(cacheDiff, res, A, B, options)
 
 		// XXX this should be applicable to JSON too...
 		options.mode != 'JSON'
-			&& _diff_item_order(res, A, B, options)
+			&& _diff_item_order(cacheDiff, res, A, B, options)
 
 		// .constructor...
 		if(options.mode != 'JSON'){
