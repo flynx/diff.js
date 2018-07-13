@@ -342,7 +342,7 @@ function(A, B, options, cache){
 							return [
 								a.length + i+n, 
 								a.length + j+n,
-								cacheDiff(a.length > n ? a[n] : NONE, e)
+								cacheDiff(NONE, e)
 							] }))
 			})
 			.reduce(function(res, e){ 
