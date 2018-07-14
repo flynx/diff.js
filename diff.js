@@ -34,14 +34,37 @@
 // 		positions nor does it affect the the array lengths.
 var EMPTY = {type: 'EMPTY'}
 
+
 var NONE = {type: 'NONE'}
+
+
+var DIFF_TYPES = new Set([
+	NONE,
+	EMPTY,
+])
 
 
 
 //---------------------------------------------------------------------
 // Helpers...
 
+var zip = function(func, ...arrays){
+	var i = arrays[0] instanceof Array ? 0 : arrays.shift()
+	var s = new Array(arrays.length)
+	arrays
+		.forEach(function(a, j){ 
+			a.length > i 
+				&& (s[j] = a[i]) })
+	return arrays
+			// check that at least one array is longer than i...
+			.reduce(function(res, a){ 
+				return Math.max(res, i, a.length) }, 0) > i ?
+		[func(i, s)]
+			.concat(zip(func, i+1, ...arrays))
+		: [] }
+
 // XXX should we handle properties???
+// XXX use zip(..)...
 var _diff_items = function(diff, res, A, B, options, filter){
 	// JSON mode -> ignore attr order...
 	var kA = Object.keys(A)
@@ -62,6 +85,7 @@ var _diff_items = function(diff, res, A, B, options, filter){
 	}, {})
 
 	// items...
+	// XXX use zip(..)...
 	var items = kA
 			// A keys...
 			.map(function(ka){
@@ -275,7 +299,6 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 // 		
 // NOTE: this will include direct links to items.
 // XXX check seen -- avoid recursion...
-// XXX revise format...
 // XXX support Map(..) and other new-style types...
 var _diff =
 function(A, B, options, cache){
@@ -291,7 +314,7 @@ function(A, B, options, cache){
 	}
 
 	// basic types...
-	if(typeof(A) != 'object' || typeof(B) != 'object'){
+	if(typeof(A) != 'object' || typeof(B) != 'object' || DIFF_TYPES.has(A) || DIFF_TYPES.has(B)){
 		return {
 			type: 'Basic',
 			A: A,
@@ -300,9 +323,8 @@ function(A, B, options, cache){
 	}
 
 	// cache...
-	// XXX use this everywhere we use _diff...
 	cache = cache || new Map()
-	var cacheDiff = cache.diff = cache.diff || function(a, b){
+	var diff = cache.diff = cache.diff || function(a, b){
 		var l2 = cache.get(a) || new Map()
 		var d = l2.get(b) || _diff(a, b, options, cache)
 		cache.set(a, l2.set(b, d))
@@ -311,8 +333,7 @@ function(A, B, options, cache){
 	var cmp = function(a, b){
 		return a === b 
 			|| a == b 
-			|| (cacheDiff(a, b) == null)
-	}
+			|| (diff(a, b) == null) }
 
 	// Array...
 	// XXX check seen -- avoid recursion...
@@ -323,45 +344,36 @@ function(A, B, options, cache){
 		}
 
 		// diff the gaps...
+		// XXX might be good to consider item ordering...
 		res.items = getDiffSections(A, B, cmp)
 			.map(function(gap){
 				var i = gap[0][0]
 				var j = gap[1][0]
-				var a = gap[0][1]
-				var b = gap[1][1]
 
-				return a
-					.map(function(e, n){
+				return zip(
+					function(n, elems){
 						return [
 							i+n, 
 							j+n,
-							cacheDiff(e, b.length > n ? b[n] : NONE) 
-						] })
-					.concat(b.slice(a.length)
-						.map(function(e, n){
-							return [
-								a.length + i+n, 
-								a.length + j+n,
-								cacheDiff(NONE, e)
-							] }))
+							diff(
+								0 in elems ? elems[0] : NONE, 
+								1 in elems ? elems[1] : NONE), 
+						]
+					}, 
+					gap[0][1],
+					gap[1][1])
 			})
 			.reduce(function(res, e){ 
 				return res.concat(e) }, [])
 
-
-
 		/* XXX
-		// indexed items...
-		_diff_items(cacheDiff, res, A, B, options, 
-			function(e){ return e == 0 || !!(e*1) })
-
 		// attributes... 
 		// XXX make this more configurable... (order needs to be optional in JSON)
 		options.mode != 'JSON'
-			&& _diff_items(cacheDiff, res, A, B, options, 
+			&& _diff_items(diff, res, A, B, options, 
 				function(e){ return !(e == 0 || !!(e*1)) })
 			// attributes order...
-			&& _diff_item_order(cacheDiff, res, A, B, options, 
+			&& _diff_item_order(diff, res, A, B, options, 
 				function(e){ return !(e == 0 || !!(e*1)) })
 		//*/
 
@@ -376,12 +388,12 @@ function(A, B, options, cache){
 			type: 'Object',
 		}
 
-		_diff_items(cacheDiff, res, A, B, options)
+		_diff_items(diff, res, A, B, options)
 
 		/* XXX
 		// XXX this should be applicable to JSON too...
 		options.mode != 'JSON'
-			&& _diff_item_order(cacheDiff, res, A, B, options)
+			&& _diff_item_order(diff, res, A, B, options)
 
 		// .constructor...
 		if(options.mode != 'JSON'){
@@ -424,7 +436,9 @@ function(diff, res, path){
 	} else if(diff.type == 'Array'){
 		diff.items
 			.forEach(function(e){
-				var i = [e[0], e[1]]
+				var i = e[0] == e[1] ? 
+					e[0] 
+					: [e[0], e[1]]
 				var v = e[2]
 				var p = path.concat([i])
 
