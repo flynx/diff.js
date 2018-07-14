@@ -48,19 +48,35 @@ var DIFF_TYPES = new Set([
 //---------------------------------------------------------------------
 // Helpers...
 
+// 	zip(array, array, ...)
+// 		-> [[item, item, ...], ...]
+//
+// 	zip(func, array, array, ...)
+// 		-> [func(i, [item, item, ...]), ...]
+//
 var zip = function(func, ...arrays){
 	var i = arrays[0] instanceof Array ? 0 : arrays.shift()
-	var s = new Array(arrays.length)
-	arrays
-		.forEach(function(a, j){ 
+	if(func instanceof Array){
+		arrays.splice(0, 0, func)
+		func = null
+	}
+	// build the zip item...
+	// NOTE: this is done this way to preserve array sparseness...
+	var s = arrays
+		.reduce(function(res, a, j){
 			a.length > i 
-				&& (s[j] = a[i]) })
+				&& (res[j] = a[i])
+			return res
+		}, new Array(arrays.length))
 	return arrays
 			// check that at least one array is longer than i...
 			.reduce(function(res, a){ 
 				return Math.max(res, i, a.length) }, 0) > i ?
-		[func(i, s)]
+		// collect zip item...
+		[func ? func(i, s) : s]
+			// get next...
 			.concat(zip(func, i+1, ...arrays))
+		// done...
 		: [] }
 
 // XXX should we handle properties???
