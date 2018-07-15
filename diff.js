@@ -304,7 +304,8 @@ var partHandlers = {
 // 		{
 // 			type: 'Array',
 // 			
-// 			length: [A, B],
+// 			// NOTE: this is present only if A and B lengths are different...
+// 			length: [<A-length>, <B-length>],
 // 			
 // 			// holds both index and attribute keys (mode-dependant)...
 // 			items: [
@@ -318,6 +319,7 @@ var partHandlers = {
 // 				...
 // 			],
 // 			// only for non-index keys...
+// 			// XXX unused...
 // 			item_order: <array-diff>,
 // 		}
 // 		
@@ -332,6 +334,7 @@ var partHandlers = {
 // 				[<key-a>, <key-b>, <diff>],
 // 				...
 // 			],
+// 			// XXX unused...
 // 			item_order: <array-diff>,
 // 		}
 // 
@@ -386,7 +389,6 @@ Types.handle = function(type, obj, ...args){
 
 	return obj
 }
-
 
 // NOTE: this will include direct links to items.
 // XXX do we need to differentiate things like: new Number(123) vs. 123???
@@ -481,6 +483,7 @@ function(A, B, options, cache){
 // XXX need to track order very carefully here... (???)
 // XXX should this follow the same extensible structure as _diff???
 // 		...i.e. type handlers etc.
+// 		......or this could be more generic...
 var flatten = 
 function(diff, res, path){
 	res = res || []
