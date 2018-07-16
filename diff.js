@@ -217,8 +217,8 @@ var partHandlers = {
 				return zip(
 						function(n, elems){
 							return [
-								i+n, 
-								j+n,
+								0 in elems ? i+n : null,
+								1 in elems ? j+n : null,
 								diff(
 									0 in elems ? elems[0] : NONE, 
 									1 in elems ? elems[1] : NONE,
@@ -489,21 +489,31 @@ function(A, B, options, cache){
 // 			// Keys can be:
 //			//	string		- normal object key
 //			//	number		- array key 
-//			//					  NOTE: this is actually not different 
-//			//							from a string...
+//			//				  NOTE: this is actually not different 
+//			//						from a string...
 //			//	array/2		- a set of 2 keys for A and B respectively
+//			//				  NOTE: if one of the array items in undefined 
+//			//						or null then it means that the item
+//			//						does not exist in the corresponding
+//			//						array...
 // 			path: [<key>, ...],
 //
 // 			// values in A and B...
 // 			//
 // 			// Special values:
 // 			//	NONE		- the slot does not exist (splice)
+// 			//				  NOTE: unless options.keep_none is true, 
+// 			//						NONE elements are not included in the 
+// 			//						change...
 // 			//	EMPTY		- the slot exists but it is empty (set/delete)
 // 			A: <value> | EMPTY | NONE,
 // 			B: <value> | EMPTY | NONE,
 // 		},
 // 		...
 // 	]
+//
+// NOTE: all indexes (arrays) are given within the actual object, not 
+// 		accounting for the patch process.
 //
 // XXX does change order matter here???
 // 		...some changes can affect changes after them (like splicing 
@@ -513,10 +523,12 @@ function(A, B, options, cache){
 // XXX should this follow the same extensible structure as _diff???
 // 		...i.e. type handlers etc.
 // 		......or this could be more generic...
+// XXX we should be able to provide "fuzz" (context) to the changes...
 var flatten = 
-function(diff, res, path){
+function(diff, res, path, options){
 	res = res || []
 	path = path || []
+	options = options || {}
 
 	// no difference...
 	if(diff == null){
@@ -532,6 +544,7 @@ function(diff, res, path){
 
 	// Array...
 	} else if(diff.type == 'Array'){
+		// length changed...
 		if(diff.length != null){
 			res.push({
 				path: path.concat('length'),
@@ -539,15 +552,28 @@ function(diff, res, path){
 				B: diff.length[1],
 			})
 		}
+		// items...
 		;(diff.items || [])
 			.forEach(function(e){
+				var v = e[2]
 				var i = e[0] == e[1] ? 
 					e[0] 
 					: [e[0], e[1]]
-				var v = e[2]
 				var p = path.concat([i])
 
-				flatten(v, res, p)
+				if(!options.keep_none 
+						&& (v.A === NONE || v.B === NONE)){
+					// NOTE: we do not need to flatten(..) this as 
+					// 		it is guaranteed not to be a diff...
+					res.push({
+						path: p,
+						// write only the value that is not NONE...
+						[v.A === NONE ? 'B' : 'A']: v.A === NONE ? v.B : v.A,
+					})
+
+				} else {
+					flatten(v, res, p, options)
+				}
 			})
 
 	// Object...
@@ -558,7 +584,7 @@ function(diff, res, path){
 				var v = e[1]
 				var p = path.concat([i])
 
-				flatten(v, res, p)
+				flatten(v, res, p, options)
 			})
 
 	// Other...
