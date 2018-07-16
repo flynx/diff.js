@@ -480,7 +480,32 @@ function(A, B, options, cache){
 }
 
 
-// XXX dows change order matter here???
+//
+// Format:
+// 	[
+// 		{
+// 			// The path to the item in the object tree...
+// 			//
+// 			// Keys can be:
+//			//	string		- normal object key
+//			//	number		- array key 
+//			//					  NOTE: this is actually not different 
+//			//							from a string...
+//			//	array/2		- a set of 2 keys for A and B respectively
+// 			path: [<key>, ...],
+//
+// 			// values in A and B...
+// 			//
+// 			// Special values:
+// 			//	NONE		- the slot does not exist (splice)
+// 			//	EMPTY		- the slot exists but it is empty (set/delete)
+// 			A: <value> | EMPTY | NONE,
+// 			B: <value> | EMPTY | NONE,
+// 		},
+// 		...
+// 	]
+//
+// XXX does change order matter here???
 // 		...some changes can affect changes after them (like splicing 
 // 		with arrays), this ultimately affects how patching is done...
 // 		...or is this a quastion of how we treat indexes and the patching 
