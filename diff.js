@@ -33,8 +33,6 @@
 // NOTE: for Array items this does not shift positions of other item
 // 		positions nor does it affect the the array lengths.
 var EMPTY = {type: 'EMPTY'}
-
-
 var NONE = {type: 'NONE'}
 
 
@@ -86,9 +84,10 @@ var zip = function(func, ...arrays){
 		: [] }
 
 
-// get common chuncs (LCS)...
+// get common chunks (LCS)...
 // XXX handle sparse arrays correctly...
 // 		...now empty slots get filled with undefined...
+// XXX this does not distinguish empty and null/undefined...
 var getCommonSections = function(A, B, cmp, min_chunk){
 	cmp = cmp || function(a, b){
 		return a === b || a == b }
@@ -309,11 +308,8 @@ var partHandlers = {
 // 			
 // 			// holds both index and attribute keys (mode-dependant)...
 // 			items: [
-// 				// Simple item diff...
-// 				// XXX unused....
-// 				[<key>, <diff>],
-//
-// 				// [S]plice section starting at key...
+// 				// NOTE: if an item does not exist in either A or B its
+// 				//		key will be null...
 // 				[<key-a>, <key-b>, <diff>],
 // 				
 // 				...
@@ -394,6 +390,17 @@ Types.handle = function(type, obj, ...args){
 // XXX do we need to differentiate things like: new Number(123) vs. 123???
 // XXX check seen -- avoid recursion...
 // XXX support Map(..) and other new-style types...
+// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
+// XXX BUGS:
+// 		_diff(new Array(1), [null | undefined])
+// 			-> null, should be a change
+// 				NOTE: passing a NaN will yield correct results...
+// 				...the problem is in getCommonSections(..) not 
+// 				distinguishing between null and empty...
+// 		_diff(new Array(5), [])
+// 			-> will only catch the length change...
+// 				...the problem is in getCommonSections(..) not 
+// 				distinguishing between null and empty...
 var _diff =
 function(A, B, options, cache){
 	// XXX might be a god idea to mix in default options (different 
@@ -438,9 +445,9 @@ function(A, B, options, cache){
 	// 		is not last it will match any set of items...
 	var type = Object
 	for(var t of Types.keys()){
-		// skip non-conctructor stuff...
+		// leave pure objects for last...
 		if(t === Object 
-				// leave pure objects for last...
+				// skip non-conctructor stuff...
 				|| !(t instanceof Function)){
 			continue
 		}
@@ -480,6 +487,7 @@ function(A, B, options, cache){
 }
 
 
+// Flatten the diff format...
 //
 // Format:
 // 	[
@@ -512,8 +520,13 @@ function(A, B, options, cache){
 // 		...
 // 	]
 //
-// NOTE: all indexes (arrays) are given within the actual object, not 
-// 		accounting for the patch process.
+// NOTE: all indexes (for arrays) are given relative to the actual input 
+// 		objects respectively as they were given. This does not account for
+// 		the patch process.
+// NOTE: this will lose some meta-information the diff format contains 
+// 		like the type information which is not needed for patching but 
+// 		may be useful for a more thorough compatibility check.
+//
 //
 // XXX does change order matter here???
 // 		...some changes can affect changes after them (like splicing 
@@ -524,6 +537,7 @@ function(A, B, options, cache){
 // 		...i.e. type handlers etc.
 // 		......or this could be more generic...
 // XXX we should be able to provide "fuzz" (context) to the changes...
+// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
 var flatten = 
 function(diff, res, path, options){
 	res = res || []
@@ -544,14 +558,15 @@ function(diff, res, path, options){
 
 	// Array...
 	} else if(diff.type == 'Array'){
-		// length changed...
-		if(diff.length != null){
-			res.push({
+		// length...
+		// XXX should this be given after all the element changes???
+		// 		...but it should be before all the nested changes...
+		;(diff.length != null)
+			&& res.push({
 				path: path.concat('length'),
 				A: diff.length[0],
 				B: diff.length[1],
 			})
-		}
 		// items...
 		;(diff.items || [])
 			.forEach(function(e){
