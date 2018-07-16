@@ -111,6 +111,8 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 		var l = chunk.length
 		while(a+l < A.length 
 				&& b+l < B.length 
+				&& a+l in A 
+				&& b+l in B
 				&& cmp(A[a+l], B[b+l])){
 			l = chunk.length += 1
 		}
@@ -391,16 +393,6 @@ Types.handle = function(type, obj, ...args){
 // XXX check seen -- avoid recursion...
 // XXX support Map(..) and other new-style types...
 // XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
-// XXX BUGS:
-// 		_diff(new Array(1), [null | undefined])
-// 			-> null, should be a change
-// 				NOTE: passing a NaN will yield correct results...
-// 				...the problem is in getCommonSections(..) not 
-// 				distinguishing between null and empty...
-// 		_diff(new Array(5), [])
-// 			-> will only catch the length change...
-// 				...the problem is in getCommonSections(..) not 
-// 				distinguishing between null and empty...
 var _diff =
 function(A, B, options, cache){
 	// XXX might be a god idea to mix in default options (different 
