@@ -480,7 +480,11 @@ function(A, B, options, cache){
 }
 
 
-// XXX need to track order very carefully here... (???)
+// XXX dows change order matter here???
+// 		...some changes can affect changes after them (like splicing 
+// 		with arrays), this ultimately affects how patching is done...
+// 		...or is this a quastion of how we treat indexes and the patching 
+// 		algorithm???
 // XXX should this follow the same extensible structure as _diff???
 // 		...i.e. type handlers etc.
 // 		......or this could be more generic...
