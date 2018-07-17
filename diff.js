@@ -217,21 +217,30 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 var partHandlers = {
 	// XXX might be good to consider item ordering 
 	// 		...i.e. how an item's indes changed
-	// XXX handle sparse arrays correctly...
-	// 		...now empty slots get filled with undefined...
+	// XXX might be good to support section splicing...
 	items: function(diff, A, B, options){
-		return getDiffSections(A, B, options.cmp)
+		var sections = getDiffSections(A, B, options.cmp)
+
+		// special case: last section set consists of sparse/empty arrays...
+		var last = sections[sections.length-1]
+		last 
+			&& last[0][1]
+				.concat(last[1][1])
+				.filter(function(e){ return e }).length == 0
+			&& sections.pop()
+
+		return sections
 			.map(function(gap){
 				var i = gap[0][0]
 				var j = gap[1][0]
 				var a = gap[0][1]
 				var b = gap[1][1]
 
-				console.log('!!!!', a, b)
-
 				return zip(
 						function(n, elems){
 							return [
+								// if a slot exists it gets an index, 
+								// otherwise null...
 								(0 in elems || n < a.length) ? 
 									i+n 
 									: null,
@@ -239,6 +248,7 @@ var partHandlers = {
 									j+n 
 									: null,
 								diff(
+									// use value, EMPTY or NONE...
 									0 in elems ? 
 											elems[0] 
 										: n < a.length ?
@@ -250,10 +260,8 @@ var partHandlers = {
 											EMPTY
 										: NONE,
 									options), 
-							]
-						}, 
-						a,
-						b)
+							] }, 
+						a, b)
 					.filter(function(e){ 
 						return e[2] != null})
 			})
@@ -362,8 +370,19 @@ var partHandlers = {
 // 			// XXX unused...
 // 			item_order: <array-diff>,
 // 		}
+//
+// 	- A and B are long strings...
+// 		{
+// 			type: 'Text',
+//
+//			// same structure as for 'Array'...
+// 			...
+// 		}
+//
 // 
-// 		
+//
+// XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
+//		and not just rely on item-level...
 var Types = new Map([
 	['Basic',
 		function(diff, A, B, options){
@@ -394,12 +413,17 @@ var Types = new Map([
 		}],
 	[Set, Map],
 	//*/
+	
+	// XXX not used yet...
+	['Text',
+		function(diff, A, B, options){
+			return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) }],
 ])
 Types.handle = function(type, obj, ...args){
 	// set .type
-	obj.type = type.name ? type.name : type 
+	obj.type = obj.type || (type.name ? type.name : type)
 
-	// get the handler while handling aliases...
+	// get the handler + resolve aliases...
 	var handler = type
 	do {
 		var handler = this.get(handler)
@@ -419,6 +443,8 @@ Types.handle = function(type, obj, ...args){
 //
 // NOTE: this will include direct links to items.
 // NOTE: for format info see doc for Types...
+//
+// XXX special case: empty sections do not need to be inserted...
 //
 // XXX do we need to differentiate things like: new Number(123) vs. 123???
 // XXX check seen -- avoid recursion...
