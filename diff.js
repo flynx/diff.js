@@ -85,9 +85,19 @@ var zip = function(func, ...arrays){
 
 
 // get common chunks (LCS)...
-// XXX handle sparse arrays correctly...
-// 		...now empty slots get filled with undefined...
-// XXX this does not distinguish empty and null/undefined...
+//
+// Format:
+// 	[
+// 		<total-intersection-length>,
+//
+// 		{
+// 			A: <offset-A>,
+// 			B: <offset-B>,
+// 			length: <section-length>,
+// 		},
+// 		...
+// 	]
+//
 var getCommonSections = function(A, B, cmp, min_chunk){
 	cmp = cmp || function(a, b){
 		return a === b || a == b }
@@ -109,11 +119,11 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 			length: 0,
 		}
 		var l = chunk.length
-		while(a+l < A.length 
-				&& b+l < B.length 
-				&& a+l in A 
-				&& b+l in B
-				&& cmp(A[a+l], B[b+l])){
+		while((a+l < A.length && b+l < B.length)
+					// cmp non-empty slots only...
+					&& ((a+l in A && b+l in B) ?
+						cmp(A[a+l], B[b+l])
+						: (!(a+l in A) && !(b+l in B)))){
 			l = chunk.length += 1
 		}
 		// ignore small chunks...
@@ -161,16 +171,14 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 // Format:
 // 	[
 // 		[
-// 			[<gap-offset-A>, 
-// 				[ item, ... ]],
-// 			[<gap-offset-B>, 
-// 				[ item, ... ]],
+// 			[<offset-A>, 
+// 				[ <item>, ... ]],
+// 			[<offset-B>, 
+// 				[ <item>, ... ]],
 // 		],
 // 		...
 // 	]
 //
-// XXX handle sparse arrays correctly...
-// 		...now empty slots get filled with undefined...
 var getDiffSections = function(A, B, cmp, min_chunk){
 	// find the common sections...
 	var common_sections = getCommonSections(A, B, cmp, min_chunk)
@@ -209,26 +217,45 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 var partHandlers = {
 	// XXX might be good to consider item ordering 
 	// 		...i.e. how an item's indes changed
+	// XXX handle sparse arrays correctly...
+	// 		...now empty slots get filled with undefined...
 	items: function(diff, A, B, options){
 		return getDiffSections(A, B, options.cmp)
 			.map(function(gap){
 				var i = gap[0][0]
 				var j = gap[1][0]
+				var a = gap[0][1]
+				var b = gap[1][1]
+
+				console.log('!!!!', a, b)
 
 				return zip(
 						function(n, elems){
 							return [
-								0 in elems ? i+n : null,
-								1 in elems ? j+n : null,
+								(0 in elems || n < a.length) ? 
+									i+n 
+									: null,
+								(1 in elems || n < b.length) ? 
+									j+n 
+									: null,
 								diff(
-									0 in elems ? elems[0] : NONE, 
-									1 in elems ? elems[1] : NONE,
+									0 in elems ? 
+											elems[0] 
+										: n < a.length ?
+											EMPTY
+										: NONE, 
+									1 in elems ? 
+											elems[1] 
+										: n < b.length ?
+											EMPTY
+										: NONE,
 									options), 
 							]
 						}, 
-						gap[0][1],
-						gap[1][1])
-					.filter(function(e){ return e[2] != null})
+						a,
+						b)
+					.filter(function(e){ 
+						return e[2] != null})
 			})
 			.reduce(function(res, e){ 
 				return res.concat(e) }, [])
@@ -388,6 +415,7 @@ Types.handle = function(type, obj, ...args){
 	return obj
 }
 
+//
 // NOTE: this will include direct links to items.
 // XXX do we need to differentiate things like: new Number(123) vs. 123???
 // XXX check seen -- avoid recursion...
