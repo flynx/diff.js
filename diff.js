@@ -416,30 +416,58 @@ var Types = Object.assign(
 		//*/
 		
 		// Custom types...
-		['Text',
-			function(diff, A, B, options){
-				return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) }],
+		['Text', 
+			{
+				check: function(A, B, options){
+					options = options || {}
+					min = options.min_text_length || 1000
+					return typeof(A) == 'string' && typeof(B) == 'string'
+						&& A.length > min && B.length > min
+				},
+				handle: function(diff, A, B, options){
+					return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) },
+			}],
 	]), 
 	{
-		detect: function(A, B){
-			var type = Object
-			for(var t of Types.keys()){
-				// leave pure objects for last...
-				if(t === Object 
-						// skip non-conctructor stuff...
-						|| !(t instanceof Function)){
-					continue
-				}
+		// NOTE: if A and B types mismatch we treat them as Object...
+		// XXX this may have issues with type (key) ordering, for example 
+		// 		if Object is not last it will match any set of items...
+		// XXX add support for checker predicates...
+		// 		...the main question here is how do we structure the predicate???
+		// XXX should .handle(..)/.check(..) be coupled here or in _diff(..)???
+		detect: function(A, B, options){
+			var type
 
-				// full hit -- type match...
-				if(A instanceof t && B instanceof t){
+			// predicates have priority...
+			for(var t of Types.keys()){
+				if(Types.get(t).check
+						&& Types.get(t).check(A, B, options)){
 					type = t
 					break
 				}
-				// partial hit -- type mismatch...
-				if(A instanceof t || B instanceof t){
-					type = 'Basic'
-					break
+			}
+
+			// search instances...
+			if(!type){
+				type = Object
+				for(var t of Types.keys()){
+					// leave pure objects for last...
+					if(t === Object 
+							// skip non-conctructor stuff...
+							|| !(t instanceof Function)){
+						continue
+					}
+
+					// full hit -- type match...
+					if(A instanceof t && B instanceof t){
+						type = t
+						break
+					}
+					// partial hit -- type mismatch...
+					if(A instanceof t || B instanceof t){
+						type = 'Basic'
+						break
+					}
 				}
 			}
 			return type
@@ -456,10 +484,12 @@ var Types = Object.assign(
 				if(handler == null){
 					throw new TypeError('Diff: can\'t handle: ' + type)
 				}
-			} while(!(handler instanceof Function))
+			} while(!(handler instanceof Function) && !handler.handle)
 
 			// call the handler...
-			handler.call(obj, ...args)
+			handler.handle ?
+				handle.handle.call(obj, ...args)
+				: handler.call(obj, ...args)
 
 			return obj
 		}
@@ -515,30 +545,8 @@ function(A, B, options, cache){
 
 
 	// find the matching type...
-	// NOTE: if A and B types mismatch we treat them as Object...
-	// XXX this may have issues with type (key) ordering, for example 
-	// 		if Object is not last it will match any set of items...
-	// XXX should type detection be here or in types?
-	var type = Object
-	for(var t of Types.keys()){
-		// leave pure objects for last...
-		if(t === Object 
-				// skip non-conctructor stuff...
-				|| !(t instanceof Function)){
-			continue
-		}
+	var type = Types.detect(A, B, options)
 
-		// full hit -- type match...
-		if(A instanceof t && B instanceof t){
-			type = t
-			break
-		}
-		// partial hit -- type mismatch...
-		if(A instanceof t || B instanceof t){
-			type = 'Basic'
-			break
-		}
-	}
 	// handle type...
 	var res = Types.handle(type, {}, diff, A, B, options)
 	// handle things we treat as objects (skipping object itself)...
