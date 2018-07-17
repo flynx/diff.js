@@ -383,61 +383,87 @@ var partHandlers = {
 //
 // XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
 //		and not just rely on item-level...
-var Types = new Map([
-	['Basic',
-		function(diff, A, B, options){
-			this.A = A
-			this.B = B
-		}],
-	[Object, 
-		function(diff, A, B, options){
-			this.items = (this.items || [])
-				.concat(partHandlers.attributes(diff, A, B, options))
+var Types = Object.assign(
+	new Map([
+		['Basic',
+			function(diff, A, B, options){
+				this.A = A
+				this.B = B
+			}],
+		[Object, 
+			function(diff, A, B, options){
+				this.items = (this.items || [])
+					.concat(partHandlers.attributes(diff, A, B, options))
 
-			// XXX optional stuff:
-			// 		- attr ordering...
-			// 		- prototypes
-		}],
-	[Array, 
-		function(diff, A, B, options){
-			this.length = A.length != B.length ? [A.length, B.length] : []
-			this.items = partHandlers.items(diff, A, B, options)
-		}],
+				// XXX optional stuff:
+				// 		- attr ordering...
+				// 		- prototypes
+			}],
+		[Array, 
+			function(diff, A, B, options){
+				this.length = A.length != B.length ? [A.length, B.length] : []
+				this.items = partHandlers.items(diff, A, B, options)
+			}],
 
-	/*/ XXX other JS types...
-	[Map, 
-		function(diff, A, B, options){
-			// XXX make the set and map types compatible...
-			// XXX diff [...A.entries()] and [...B.entries()]
-			// 		...might be a good idea to sort them too
-		}],
-	[Set, Map],
-	//*/
-	
-	// XXX not used yet...
-	['Text',
-		function(diff, A, B, options){
-			return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) }],
-])
-Types.handle = function(type, obj, ...args){
-	// set .type
-	obj.type = obj.type || (type.name ? type.name : type)
+		/*/ XXX other JS types...
+		[Map, 
+			function(diff, A, B, options){
+				// XXX make the set and map types compatible...
+				// XXX diff [...A.entries()] and [...B.entries()]
+				// 		...might be a good idea to sort them too
+			}],
+		[Set, Map],
+		//*/
+		
+		// Custom types...
+		['Text',
+			function(diff, A, B, options){
+				return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) }],
+	]), 
+	{
+		detect: function(A, B){
+			var type = Object
+			for(var t of Types.keys()){
+				// leave pure objects for last...
+				if(t === Object 
+						// skip non-conctructor stuff...
+						|| !(t instanceof Function)){
+					continue
+				}
 
-	// get the handler + resolve aliases...
-	var handler = type
-	do {
-		var handler = this.get(handler)
-		// unhandled type...
-		if(handler == null){
-			throw new TypeError('Diff: can\'t handle: ' + type)
+				// full hit -- type match...
+				if(A instanceof t && B instanceof t){
+					type = t
+					break
+				}
+				// partial hit -- type mismatch...
+				if(A instanceof t || B instanceof t){
+					type = 'Basic'
+					break
+				}
+			}
+			return type
+		},
+		handle: function(type, obj, ...args){
+			// set .type
+			obj.type = obj.type || (type.name ? type.name : type)
+
+			// get the handler + resolve aliases...
+			var handler = type
+			do {
+				var handler = this.get(handler)
+				// unhandled type...
+				if(handler == null){
+					throw new TypeError('Diff: can\'t handle: ' + type)
+				}
+			} while(!(handler instanceof Function))
+
+			// call the handler...
+			handler.call(obj, ...args)
+
+			return obj
 		}
-	} while(!(handler instanceof Function))
-
-	// call the handler...
-	handler.call(obj, ...args)
-
-	return obj
-}
+	})
 
 // Build a diff between A and B...
 //
@@ -490,8 +516,9 @@ function(A, B, options, cache){
 
 	// find the matching type...
 	// NOTE: if A and B types mismatch we treat them as Object...
-	// XXX this may have issues with key ordering, for example if Object
-	// 		is not last it will match any set of items...
+	// XXX this may have issues with type (key) ordering, for example 
+	// 		if Object is not last it will match any set of items...
+	// XXX should type detection be here or in types?
 	var type = Object
 	for(var t of Types.keys()){
 		// leave pure objects for last...
@@ -577,6 +604,8 @@ function(A, B, options, cache){
 // 		may be useful for a more thorough compatibility check.
 //
 //
+// XXX might be good to include some type info so as to enable patching 
+// 		custom stuff like Text...
 // XXX does change order matter here???
 // 		...some changes can affect changes after them (like splicing 
 // 		with arrays), this ultimately affects how patching is done...
@@ -620,6 +649,8 @@ function(diff, res, path, options){
 		;(diff.items || [])
 			.forEach(function(e){
 				var v = e[2]
+
+				// index...
 				var i = e[0] == e[1] ? 
 					e[0] 
 					: [e[0], e[1]]
@@ -651,6 +682,27 @@ function(diff, res, path, options){
 				flatten(v, res, p, options)
 			})
 
+	// Text...
+	} else if(diff.type == 'Text'){
+		// items...
+		;(diff.items || [])
+			.forEach(function(e){
+				var v = e[2]
+
+				// index...
+				var i = e[0] == e[1] ? 
+					e[0] 
+					: [e[0], e[1]]
+				var p = path.concat([i])
+
+				res.push({
+					type: 'Text',
+					path: p,
+					// write only the value that is not NONE...
+					[v.A === NONE ? 'B' : 'A']: v.A === NONE ? v.B : v.A,
+				})
+			})
+
 	// Other...
 	// XXX revise this...
 	} else {
@@ -663,11 +715,14 @@ function(diff, res, path, options){
 
 
 //---------------------------------------------------------------------
+
 var diff =
 module.diff = 
 function(A, B, options){
-	// XXX
-}
+	options = options || {}
+	return options.tree_diff ? 
+		_diff(A, B, options) 
+		: flatten(_diff(A, B, options)) }
 
 
 var patch =
