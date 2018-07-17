@@ -84,7 +84,7 @@ var zip = function(func, ...arrays){
 		: [] }
 
 
-// get common chunks (LCS)...
+// Get common chunks (LCS)...
 //
 // Format:
 // 	[
@@ -168,6 +168,10 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 }
 
 
+// Get diff sections...
+//
+// This is the reverse of getCommonSections(..)
+//
 // Format:
 // 	[
 // 		[
@@ -383,6 +387,7 @@ var partHandlers = {
 //
 // XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
 //		and not just rely on item-level...
+// XXX feels over complicated -- revise...
 var Types = Object.assign(
 	new Map([
 		['Basic',
