@@ -316,7 +316,7 @@ var partHandlers = {
 
 //---------------------------------------------------------------------
 //
-// Format:
+// Format can be one of:
 // 	- no difference...
 // 		null
 // 		
@@ -415,8 +415,11 @@ Types.handle = function(type, obj, ...args){
 	return obj
 }
 
+// Build a diff between A and B...
 //
 // NOTE: this will include direct links to items.
+// NOTE: for format info see doc for Types...
+//
 // XXX do we need to differentiate things like: new Number(123) vs. 123???
 // XXX check seen -- avoid recursion...
 // XXX support Map(..) and other new-style types...
