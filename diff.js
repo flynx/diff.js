@@ -733,9 +733,16 @@ var diff =
 module.diff = 
 function(A, B, options){
 	options = options || {}
-	return options.tree_diff ? 
-		_diff(A, B, options) 
-		: flatten(_diff(A, B, options)) }
+	return {
+		format: 'object-diff',
+		varsion: '0.0.0',
+
+		options: Object.assign({}, options),
+
+		diff: options.tree_diff ? 
+			_diff(A, B, options) 
+			: flatten(_diff(A, B, options))
+	}}
 
 
 var patch =
