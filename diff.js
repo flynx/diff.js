@@ -11,22 +11,6 @@
 
 
 /*********************************************************************/
-// Diff base format:
-// 	{
-// 		varsion: '1.0',
-// 		options: {
-// 		},
-// 		
-// 		diff: <diff-format>,
-// 	}
-//
-// Diff format:
-//	[
-//	]
-// 
-// 
-//
-/*********************************************************************/
 
 // Inseted when an item exists one one side and does not on the other.
 // 
@@ -52,10 +36,6 @@ var DIFF_TYPES = new Set([
 // 	zip(func, array, array, ...)
 // 		-> [func(i, [item, item, ...]), ...]
 //
-// XXX still has problems with sparse arrays...
-// 		ex: 
-// 			zip(new Array(5), [])
-// 				-> the sparce side will contain undefined instead of being empty...
 // XXX revise...
 var zip = function(func, ...arrays){
 	var i = arrays[0] instanceof Array ? 0 : arrays.shift()
@@ -215,13 +195,589 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 }
 
 
+// Make a proxy method...
+//
+var proxy = function(path){
+	path = path instanceof Array ? path.slice() : path.split(/\./)
+	var method = path.pop()
+
+	return function(...args){
+		return path.reduce(function(res, e){ return res[e] }, this)[method](...args)
+	}
+}
+
 
 //---------------------------------------------------------------------
+// Diff framework...
+//
+//
+// Format (tree):
+// 	<diff> ::=
+// 		// no difference...
+// 		null
+// 			
+// 		// A and/or B is a basic value...
+// 		| {
+// 			type: 'Basic',
+// 			
+// 			A: <value>,
+// 			B: <value>,
+// 		}
+// 			
+// 		// A and B are arrays...
+// 		| {
+// 			type: 'Array',
+// 			
+// 			// NOTE: this is present only if A and B lengths are different...
+// 			length: [<A-length>, <B-length>],
+// 			
+// 			// holds both index and attribute keys (mode-dependant)...
+// 			items: [
+// 				// NOTE: if an item does not exist in either A or B its
+// 				//		key will be null...
+// 				[<key-a>, <key-b>, <diff>],
+//  
+// 				// Slice change, the <diff> is treated as two arrays that 
+// 				// must be sliced in/out of the targets...
+// 				// XXX not implemented -- need to think about this...
+// 				[[<key-a>], [<key-b>], <diff>],
+// 				
+// 				...
+// 			],
+// 			// only for non-index keys...
+// 			// XXX unused...
+// 			item_order: <array-diff>,
+// 		}
+// 			
+// 	   	// A and B are objects...
+// 	   	| {
+// 	   		type: 'Object',
+// 	   		
+// 	   		items: [
+// 	   			[<key>, <diff>],
+//     
+// 	   			// XXX unused....
+// 	   			[<key-a>, <key-b>, <diff>],
+// 	   			...
+// 	   		],
+// 	   		// XXX unused...
+// 	   		item_order: <array-diff>,
+// 	   	}
+//     
+// 	   	// A and B are long strings...
+// 	   	| {
+// 	   		type: 'Text',
+//     
+//	   		// same structure as for 'Array'...
+// 	   		...
+// 	   	}
+//  	
+// 
+// Format (flat):
+// 	[
+// 		// change...
+// 		{
+// 			// Change type (optional)...
+//			//
+// 			// If not present then the change is simple item insertion 
+// 			// or splicing...
+// 			type: <change-type>,
+//
+// 			// The path to the item in the object tree...
+// 			//
+// 			// Keys can be:
+//			//	string		- normal object key
+//			//	number		- array key 
+//			//				  NOTE: this is actually not different 
+//			//						from a string...
+//			//	array/2		- a set of 2 keys for A and B respectively
+//			//				  NOTE: if one of the array items in undefined 
+//			//						or null then it means that the item
+//			//						does not exist in the corresponding
+//			//						array...
+// 			path: [<key>, ...],
+//
+// 			// values in A and B...
+// 			//
+// 			// Special values:
+// 			//	NONE		- the slot does not exist (splice)
+// 			//				  NOTE: unless options.keep_none is true, 
+// 			//						NONE elements are not included in the 
+// 			//						change...
+// 			//	EMPTY		- the slot exists but it is empty (set/delete)
+// 			A: <value> | EMPTY | NONE,
+// 			B: <value> | EMPTY | NONE,
+// 		},
+// 		...
+// 	]
+//
+// NOTE: all indexes (for arrays) are given relative to the actual input 
+// 		objects respectively as they were given. This does not account for
+// 		the patch process.
+// NOTE: this will lose some meta-information the diff format contains 
+// 		like the type information which is not needed for patching but 
+// 		may be useful for a more thorough compatibility check.
+//
+//
+// XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
+//		and not just rely on item-level...
+// XXX do we need type ordering/sorting???
+// XXX revise structure... 
+var Types = {
+	// Type handlers...
+	handlers: new Map(), 
+	get: proxy('handlers.get'),
+	set: proxy('handlers.set'),
+	has: proxy('handlers.has'),
 
-var partHandlers = {
-	// XXX might be good to consider item ordering 
-	// 		...i.e. how an item's indes changed
-	// XXX might be good to support section splicing...
+	// sorted list of types...
+	// XXX do we need to cache this???
+	get types(){
+		var h = this.handlers
+		var order = new Map()
+		var i = 0
+		return [...h.keys()]
+			.filter(function(k){ 
+				k = h.get(k)
+				return k != null 
+					&& !h.has(k) 
+					&& order.set(k, i++)
+			})
+			.sort(function(a, b){
+				a = h.get(a)
+				b = h.get(b) 
+
+				return a.priority && b.priority ?
+						(b.priority - a.priority 
+							|| order.get(a) - order.get(b))
+					: a.priority ?
+						a.priority > 0 ? -1 : 1
+					: b.priority ?
+						b.priority > 0 ? 1 : -1
+					: order.get(a) - order.get(b)
+			})
+	},
+	get typeNames(){
+		return this.types.map(function(e){ return e.name || e }) },
+
+
+	// Get handler...
+	//
+	// 	.getHandler(object)
+	// 	.getHandler(handler-type)
+	// 	.getHandler(handler-type-name)
+	// 		-> handler | null
+	//
+	getHandler: function(o){
+		// get the type if there is no direct match...
+		o = !this.has(o) ? this.detect(o) : o
+
+		// resolve aliases...
+		do {
+			o = this.get(o)
+		} while(o != null && this.has(o))
+
+		return o
+	},
+
+	// Detect handler type...
+	//
+	// 	Detect handler type for A...
+	// 	.detect(A)
+	// 		-> handler-type
+	//
+	// 	Detect common handler type for A and B...
+	// 	.detect(A, B)
+	// 		-> handler-type
+	//
+	//
+	// NOTE: if A and B types mismatch we treat them as Object...
+	detect: function(A, B, options){
+		var type
+		var types = this.types
+
+		// explicit checkers have priority over instance tests...
+		for(var t of types){
+			var h = this.get(t)
+			if(h.check
+					&& h.check(A, options)){
+				type = t
+				break
+			}
+		}
+
+		// search instances...
+		if(!type){
+			type = Object
+			for(var t of types){
+				// leave pure objects for last...
+				if(t === Object 
+						// skip non-conctructor stuff...
+						|| !(t instanceof Function)){
+					continue
+				}
+
+				// full hit -- type match...
+				if(A instanceof t){
+					type = t
+					break
+				}
+			}
+		}
+
+		// combinational types...
+		if(B !== undefined){
+			var typeB = this.detect(B, undefined, options)
+
+			// type match...
+			if(type === typeB){
+				return type
+
+			// partial hit -- type mismatch...
+			} else {
+				return 'Basic'
+			}
+		}
+
+		return type
+	},
+	handle: function(type, obj, diff, A, B, options){
+		// set .type
+		type = type == null ? this.detect(A, B, options) : type
+		obj.type = obj.type || (type.name ? type.name : type)
+
+		// get the handler + resolve aliases...
+		var handler = this.getHandler(type)
+
+		// unhandled type...
+		if(handler == null 
+				|| !(handler instanceof Function 
+					|| handler.handle)){
+			throw new TypeError('Diff: can\'t handle: ' + type)
+		}
+
+		// call the handler...
+		handler.handle ?
+			handler.handle.call(this, obj, diff, A, B, options)
+			: handler.call(this, obj, diff, A, B, options)
+
+		return obj
+	},
+
+	// Flatten the tree diff format...
+	//
+	// XXX might be good to include some type info so as to enable patching 
+	// 		custom stuff like Text...
+	// XXX does change order matter here???
+	// 		...some changes can affect changes after them (like splicing 
+	// 		with arrays), this ultimately affects how patching is done...
+	// 		...or is this a quastion of how we treat indexes and the patching 
+	// 		algorithm???
+	// XXX we should be able to provide "fuzz" (context) to the changes...
+	// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
+	flatten: function(diff, res, path, options){
+		res = res || []
+		path = path || []
+		options = options || {}
+
+		if(diff == null){
+			return null
+		}
+
+		var handler = this.getHandler(diff.type)
+
+		if(handler == null || !handler.flatten){
+			throw new TypeError('Can\'t flatten type: '+ diff.type)
+		}
+
+		return handler.flatten.call(this, diff, res, path, options)
+	},
+
+
+	// User API...
+	
+	// Build a diff between A and B...
+	//
+	// NOTE: this will include direct links to items.
+	// NOTE: for format info see doc for Types...
+	//
+	// XXX special case: empty sections do not need to be inserted...
+	//
+	// XXX do we need to differentiate things like: new Number(123) vs. 123???
+	// XXX check seen -- avoid recursion...
+	// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
+	diff: function(A, B, options, cache){
+		var that = this
+		// XXX might be a god idea to mix in default options (different 
+		// 		defaults per mode)...
+		options = options ? Object.create(options) : {}
+		options.cmp = options.cmp || function(a, b){
+			return a === b 
+				|| a == b 
+				|| (diff(a, b) == null) }
+		// XXX update this depending on mode...
+		options.as_object = options.as_object || []
+
+
+		// same object...
+		// XXX do we need to differentiate things like: new Number(123) vs. 123???
+		if(A === B || A == B){
+			return null
+		}
+
+		// basic types...
+		if(typeof(A) != 'object' || typeof(B) != 'object' 
+				// return diff placeholders as-is...
+				|| DIFF_TYPES.has(A) || DIFF_TYPES.has(B)){
+			return this.handle('Basic', {}, diff, A, B, options)
+		}
+
+
+		// cache...
+		// XXX check seen -- avoid recursion...
+		cache = cache || new Map()
+		var diff = cache.diff = cache.diff || function(a, b){
+			var l2 = cache.get(a) || new Map()
+			var d = l2.get(b) || that.diff(a, b, options, cache)
+			cache.set(a, l2.set(b, d))
+			return d
+		}
+
+
+		// find the matching type...
+		var type = this.detect(A, B, options)
+
+		// handle type...
+		var res = this.handle(type, {}, diff, A, B, options)
+		// handle things we treat as objects (skipping object itself)...
+		if(type !== Object && type != 'Basic'
+				&& (options.as_object == 'all' 
+					|| options.as_object.indexOf(type) >= 0
+					|| (type.name && options.as_object.indexOf(type.name) >= 0))){
+			this.handle(Object, res, diff, A, B, options)
+		}
+
+		// cleanup -- remove items containing empty arrays...
+		Object.keys(res)
+			.filter(function(k){ 
+				return res[k] instanceof Array && res[k].length == 0 })
+			.map(function(k){
+				delete res[k] })
+
+		// return only non-empty diff states...
+		return Object.keys(res).length == 1 ? 
+			null 
+			: res
+	},
+
+	patch: function(diff, obj){
+		// XXX
+	},
+}
+
+
+
+//---------------------------------------------------------------------
+// Specific type setup...
+//
+// Handler format:
+// 	{
+// 		// Type check priority (optional)...
+// 		//
+// 		// Types are checked in order of occurrence in .handlers unless
+// 		// type .priority is set to a non 0 value.
+// 		//
+// 		// Default priorities:
+// 		//	50			- 'Basic'
+// 		//	-50			- Object
+// 		//
+// 		// General guide:
+// 		//	>50			- to be checked before 'Basic'
+// 		//	<50 and >0	- after Basic but before unprioritized types
+// 		//	<-50 and <0	- after unprioritized typee but before Object
+// 		//	<-50		- to be checked after Object
+// 		//
+// 		// NOTE: when this is set to 0, then type will be checked in 
+// 		//		order of occurrence...
+// 		priority: number | null,
+//
+// 		// Check if obj is compatible (optional)...
+// 		//
+// 		// 	.check(obj[, options])
+// 		//		-> bool
+// 		//
+// 		check: function(obj, options){ .. },
+//
+// 		// Handle/populate the diff of A and B...
+// 		//
+// 		// Input diff format:
+// 		//	{
+// 		//		type: <type-name>,
+// 		//	}
+// 		//
+// 		handle: function(obj, diff, A, B, options){ .. },
+//
+// 		// Flatten a diff...
+// 		//
+// 		//	.flatten(diff, res, path, options)
+// 		//		-> res
+// 		//
+// 		flatten: function(diff, res, path, options){ .. },
+// 	}
+//
+//
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Basic type / type-set...
+//
+// This is used to store two objects of either basic JavaScript
+// types (string, number, bool, ...) or store two objects of 
+// mismatching types...
+//
+// NOTE: a basic type is one that returns a specific non-'object'
+// 		typeof...
+// 		i.e. when typeof(x) != 'object'
+Types.set('Basic', {
+	priority: 50,
+
+	check: function(obj, options){
+		return typeof(obj) != 'object' },
+	handle: function(obj, diff, A, B, options){
+		obj.A = A
+		obj.B = B
+	},
+	flatten: function(diff, res, path, options){
+		res.push({
+			path: path,
+			A: diff.A,
+			B: diff.B,
+		})
+		return res
+	},
+})
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Object...
+Types.set(Object, {
+	priority: -50,
+
+	handle: function(obj, diff, A, B, options){
+		obj.items = (obj.items || [])
+			.concat(this.get(Object).attributes(diff, A, B, options))
+
+		// XXX optional stuff:
+		// 		- attr ordering...
+		// 		- prototypes
+	},
+	flatten: function(diff, res, path, options){
+		var that = this
+		;(diff.items || [])
+			.forEach(function(e){
+				var i = e[0]
+				var v = e[1]
+				var p = path.concat([i])
+
+				that.flatten(v, res, p, options)
+			})
+		return res
+	},
+
+	// part handlers...
+	attributes: function(diff, A, B, options, filter){
+		// JSON mode -> ignore attr order...
+		var kA = Object.keys(A)
+		var kB = Object.keys(B)
+
+		if(filter){
+			kA = filter instanceof Array ? 
+				filter.slice() 
+				: kA.filter(filter)
+			kB = filter instanceof Array ? 
+				filter.slice() 
+				: kB.filter(filter)
+		}
+
+		var B_index = kB.reduce(function(res, k){
+			res[k] = null 
+			return res
+		}, {})
+
+		// items...
+		// XXX use zip(..)...
+		var items = kA
+				// A keys...
+				.map(function(ka){
+					var res = [ka, 
+						diff(
+							A[ka], 
+							ka in B_index ? B[ka] : EMPTY, 
+							options)] 
+					// remove seen keys...
+					delete B_index[ka]
+					return res
+				})
+				// keys present only in B...
+				.concat(Object.keys(B_index)
+					.map(function(kb){
+						return [kb, 
+							diff(
+								EMPTY, 
+								B[kb],
+								options)]}))
+				// cleanup...
+				.filter(function(e){
+					return e[1] !== null })
+		return items
+	},
+})
+Types.set('Object', Object)
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Array...
+Types.set(Array, {
+	handle: function(obj, diff, A, B, options){
+		obj.length = A.length != B.length ? [A.length, B.length] : []
+		obj.items = this.get(Array).items(diff, A, B, options)
+	},
+	flatten: function(diff, res, path, options){
+		var that = this
+		// length...
+		;(diff.length != null)
+			&& res.push({
+				path: path.concat('length'),
+				A: diff.length[0],
+				B: diff.length[1],
+			})
+		// items...
+		;(diff.items || [])
+			.forEach(function(e){
+				var v = e[2]
+
+				// index...
+				var i = e[0] == e[1] ? 
+					e[0] 
+					: [e[0], e[1]]
+				var p = path.concat([i])
+
+				if(!options.keep_none 
+						&& (v.A === NONE || v.B === NONE)){
+					// NOTE: we do not need to flatten(..) this as 
+					// 		it is guaranteed not to be a diff...
+					res.push({
+						path: p,
+						// write only the value that is not NONE...
+						[v.A === NONE ? 'B' : 'A']: v.A === NONE ? v.B : v.A,
+					})
+
+				} else {
+					that.flatten(v, res, p, options)
+				}
+			})
+		return res
+	},
+
+	// part handlers...
 	items: function(diff, A, B, options){
 		var sections = getDiffSections(A, B, options.cmp)
 
@@ -272,484 +828,105 @@ var partHandlers = {
 			.reduce(function(res, e){ 
 				return res.concat(e) }, [])
 	},
-	attributes: function(diff, A, B, options, filter){
-		// JSON mode -> ignore attr order...
-		var kA = Object.keys(A)
-		var kB = Object.keys(B)
-
-		if(filter){
-			kA = filter instanceof Array ? 
-				filter.slice() 
-				: kA.filter(filter)
-			kB = filter instanceof Array ? 
-				filter.slice() 
-				: kB.filter(filter)
-		}
-
-		var B_index = kB.reduce(function(res, k){
-			res[k] = null 
-			return res
-		}, {})
-
-		// items...
-		// XXX use zip(..)...
-		var items = kA
-				// A keys...
-				.map(function(ka){
-					var res = [ka, 
-						diff(
-							A[ka], 
-							ka in B_index ? B[ka] : EMPTY, 
-							options)] 
-					// remove seen keys...
-					delete B_index[ka]
-					return res
-				})
-				// keys present only in B...
-				.concat(Object.keys(B_index)
-					.map(function(kb){
-						return [kb, 
-							diff(
-								EMPTY, 
-								B[kb],
-								options)]}))
-				// cleanup...
-				.filter(function(e){
-					return e[1] !== null })
-		return items
-	},
 	// XXX
 	order: function(diff, A, B, options){
 		// XXX
-	}
-}
+	},
+})
+// aliases...
+Types.set('Array', Array)
 
 
-
-//---------------------------------------------------------------------
-//
-// Format can be one of:
-// 	- no difference...
-// 		null
-// 		
-// 	- A and/or B is a basic value...
-// 		{
-// 			type: 'Basic',
-// 			
-// 			A: <value>,
-// 			B: <value>,
-// 		}
-// 		
-// 	- A and B are arrays...
-// 		{
-// 			type: 'Array',
-// 			
-// 			// NOTE: this is present only if A and B lengths are different...
-// 			length: [<A-length>, <B-length>],
-// 			
-// 			// holds both index and attribute keys (mode-dependant)...
-// 			items: [
-// 				// NOTE: if an item does not exist in either A or B its
-// 				//		key will be null...
-// 				[<key-a>, <key-b>, <diff>],
-// 				
-// 				...
-// 			],
-// 			// only for non-index keys...
-// 			// XXX unused...
-// 			item_order: <array-diff>,
-// 		}
-// 		
-// 	- A and B are objects...
-// 		{
-// 			type: 'Object',
-// 			
-// 			items: [
-// 				[<key>, <diff>],
-//
-// 				// XXX unused....
-// 				[<key-a>, <key-b>, <diff>],
-// 				...
-// 			],
-// 			// XXX unused...
-// 			item_order: <array-diff>,
-// 		}
-//
-// 	- A and B are long strings...
-// 		{
-// 			type: 'Text',
-//
-//			// same structure as for 'Array'...
-// 			...
-// 		}
-//
-// 
-//
-// XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
-//		and not just rely on item-level...
-// XXX feels over complicated -- revise...
-var Types = Object.assign(
-	new Map([
-		['Basic',
-			function(diff, A, B, options){
-				this.A = A
-				this.B = B
-			}],
-		[Object, 
-			function(diff, A, B, options){
-				this.items = (this.items || [])
-					.concat(partHandlers.attributes(diff, A, B, options))
-
-				// XXX optional stuff:
-				// 		- attr ordering...
-				// 		- prototypes
-			}],
-		[Array, 
-			function(diff, A, B, options){
-				this.length = A.length != B.length ? [A.length, B.length] : []
-				this.items = partHandlers.items(diff, A, B, options)
-			}],
-
-		/*/ XXX other JS types...
-		[Map, 
-			function(diff, A, B, options){
-				// XXX make the set and map types compatible...
-				// XXX diff [...A.entries()] and [...B.entries()]
-				// 		...might be a good idea to sort them too
-			}],
-		[Set, Map],
-		//*/
-		
-		// Custom types...
-		['Text', 
-			{
-				check: function(A, B, options){
-					options = options || {}
-					min = options.min_text_length || 1000
-					return typeof(A) == 'string' && typeof(B) == 'string'
-						&& A.length > min && B.length > min
-				},
-				handle: function(diff, A, B, options){
-					return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) },
-			}],
-	]), 
-	{
-		// NOTE: if A and B types mismatch we treat them as Object...
-		// XXX this may have issues with type (key) ordering, for example 
-		// 		if Object is not last it will match any set of items...
-		// XXX add support for checker predicates...
-		// 		...the main question here is how do we structure the predicate???
-		// XXX should .handle(..)/.check(..) be coupled here or in _diff(..)???
-		detect: function(A, B, options){
-			var type
-
-			// predicates have priority...
-			for(var t of Types.keys()){
-				if(Types.get(t).check
-						&& Types.get(t).check(A, B, options)){
-					type = t
-					break
-				}
-			}
-
-			// search instances...
-			if(!type){
-				type = Object
-				for(var t of Types.keys()){
-					// leave pure objects for last...
-					if(t === Object 
-							// skip non-conctructor stuff...
-							|| !(t instanceof Function)){
-						continue
-					}
-
-					// full hit -- type match...
-					if(A instanceof t && B instanceof t){
-						type = t
-						break
-					}
-					// partial hit -- type mismatch...
-					if(A instanceof t || B instanceof t){
-						type = 'Basic'
-						break
-					}
-				}
-			}
-			return type
-		},
-		handle: function(type, obj, ...args){
-			// set .type
-			obj.type = obj.type || (type.name ? type.name : type)
-
-			// get the handler + resolve aliases...
-			var handler = type
-			do {
-				var handler = this.get(handler)
-				// unhandled type...
-				if(handler == null){
-					throw new TypeError('Diff: can\'t handle: ' + type)
-				}
-			} while(!(handler instanceof Function) && !handler.handle)
-
-			// call the handler...
-			handler.handle ?
-				handle.handle.call(obj, ...args)
-				: handler.call(obj, ...args)
-
-			return obj
-		}
-	})
-
-// Build a diff between A and B...
-//
-// NOTE: this will include direct links to items.
-// NOTE: for format info see doc for Types...
-//
-// XXX special case: empty sections do not need to be inserted...
-//
-// XXX do we need to differentiate things like: new Number(123) vs. 123???
-// XXX check seen -- avoid recursion...
-// XXX support Map(..) and other new-style types...
-// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
-var _diff =
-function(A, B, options, cache){
-	// XXX might be a god idea to mix in default options (different 
-	// 		defaults per mode)...
-	options = options ? Object.create(options) : {}
-	options.cmp = options.cmp || function(a, b){
-		return a === b 
-			|| a == b 
-			|| (diff(a, b) == null) }
-	// XXX update this depending on mode...
-	options.asObject = options.asObject || []
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX add JS types like Map, Set, ...
+// XXX
 
 
-	// same object...
-	// XXX do we need to differentiate things like: new Number(123) vs. 123???
-	if(A === B || A == B){
-		return null
-	}
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Text...
+Types.set('Text', {
+	// this must be checked before the 'Base'...
+	priority: 100,
 
-	// basic types...
-	if(typeof(A) != 'object' || typeof(B) != 'object' 
-			// return diff placeholders as-is...
-			|| DIFF_TYPES.has(A) || DIFF_TYPES.has(B)){
-		return Types.handle('Basic', {}, diff, A, B, options)
-	}
-
-
-	// cache...
-	// XXX check seen -- avoid recursion...
-	cache = cache || new Map()
-	var diff = cache.diff = cache.diff || function(a, b){
-		var l2 = cache.get(a) || new Map()
-		var d = l2.get(b) || _diff(a, b, options, cache)
-		cache.set(a, l2.set(b, d))
-		return d
-	}
-
-
-	// find the matching type...
-	var type = Types.detect(A, B, options)
-
-	// handle type...
-	var res = Types.handle(type, {}, diff, A, B, options)
-	// handle things we treat as objects (skipping object itself)...
-	if(type !== Object && type != 'Basic'
-			&& (options.asObject == 'all' 
-				|| options.asObject.indexOf(type) >= 0
-				|| (type.name && options.asObject.indexOf(type.name) >= 0))){
-		Types.handle(Object, res, diff, A, B, options)
-	}
-
-	// cleanup -- remove items containing empty arrays...
-	Object.keys(res)
-		.filter(function(k){ 
-			return res[k] instanceof Array && res[k].length == 0 })
-		.map(function(k){
-			delete res[k] })
-
-	// return only non-empty diff states...
-	return Object.keys(res).length == 1 ? 
-		null 
-		: res
-}
-
-
-// Flatten the diff format...
-//
-// Format:
-// 	[
-// 		{
-// 			// The path to the item in the object tree...
-// 			//
-// 			// Keys can be:
-//			//	string		- normal object key
-//			//	number		- array key 
-//			//				  NOTE: this is actually not different 
-//			//						from a string...
-//			//	array/2		- a set of 2 keys for A and B respectively
-//			//				  NOTE: if one of the array items in undefined 
-//			//						or null then it means that the item
-//			//						does not exist in the corresponding
-//			//						array...
-// 			path: [<key>, ...],
-//
-// 			// values in A and B...
-// 			//
-// 			// Special values:
-// 			//	NONE		- the slot does not exist (splice)
-// 			//				  NOTE: unless options.keep_none is true, 
-// 			//						NONE elements are not included in the 
-// 			//						change...
-// 			//	EMPTY		- the slot exists but it is empty (set/delete)
-// 			A: <value> | EMPTY | NONE,
-// 			B: <value> | EMPTY | NONE,
-// 		},
-// 		...
-// 	]
-//
-// NOTE: all indexes (for arrays) are given relative to the actual input 
-// 		objects respectively as they were given. This does not account for
-// 		the patch process.
-// NOTE: this will lose some meta-information the diff format contains 
-// 		like the type information which is not needed for patching but 
-// 		may be useful for a more thorough compatibility check.
-//
-//
-// XXX might be good to include some type info so as to enable patching 
-// 		custom stuff like Text...
-// XXX does change order matter here???
-// 		...some changes can affect changes after them (like splicing 
-// 		with arrays), this ultimately affects how patching is done...
-// 		...or is this a quastion of how we treat indexes and the patching 
-// 		algorithm???
-// XXX should this follow the same extensible structure as _diff???
-// 		...i.e. type handlers etc.
-// 		......or this could be more generic...
-// XXX we should be able to provide "fuzz" (context) to the changes...
-// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
-var flatten = 
-function(diff, res, path, options){
-	res = res || []
-	path = path || []
-	options = options || {}
-
-	// no difference...
-	if(diff == null){
+	check: function(obj, options){
+		options = options || {}
+		min = options.min_text_length || 1000
+		return typeof(obj) == 'string' && obj.length > min 
+	},
+	handle: function(obj, diff, A, B, options){
+		return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) },
+	flatten: function(diff, res, path, options){
+		// use the array flatten but add 'Text' type to each change...
+		res.splice(res.length, 0, 
+			...this.get(Array).flatten(diff, res, path, options)
+				.map(function(e){
+					e.type = 'Text'
+					return e
+				}))
 		return res
-
-	// Basic...
-	} else if(diff.type == 'Basic'){
-		res.push({
-			path: path,
-			A: diff.A,
-			B: diff.B,
-		})
-
-	// Array...
-	} else if(diff.type == 'Array'){
-		// length...
-		// XXX should this be given after all the element changes???
-		// 		...but it should be before all the nested changes...
-		;(diff.length != null)
-			&& res.push({
-				path: path.concat('length'),
-				A: diff.length[0],
-				B: diff.length[1],
-			})
-		// items...
-		;(diff.items || [])
-			.forEach(function(e){
-				var v = e[2]
-
-				// index...
-				var i = e[0] == e[1] ? 
-					e[0] 
-					: [e[0], e[1]]
-				var p = path.concat([i])
-
-				if(!options.keep_none 
-						&& (v.A === NONE || v.B === NONE)){
-					// NOTE: we do not need to flatten(..) this as 
-					// 		it is guaranteed not to be a diff...
-					res.push({
-						path: p,
-						// write only the value that is not NONE...
-						[v.A === NONE ? 'B' : 'A']: v.A === NONE ? v.B : v.A,
-					})
-
-				} else {
-					flatten(v, res, p, options)
-				}
-			})
-
-	// Object...
-	} else if(diff.type == 'Object'){
-		;(diff.items || [])
-			.forEach(function(e){
-				var i = e[0]
-				var v = e[1]
-				var p = path.concat([i])
-
-				flatten(v, res, p, options)
-			})
-
-	// Text...
-	} else if(diff.type == 'Text'){
-		// items...
-		;(diff.items || [])
-			.forEach(function(e){
-				var v = e[2]
-
-				// index...
-				var i = e[0] == e[1] ? 
-					e[0] 
-					: [e[0], e[1]]
-				var p = path.concat([i])
-
-				res.push({
-					type: 'Text',
-					path: p,
-					// write only the value that is not NONE...
-					[v.A === NONE ? 'B' : 'A']: v.A === NONE ? v.B : v.A,
-				})
-			})
-
-	// Other...
-	// XXX revise this...
-	} else {
-		throw new TypeError('Unknown diff type: '+ diff.type)
-	}	
-
-	return res
-}
+	},
+})
 
 
 
 //---------------------------------------------------------------------
-
+//
+//
+// Options format:
+// 	{
+// 		// if true return a tree diff format...
+// 		tree_diff: false | true,
+//
+// 		// if true, NONE change items will not be removed from the diff...
+// 		keep_none: false | true,
+//
+// 		// Minimum length of a string for it to be treated as Text...
+// 		min_text_length: 1000,
+//
+// 		// list of types we treat as objects, i.e. check attributes...
+// 		as_object: [ .. ] | Set([ .. ]),
+//
+// 		cmp: function(a, b){ .. },
+// 	}
+//
+//
+// Output format:
+// 	{
+// 		format: 'object-diff',
+// 		structure: 'flat' | 'tree',
+// 		version: '0.0.0',
+//
+// 		options: <user-options>,
+//
+// 		diff: <diff>,
+// 	}
+//
+//
+// NOTE: the format itself is JSON compatible (XXX) but the data in the 
+// 		changes may not be, so if JSON compatibility is desired, the 
+// 		inputs or at least the differences between them must be JSON 
+// 		compatible.
 var diff =
 module.diff = 
 function(A, B, options){
 	options = options || {}
 	return {
 		format: 'object-diff',
+		structure: options.tree_diff ? 'tree' : 'flat',
 		varsion: '0.0.0',
 
 		options: Object.assign({}, options),
 
 		diff: options.tree_diff ? 
-			_diff(A, B, options) 
-			: flatten(_diff(A, B, options))
+			Types.diff(A, B, options) 
+			: Types.flatten(Types.diff(A, B, options), null, null, options)
 	}}
 
 
 var patch =
 module.patch = 
 function(diff, obj){
-	// XXX
-}
+	return Types.patch(diff, obj) }
 
 
 
