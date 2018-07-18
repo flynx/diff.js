@@ -11,22 +11,7 @@
 
 
 /*********************************************************************/
-
-// Inseted when an item exists one one side and does not on the other.
-// 
-// NOTE: for Array items this does not shift positions of other item
-// 		positions nor does it affect the the array lengths.
-var EMPTY = {type: 'EMPTY'}
-var NONE = {type: 'NONE'}
-
-
-var DIFF_TYPES = new Set([
-	NONE,
-	EMPTY,
-])
-
-
-
+//
 //---------------------------------------------------------------------
 // Helpers...
 
@@ -324,6 +309,21 @@ var proxy = function(path, func){
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
 var Types = {
+	// Placeholder objects...
+	//
+	// Inseted when an item exists on one side and does not on the other.
+	// 
+	// NOTE: for Array items this does not shift positions of other item
+	// 		positions nor does it affect the the array lengths.
+	NONE: NONE,
+	EMPTY: EMPTY,
+	get DIFF_TYPES(){
+		return new Set([
+			this.NONE,
+			this.EMPTY, 
+		]) },
+
+
 	// Type handlers...
 	handlers: new Map(), 
 	has: proxy('handlers.has'),
@@ -335,6 +335,7 @@ var Types = {
 				&& this.set(key.name, key)
 			return res
 		}),
+	delete: proxy('handlers.delete'),
 
 	// sorted list of types...
 	// XXX do we need to cache this???
@@ -637,6 +638,10 @@ var Types = {
 // 	}
 //
 //
+// XXX do not like that we need to explicitly pass context to helper 
+// 		methods...
+//
+//
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Basic type / type-set...
 //
@@ -675,7 +680,7 @@ Types.set(Object, {
 
 	handle: function(obj, diff, A, B, options){
 		obj.items = (obj.items || [])
-			.concat(this.get(Object).attributes(diff, A, B, options))
+			.concat(this.get(Object).attributes.call(this, diff, A, B, options))
 
 		// XXX optional stuff:
 		// 		- attr ordering...
@@ -752,10 +757,11 @@ Types.set(Object, {
 Types.set(Array, {
 	handle: function(obj, diff, A, B, options){
 		obj.length = A.length != B.length ? [A.length, B.length] : []
-		obj.items = this.get(Array).items(diff, A, B, options)
+		obj.items = this.get(Array).items.call(this, diff, A, B, options)
 	},
 	flatten: function(diff, res, path, options){
 		var that = this
+		var NONE = this.NONE
 		// length...
 		;(!options.no_length && diff.length != null)
 			&& res.push({
@@ -793,6 +799,8 @@ Types.set(Array, {
 
 	// part handlers...
 	items: function(diff, A, B, options){
+		var NONE = this.NONE
+		var EMPTY = this.EMPTY
 		var sections = getDiffSections(A, B, options.cmp)
 
 		// special case: last section set consists of sparse/empty arrays...
@@ -914,6 +922,15 @@ Types.set('Text', {
 // 		// list of types we treat as objects, i.e. check attributes...
 // 		as_object: [ .. ] | Set([ .. ]),
 //
+// 		// Plaeholders to be used in the diff..
+// 		//
+// 		// Set these if the default values conflict with your data...
+// 		//
+// 		// XXX remove these from options in favor of auto conflict 
+// 		//		detection and hashing...
+// 		NONE: null | { .. },
+// 		EMPTY: null | { .. },
+//
 //
 // 		// Internal options...
 //
@@ -931,8 +948,11 @@ Types.set('Text', {
 // Output format:
 // 	{
 // 		format: 'object-diff',
-// 		structure: 'flat' | 'tree',
 // 		version: '0.0.0',
+// 		structure: 'flat' | 'tree',
+//		placeholders: {
+//			...
+//		},
 //
 // 		options: <user-options>,
 //
@@ -944,15 +964,22 @@ Types.set('Text', {
 // 		changes may not be, so if JSON compatibility is desired, the 
 // 		inputs or at least the differences between them must be JSON 
 // 		compatible.
+// NOTE: recursive inputs will result in recursive diff objects.
 var diff =
 module.diff = 
 function(A, B, options){
 	options = options || {}
 	return {
+		// system meta information...
 		format: 'object-diff',
-		structure: options.tree_diff ? 'tree' : 'flat',
 		varsion: '0.0.0',
+		structure: options.tree_diff ? 'tree' : 'flat',
+		placeholders: {
+			NONE: options.NONE || Types.NONE,
+			EMPTY: options.NONE || Types.EMPTY,
+		},
 
+		// user data...
 		options: Object.assign({}, options),
 
 		diff: options.tree_diff ? 
@@ -964,7 +991,11 @@ function(A, B, options){
 var patch =
 module.patch = 
 function(diff, obj){
-	return Types.patch(diff, obj) }
+	var t = Object.create(Types)
+	diff.placeholders 
+		&& Object.assign(t, diff.placeholders)
+	return t.patch(diff, obj) 
+}
 
 
 
