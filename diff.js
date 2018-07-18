@@ -323,9 +323,6 @@ var proxy = function(path, func){
 // NOTE: this will lose some meta-information the diff format contains 
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
-//
-//
-// XXX revise structure... 
 var Types = {
 	// Type handlers...
 	handlers: new Map(), 
@@ -672,6 +669,7 @@ Types.set('Basic', {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Object...
+// XXX add attr order support...
 Types.set(Object, {
 	priority: -50,
 
@@ -750,6 +748,7 @@ Types.set(Object, {
 // Array...
 // XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
 //		and not just rely on item-level...
+// XXX add item order support...
 Types.set(Array, {
 	handle: function(obj, diff, A, B, options){
 		obj.length = A.length != B.length ? [A.length, B.length] : []
