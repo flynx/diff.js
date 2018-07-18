@@ -197,14 +197,18 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 
 // Make a proxy method...
 //
-var proxy = function(path){
+var proxy = function(path, func){
 	path = path instanceof Array ? 
 		path.slice() 
 		: path.split(/\./)
 	var method = path.pop()
 
 	return function(...args){
-		return path.reduce(function(res, e){ return res[e] }, this)[method](...args) }
+		var res = path.reduce(function(res, e){ return res[e] }, this)[method](...args) 
+		return func ? 
+			func.call(this, res, ...args) 
+			: res
+	}
 }
 
 
@@ -321,16 +325,19 @@ var proxy = function(path){
 // 		may be useful for a more thorough compatibility check.
 //
 //
-// XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
-//		and not just rely on item-level...
-// XXX do we need type ordering/sorting???
 // XXX revise structure... 
 var Types = {
 	// Type handlers...
 	handlers: new Map(), 
-	get: proxy('handlers.get'),
-	set: proxy('handlers.set'),
 	has: proxy('handlers.has'),
+	get: proxy('handlers.get'),
+	set: proxy('handlers.set', 
+		function(res, key, handler){
+			// auto-alias...
+			key.name
+				&& this.set(key.name, key)
+			return res
+		}),
 
 	// sorted list of types...
 	// XXX do we need to cache this???
@@ -737,11 +744,12 @@ Types.set(Object, {
 		return items
 	},
 })
-Types.set('Object', Object)
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Array...
+// XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
+//		and not just rely on item-level...
 Types.set(Array, {
 	handle: function(obj, diff, A, B, options){
 		obj.length = A.length != B.length ? [A.length, B.length] : []
@@ -840,8 +848,6 @@ Types.set(Array, {
 		// XXX
 	},
 })
-// aliases...
-Types.set('Array', Array)
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
