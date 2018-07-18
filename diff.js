@@ -198,13 +198,15 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 // Make a proxy method...
 //
 var proxy = function(path){
-	path = path instanceof Array ? path.slice() : path.split(/\./)
+	path = path instanceof Array ? 
+		path.slice() 
+		: path.split(/\./)
 	var method = path.pop()
 
 	return function(...args){
-		return path.reduce(function(res, e){ return res[e] }, this)[method](...args)
-	}
+		return path.reduce(function(res, e){ return res[e] }, this)[method](...args) }
 }
+
 
 
 //---------------------------------------------------------------------
@@ -525,10 +527,8 @@ var Types = {
 			return null
 		}
 
-		// basic types...
-		if(typeof(A) != 'object' || typeof(B) != 'object' 
-				// return diff placeholders as-is...
-				|| DIFF_TYPES.has(A) || DIFF_TYPES.has(B)){
+		// builtin types...
+		if(DIFF_TYPES.has(A) || DIFF_TYPES.has(B)){
 			return this.handle('Basic', {}, diff, A, B, options)
 		}
 
@@ -546,7 +546,6 @@ var Types = {
 
 		// find the matching type...
 		var type = this.detect(A, B, options)
-
 		// handle type...
 		var res = this.handle(type, {}, diff, A, B, options)
 		// handle things we treat as objects (skipping object itself)...
@@ -570,7 +569,15 @@ var Types = {
 			: res
 	},
 
+	// Patch (update) obj via diff...
+	//
 	patch: function(diff, obj){
+		// XXX
+	},
+
+	// Check if diff is applicable to obj...
+	//
+	check: function(diff, obj){
 		// XXX
 	},
 }
@@ -743,7 +750,7 @@ Types.set(Array, {
 	flatten: function(diff, res, path, options){
 		var that = this
 		// length...
-		;(diff.length != null)
+		;(!options.no_length && diff.length != null)
 			&& res.push({
 				path: path.concat('length'),
 				A: diff.length[0],
@@ -851,18 +858,29 @@ Types.set('Text', {
 	check: function(obj, options){
 		options = options || {}
 		min = options.min_text_length || 1000
-		return typeof(obj) == 'string' && obj.length > min 
+		return typeof(obj) == 'string' 
+			&& min > 0 
+			&& (obj.length > min 
+				&& /\n/.test(obj))
 	},
 	handle: function(obj, diff, A, B, options){
-		return Types.handle(Array, this, A.split(/\n/), B.split(/\n/), options) },
+		options = Object.create(options || {})
+		// do not treat substrings as text...
+		options.min_text_length = -1
+		return this.handle(Array, obj, diff, A.split(/\n/), B.split(/\n/), options) 
+	},
 	flatten: function(diff, res, path, options){
+		options = Object.create(options || {})
+		;('no_length' in options) 
+			&& (options.no_length = true)
 		// use the array flatten but add 'Text' type to each change...
-		res.splice(res.length, 0, 
-			...this.get(Array).flatten(diff, res, path, options)
-				.map(function(e){
-					e.type = 'Text'
-					return e
-				}))
+		// NOTE: we need to abide by the protocol and call Array's 
+		// 		.flatten(..) the context of the main object...
+		this.get(Array).flatten.call(this, diff, res, path, options)
+			.map(function(e){
+				e.type = 'Text'
+				return e
+			})
 		return res
 	},
 })
@@ -881,11 +899,26 @@ Types.set('Text', {
 // 		keep_none: false | true,
 //
 // 		// Minimum length of a string for it to be treated as Text...
-// 		min_text_length: 1000,
+// 		//
+// 		// If this is set to a negative number Text diffing is disabled.
+// 		//
+// 		// NOTE: a string must also contain at least one \n to be text 
+// 		//		diffed...
+// 		min_text_length: 1000 | -1,
 //
 // 		// list of types we treat as objects, i.e. check attributes...
 // 		as_object: [ .. ] | Set([ .. ]),
 //
+//
+// 		// Internal options...
+//
+// 		// do not include length changes in flattened array diffs...
+// 		// NOTE: if this is not set by user then this is set by Text's 
+// 		//		.flatten(..) to exclude the .length changes form the 
+// 		//		text diff.
+// 		no_length: false | true,
+//
+// 		// element compare function...
 // 		cmp: function(a, b){ .. },
 // 	}
 //
