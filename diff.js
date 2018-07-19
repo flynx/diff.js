@@ -6,13 +6,6 @@
 ((typeof define)[0]=='u'?function(f){module.exports=f(require)}:define)
 (function(require){ var module={} // make module AMD/node compatible...
 /*********************************************************************/
-
-
-
-
-/*********************************************************************/
-//
-//---------------------------------------------------------------------
 // Helpers...
 
 // 	zip(array, array, ...)
@@ -629,14 +622,21 @@ var Types = {
 // 		// type .priority is set to a non 0 value.
 // 		//
 // 		// Default priorities:
-// 		//	50			- 'Basic'
-// 		//	-50			- Object
+// 		//	Text:		100
+// 		//		Needs to run checks before 'Basic' as its targets are
+// 		//		long strings that 'Basic' also catches.
+// 		//	Basic:		50
+// 		//		Needs to be run before we do other object checks.
+// 		//	Object:		-100
+// 		//		Needs to run after everything else as it will match any
+// 		//		set of objects.
 // 		//
 // 		// General guide:
 // 		//	>50			- to be checked before 'Basic'
 // 		//	<50 and >0	- after Basic but before unprioritized types
-// 		//	<-50 and <0	- after unprioritized typee but before Object
-// 		//	<-50		- to be checked after Object
+// 		//	<-50 and <0	- after unprioritized types but before Object
+// 		//	<-100		- to be checked after Object -- this is a bit 
+// 		//				  pointless in JavaScript.
 // 		//
 // 		// NOTE: when this is set to 0, then type will be checked in 
 // 		//		order of occurrence...
@@ -647,7 +647,9 @@ var Types = {
 // 		// 	.check(obj[, options])
 // 		//		-> bool
 // 		//
-// 		check: function(obj, options){ .. },
+// 		check: function(obj, options){ 
+// 			.. 
+// 		},
 //
 // 		// Handle/populate the diff of A and B...
 // 		//
@@ -656,16 +658,27 @@ var Types = {
 // 		//		type: <type-name>,
 // 		//	}
 // 		//
-// 		handle: function(obj, diff, A, B, options){ .. },
+// 		handle: function(obj, diff, A, B, options){
+// 			..
+// 		},
 //
 // 		// Flatten a diff...
 // 		//
 // 		//	.flatten(diff, res, path, options)
 // 		//		-> res
 // 		//
-// 		flatten: function(diff, res, path, options){ .. },
+// 		flatten: function(diff, res, path, options){
+// 			.. 
+// 		},
 // 	}
 //
+//
+// NOTE: to add attribute checking to a specific type add it to 
+// 		options.as_object...
+// 		XXX need a more flexible way to configure this, preferably from 
+// 			within the handler...
+// 		XXX would also need to enable attribute filtering, at least for 
+// 			arrays as this will also check all the number keys...
 //
 // XXX do not like that we need to explicitly pass context to helper 
 // 		methods...
@@ -705,7 +718,7 @@ Types.set('Basic', {
 // Object...
 // XXX add attr order support...
 Types.set(Object, {
-	priority: -50,
+	priority: -100,
 
 	handle: function(obj, diff, A, B, options){
 		// attrebutes/items...
