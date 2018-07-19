@@ -491,6 +491,27 @@ var Types = {
 		return obj
 	},
 
+	// XXX experimental...
+	// XXX need to sort out return values...
+	walk: function(diff, func, path){
+		// no changes...
+		if(diff == null){
+			return null
+		}
+
+		// flat diff...
+		if(diff instanceof Array){
+			return diff.map(func)
+
+		// tree diff...
+		} else {
+			var handler = this.getHandler(diff.type)
+			if(handler == null || !handler.walk){
+				throw new TypeError('Can\'t walk type: '+ diff.type)
+			}
+			return handler.walk.call(this, diff, func, path || [])
+		}
+	},
 	// Flatten the tree diff format...
 	//
 	// XXX might be good to include some type info so as to enable patching 
@@ -505,6 +526,13 @@ var Types = {
 	// 		...it might also be possible to provide vertical/topological 
 	// 		"fuzz", need to think about this...
 	// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
+	flatten: function(diff, options){
+		options = options || {}
+		var res = []
+		this.walk(diff, function(change){ res.push(change) })
+		return res
+	},
+	/* XXX LEGACY...
 	flatten: function(diff, res, path, options){
 		res = res || []
 		path = path || []
@@ -522,6 +550,7 @@ var Types = {
 
 		return handler.flatten.call(this, diff, res, path, options)
 	},
+	*/
 
 
 	// User API...
@@ -598,13 +627,18 @@ var Types = {
 
 	// Patch (update) obj via diff...
 	//
-	patch: function(diff, obj){
-		// XXX
+	patch: function(diff, obj, options){
+		// XXX approach:
+		// 		- check
+		// 		- flatten
+		// 		- run patch
+		// 			- might be a good idea to enable handlers to handle 
+		// 			  their own updates...
 	},
 
 	// Check if diff is applicable to obj...
 	//
-	check: function(diff, obj){
+	check: function(diff, obj, options){
 		// XXX
 	},
 }
@@ -700,9 +734,22 @@ Types.set('Basic', {
 	check: function(obj, options){
 		return typeof(obj) != 'object' },
 	handle: function(obj, diff, A, B, options){
-		obj.A = A
-		obj.B = B
+		;(!options.keep_none && A === NONE)
+			|| (obj.A = A)
+		;(!options.keep_none && B === NONE)
+			|| (obj.B = B)
 	},
+	walk: function(diff, func, path){
+		var change = {
+			path: path,
+		}
+		'A' in diff 
+			&& (change.A = diff.A)
+		'B' in diff 
+			&& (change.B = diff.B)
+		return func(change)
+	},
+	/* XXX LEGACY...
 	flatten: function(diff, res, path, options){
 		res.push({
 			path: path,
@@ -711,6 +758,7 @@ Types.set('Basic', {
 		})
 		return res
 	},
+	//*/
 })
 
 
@@ -729,6 +777,18 @@ Types.set(Object, {
 		// 		- attr ordering...
 		// 		- prototypes
 	},
+	walk: function(diff, func, path){
+		var that = this
+		return (diff.items || [])
+			.map(function(e){
+				var i = e[0]
+				var p = path.concat([i])
+				var v = e[1]
+
+				return that.walk(v, func, p)
+			})
+	},
+	/* XXX LEGACY...
 	flatten: function(diff, res, path, options){
 		var that = this
 		;(diff.items || [])
@@ -741,6 +801,7 @@ Types.set(Object, {
 			})
 		return res
 	},
+	//*/
 
 	// part handlers...
 	attributes: function(diff, A, B, options, filter){
@@ -802,6 +863,32 @@ Types.set(Array, {
 		obj.length = A.length != B.length ? [A.length, B.length] : []
 		obj.items = this.get(Array).items.call(this, diff, A, B, options)
 	},
+	walk: function(diff, func, path){
+		var that = this
+		var NONE = this.NONE
+		var res = []
+		// length...
+		diff.length != null
+			&& res.push(func({
+				path: path.concat('length'),
+				A: diff.length[0],
+				B: diff.length[1],
+			}))
+		// items...
+		return res.concat((diff.items || [])
+			.map(function(e){
+				var v = e[2]
+
+				// index...
+				var i = e[0] == e[1] ? 
+					e[0] 
+					: [e[0], e[1]]
+				var p = path.concat([i])
+
+				return that.walk(v, func, p)
+			}))
+	},
+	/* XXX LEGACY...
 	flatten: function(diff, res, path, options){
 		var that = this
 		var NONE = this.NONE
@@ -839,6 +926,7 @@ Types.set(Array, {
 			})
 		return res
 	},
+	//*/
 
 	// part handlers...
 	items: function(diff, A, B, options){
@@ -925,6 +1013,20 @@ Types.set('Text', {
 		options.min_text_length = -1
 		return this.handle(Array, obj, diff, A.split(/\n/), B.split(/\n/), options) 
 	},
+	walk: function(diff, func, path){
+		// use the array walk but add 'Text' type to each change...
+		// NOTE: we need to abide by the protocol and call Array's 
+		// 		.flatten(..) the context of the main object...
+		return this.get(Array).walk.call(this, diff, function(c){
+			// skip length changes...
+			if(c.path[c.path.length-1] == 'length'){
+				return
+			}
+			c.type = 'Text'
+			return func(c)
+		}, path)
+	},
+	/* XXX LEGACY...
 	flatten: function(diff, res, path, options){
 		options = Object.create(options || {})
 		;('no_length' in options) 
@@ -939,6 +1041,7 @@ Types.set('Text', {
 			})
 		return res
 	},
+	//*/
 })
 
 
@@ -1041,7 +1144,8 @@ function(A, B, options, types){
 
 		diff: options.tree_diff ? 
 			types.diff(A, B, options) 
-			: types.flatten(Types.diff(A, B, options), null, null, options)
+			//: types.flatten(Types.diff(A, B, options), null, null, options)
+			: types.flatten(Types.diff(A, B, options), options)
 	}}
 
 
@@ -1059,6 +1163,69 @@ function(diff, obj, options, types){
 	return t.patch(diff, obj, options) 
 }
 
+
+
+var _patch = function(diff, obj){
+	var NONE = diff.options.placeholders.NONE
+	var EMPTY = diff.options.placeholders.EMPTY
+
+	diff.diff
+		.forEach(function(change){
+			// replace the object itself...
+			if(path.length == 0){
+				return change.B
+			}
+
+			var type = change.type || 'item'
+
+			var target = change.path
+				.slice(0, -1)
+				.reduce(function(res, e){
+					return res[e]}, obj)
+			var key = change.path[change.path.length-1]
+
+			if(type == 'item'){
+				// object attr...
+				if(typeof(key) == typeof('str')){
+					if(change.B.type == EMPTY.type){
+						delete target[key]
+
+					} else {
+						target[key] = change.B
+					}
+
+				// array item...
+				} else {
+					var i = key instanceof Array ? key[0] : key
+					var j = key instanceof Array ? key[1] : key
+
+					if(i == null){
+						target.splice(j, 0, change.B)
+
+					} else if(j == null){
+						// XXX better EMPTY check -- use diff
+						if(!('B' in change) || change.B.type == EMPTY.type){
+							delete target[i]
+
+						} else if(!('B' in change) || change.B.type == NONE.type){
+							target.splice(i, 1)
+
+						} else {
+							// XXX
+						}
+
+					} else if(i == j){
+						target[j] = change.B
+
+					} else {
+						target[j] = change.B
+					}
+				}
+			}
+
+		})
+	return obj
+}
 
 
 
