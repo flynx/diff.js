@@ -1074,61 +1074,61 @@ var _patch = function(diff, obj){
 	var NONE = diff.options.placeholders.NONE
 	var EMPTY = diff.options.placeholders.EMPTY
 
-	diff.diff
-		.forEach(function(change){
-			// replace the object itself...
-			if(path.length == 0){
-				return change.B
-			}
+	Types.walk(diff, function(change){
+		// replace the object itself...
+		if(path.length == 0){
+			return change.B
+		}
 
-			var type = change.type || 'item'
+		var type = change.type || 'item'
 
-			var target = change.path
-				.slice(0, -1)
-				.reduce(function(res, e){
-					return res[e]}, obj)
-			var key = change.path[change.path.length-1]
+		var target = change.path
+			.slice(0, -1)
+			.reduce(function(res, e){
+				return res[e]}, obj)
+		var key = change.path[change.path.length-1]
 
-			if(type == 'item'){
-				// object attr...
-				if(typeof(key) == typeof('str')){
-					if(change.B.type == EMPTY.type){
-						delete target[key]
+		if(type == 'item'){
+			// object attr...
+			if(typeof(key) == typeof('str')){
+				if(change.B.type == EMPTY.type){
+					delete target[key]
 
-					} else {
-						target[key] = change.B
-					}
-
-				// array item...
 				} else {
-					var i = key instanceof Array ? key[0] : key
-					var j = key instanceof Array ? key[1] : key
+					// XXX also check what is overwritten...
+					target[key] = change.B
+				}
 
-					if(i == null){
-						target.splice(j, 0, change.B)
+			// array item...
+			} else {
+				var i = key instanceof Array ? key[0] : key
+				var j = key instanceof Array ? key[1] : key
 
-					} else if(j == null){
-						// XXX better EMPTY check -- use diff
-						if(!('B' in change) || change.B.type == EMPTY.type){
-							delete target[i]
+				if(i == null){
+					target.splice(j, 0, change.B)
 
-						} else if(!('B' in change) || change.B.type == NONE.type){
-							target.splice(i, 1)
+				} else if(j == null){
+					// XXX better EMPTY check -- use diff
+					if(!('B' in change) || change.B.type == EMPTY.type){
+						delete target[i]
 
-						} else {
-							// XXX
-						}
-
-					} else if(i == j){
-						target[j] = change.B
+					} else if(!('B' in change) || change.B.type == NONE.type){
+						target.splice(i, 1)
 
 					} else {
-						target[j] = change.B
+						// XXX
 					}
+
+				} else if(i == j){
+					target[j] = change.B
+
+				} else {
+					target[j] = change.B
 				}
 			}
+		}
 
-		})
+	})
 	return obj
 }
 
