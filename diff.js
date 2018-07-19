@@ -491,7 +491,8 @@ var Types = {
 		return obj
 	},
 
-	// XXX experimental...
+	// Diff format walker...
+	//
 	// XXX need to sort out return values...
 	walk: function(diff, func, path){
 		// no changes...
@@ -532,25 +533,6 @@ var Types = {
 		this.walk(diff, function(change){ res.push(change) })
 		return res
 	},
-	/* XXX LEGACY...
-	flatten: function(diff, res, path, options){
-		res = res || []
-		path = path || []
-		options = options || {}
-
-		if(diff == null){
-			return null
-		}
-
-		var handler = this.getHandler(diff.type)
-
-		if(handler == null || !handler.flatten){
-			throw new TypeError('Can\'t flatten type: '+ diff.type)
-		}
-
-		return handler.flatten.call(this, diff, res, path, options)
-	},
-	*/
 
 
 	// User API...
@@ -696,12 +678,14 @@ var Types = {
 // 			..
 // 		},
 //
-// 		// Flatten a diff...
+// 		// Walk the diff...
 // 		//
-// 		//	.flatten(diff, res, path, options)
+// 		// This will pass each change to func(..) and return its result...
+// 		//
+// 		//	.walk(diff, func, path)
 // 		//		-> res
 // 		//
-// 		flatten: function(diff, res, path, options){
+// 		walk: function(diff, func, path){
 // 			.. 
 // 		},
 // 	}
@@ -749,16 +733,6 @@ Types.set('Basic', {
 			&& (change.B = diff.B)
 		return func(change)
 	},
-	/* XXX LEGACY...
-	flatten: function(diff, res, path, options){
-		res.push({
-			path: path,
-			A: diff.A,
-			B: diff.B,
-		})
-		return res
-	},
-	//*/
 })
 
 
@@ -788,20 +762,6 @@ Types.set(Object, {
 				return that.walk(v, func, p)
 			})
 	},
-	/* XXX LEGACY...
-	flatten: function(diff, res, path, options){
-		var that = this
-		;(diff.items || [])
-			.forEach(function(e){
-				var i = e[0]
-				var v = e[1]
-				var p = path.concat([i])
-
-				that.flatten(v, res, p, options)
-			})
-		return res
-	},
-	//*/
 
 	// part handlers...
 	attributes: function(diff, A, B, options, filter){
@@ -888,45 +848,6 @@ Types.set(Array, {
 				return that.walk(v, func, p)
 			}))
 	},
-	/* XXX LEGACY...
-	flatten: function(diff, res, path, options){
-		var that = this
-		var NONE = this.NONE
-		// length...
-		;(!options.no_length && diff.length != null)
-			&& res.push({
-				path: path.concat('length'),
-				A: diff.length[0],
-				B: diff.length[1],
-			})
-		// items...
-		;(diff.items || [])
-			.forEach(function(e){
-				var v = e[2]
-
-				// index...
-				var i = e[0] == e[1] ? 
-					e[0] 
-					: [e[0], e[1]]
-				var p = path.concat([i])
-
-				if(!options.keep_none 
-						&& (v.A === NONE || v.B === NONE)){
-					// NOTE: we do not need to flatten(..) this as 
-					// 		it is guaranteed not to be a diff...
-					res.push({
-						path: p,
-						// write only the value that is not NONE...
-						[v.A === NONE ? 'B' : 'A']: v.A === NONE ? v.B : v.A,
-					})
-
-				} else {
-					that.flatten(v, res, p, options)
-				}
-			})
-		return res
-	},
-	//*/
 
 	// part handlers...
 	items: function(diff, A, B, options){
@@ -1026,22 +947,6 @@ Types.set('Text', {
 			return func(c)
 		}, path)
 	},
-	/* XXX LEGACY...
-	flatten: function(diff, res, path, options){
-		options = Object.create(options || {})
-		;('no_length' in options) 
-			&& (options.no_length = true)
-		// use the array flatten but add 'Text' type to each change...
-		// NOTE: we need to abide by the protocol and call Array's 
-		// 		.flatten(..) the context of the main object...
-		this.get(Array).flatten.call(this, diff, res, path, options)
-			.map(function(e){
-				e.type = 'Text'
-				return e
-			})
-		return res
-	},
-	//*/
 })
 
 
