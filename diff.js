@@ -21,7 +21,7 @@
 // 	zip(func, array, array, ...)
 // 		-> [func(i, [item, item, ...]), ...]
 //
-// XXX revise...
+// XXX revise -- is this too complicated...
 var zip = function(func, ...arrays){
 	var i = arrays[0] instanceof Array ? 0 : arrays.shift()
 	if(func instanceof Array){
@@ -182,6 +182,12 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 
 // Make a proxy method...
 //
+// 	proxy('path.to.attr')
+// 		-> method
+//
+// 	proxy('path.to.attr', function)
+// 		-> method
+//
 var proxy = function(path, func){
 	path = path instanceof Array ? 
 		path.slice() 
@@ -236,7 +242,7 @@ var proxy = function(path, func){
 // 				...
 // 			],
 // 			// only for non-index keys...
-// 			// XXX unused...
+// 			// XXX not implemented...
 // 			item_order: <array-diff>,
 // 		}
 // 			
@@ -247,11 +253,11 @@ var proxy = function(path, func){
 // 	   		items: [
 // 	   			[<key>, <diff>],
 //     
-// 	   			// XXX unused....
+// 	   			// XXX not implemented....
 // 	   			[<key-a>, <key-b>, <diff>],
 // 	   			...
 // 	   		],
-// 	   		// XXX unused...
+// 	   		// XXX not implemented...
 // 	   		item_order: <array-diff>,
 // 	   	}
 //     
@@ -272,6 +278,9 @@ var proxy = function(path, func){
 //			//
 // 			// If not present then the change is simple item insertion 
 // 			// or splicing...
+// 			//
+// 			// NOTE: insertion vs. splicing depends on the values of .A,
+// 			//		.B and/or .path, see docs for those...
 // 			type: <change-type>,
 //
 // 			// The path to the item in the object tree...
@@ -309,12 +318,27 @@ var proxy = function(path, func){
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
 var Types = {
+	// Object-level utilities...
+	clone: function(){
+		var res = Object.create(this)
+		res.handlers = new Map(this.handlers.entries())
+		return res
+	},
+	clear: function(){
+		// XXX should we instead this.handlers.clear() ???
+		this.handlers = new Map()
+		return this
+	},
+
+
 	// Placeholder objects...
 	//
 	// Inseted when an item exists on one side and does not on the other.
 	// 
 	// NOTE: for Array items this does not shift positions of other item
 	// 		positions nor does it affect the the array lengths.
+	// NOTE: these are compared by identity while diffing but are compared
+	// 		by value when patching...
 	NONE: NONE,
 	EMPTY: EMPTY,
 	get DIFF_TYPES(){
@@ -448,6 +472,9 @@ var Types = {
 
 		return type
 	},
+
+	// Handle the difference between A and B...
+	//
 	handle: function(type, obj, diff, A, B, options){
 		// set .type
 		type = type == null ? this.detect(A, B, options) : type
@@ -478,9 +505,12 @@ var Types = {
 	// XXX does change order matter here???
 	// 		...some changes can affect changes after them (like splicing 
 	// 		with arrays), this ultimately affects how patching is done...
-	// 		...or is this a quastion of how we treat indexes and the patching 
+	// 		...or is this a question of how we treat indexes and the patching 
 	// 		algorithm???
-	// XXX we should be able to provide "fuzz" (context) to the changes...
+	// XXX we should be able to provide "fuzz" (context, horizontal) to 
+	// 		the changes in ordered containers...
+	// 		...it might also be possible to provide vertical/topological 
+	// 		"fuzz", need to think about this...
 	// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
 	flatten: function(diff, res, path, options){
 		res = res || []
@@ -509,20 +539,20 @@ var Types = {
 	// NOTE: for format info see doc for Types...
 	//
 	// XXX special case: empty sections do not need to be inserted...
-	//
+	// 		...splice in a sparse array and store an Array diff with only 
+	// 		length changed...
 	// XXX do we need to differentiate things like: new Number(123) vs. 123???
-	// XXX check seen -- avoid recursion...
+	// XXX might be a god idea to mix in default options (different 
+	// 		defaults per mode)...
 	// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
 	diff: function(A, B, options, cache){
 		var that = this
-		// XXX might be a god idea to mix in default options (different 
-		// 		defaults per mode)...
 		options = options ? Object.create(options) : {}
 		options.cmp = options.cmp || function(a, b){
 			return a === b 
 				|| a == b 
+				// NOTE: diff(..) is in closure, see cache setup below...
 				|| (diff(a, b) == null) }
-		// XXX update this depending on mode...
 		options.as_object = options.as_object || []
 
 
@@ -539,7 +569,6 @@ var Types = {
 
 
 		// cache...
-		// XXX check seen -- avoid recursion...
 		cache = cache || new Map()
 		var diff = cache.diff = cache.diff || function(a, b){
 			var l2 = cache.get(a) || new Map()
@@ -679,6 +708,7 @@ Types.set(Object, {
 	priority: -50,
 
 	handle: function(obj, diff, A, B, options){
+		// attrebutes/items...
 		obj.items = (obj.items || [])
 			.concat(this.get(Object).attributes.call(this, diff, A, B, options))
 
@@ -901,6 +931,10 @@ Types.set('Text', {
 
 
 //---------------------------------------------------------------------
+// Diff interface function...
+//
+// This is a front-end to Types.diff(..), adding a metadata wrapper to 
+// the format, and optionally handling the topology of the output...
 //
 //
 // Options format:
@@ -950,6 +984,11 @@ Types.set('Text', {
 // 		format: 'object-diff',
 // 		version: '0.0.0',
 // 		structure: 'flat' | 'tree',
+// 		// NOTE: these are stored in the diff to make the diff independent
+// 		//		of future changes to the values of the placeholder, both
+// 		//		in spec and as means to avoid data collisions... 
+// 		// NOTE: these are compared by identity while diffing but are 
+// 		//		compared by value when patching...
 //		placeholders: {
 //			...
 //		},
@@ -960,15 +999,20 @@ Types.set('Text', {
 // 	}
 //
 //
-// NOTE: the format itself is JSON compatible (XXX) but the data in the 
-// 		changes may not be, so if JSON compatibility is desired, the 
-// 		inputs or at least the differences between them must be JSON 
-// 		compatible.
+// NOTE: the format itself is JSON compatible but the data in the changes 
+// 		may not be, so if JSON compatibility is desired, the inputs or 
+// 		at least the differences between them must be JSON compatible.
 // NOTE: recursive inputs will result in recursive diff objects.
+//
+// XXX should we instantiate Types here so as to make all the caching 
+// 		call-specific???
+// XXX revise how the types can be passed in...
 var diff =
 module.diff = 
-function(A, B, options){
+function(A, B, options, types){
 	options = options || {}
+	types = types || Types.clone()
+
 	return {
 		// system meta information...
 		format: 'object-diff',
@@ -983,18 +1027,23 @@ function(A, B, options){
 		options: Object.assign({}, options),
 
 		diff: options.tree_diff ? 
-			Types.diff(A, B, options) 
-			: Types.flatten(Types.diff(A, B, options), null, null, options)
+			types.diff(A, B, options) 
+			: types.flatten(Types.diff(A, B, options), null, null, options)
 	}}
 
 
+// Apply diff (patch) to obj...
+//
+// This is a front-end to Types.patch(..), handling loading the options
+// from the diff...
+//
 var patch =
 module.patch = 
-function(diff, obj){
-	var t = Object.create(Types)
+function(diff, obj, options, types){
+	var t = Object.create(types || Types)
 	diff.placeholders 
 		&& Object.assign(t, diff.placeholders)
-	return t.patch(diff, obj) 
+	return t.patch(diff, obj, options) 
 }
 
 
