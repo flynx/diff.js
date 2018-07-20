@@ -542,6 +542,8 @@ var Types = {
 	// NOTE: this will include direct links to items.
 	// NOTE: for format info see doc for Types...
 	//
+	// XXX might be a good idea to make a .walk(..) version of this...
+	// 		...i.e. pass a function a nd call it with each change...
 	// XXX special case: empty sections do not need to be inserted...
 	// 		...splice in a sparse array and store an Array diff with only 
 	// 		length changed...
@@ -952,6 +954,19 @@ Types.set('Text', {
 
 
 //---------------------------------------------------------------------
+// Deep-compare objects...
+//
+// XXX would be nice to do a fast fail version of this, i.e. fail on 
+// 		first mismatch and do not waste time compiling a full diff we 
+// 		are going to throw away anyway...
+// 		...this would be possible with a live .walk(..) that would 
+// 		report changes as it finds them...
+var cmp =
+module.cmp =
+function(A, B){
+	return Types.diff(A, B) == null ? true : false }
+
+
 // Diff interface function...
 //
 // This is a front-end to Types.diff(..), adding a metadata wrapper to 
@@ -1091,7 +1106,7 @@ var _patch = function(diff, obj){
 		if(type == 'item'){
 			// object attr...
 			if(typeof(key) == typeof('str')){
-				if(change.B.type == EMPTY.type){
+				if(cmp(change.B, EMPTY)){
 					delete target[key]
 
 				} else {
@@ -1109,10 +1124,10 @@ var _patch = function(diff, obj){
 
 				} else if(j == null){
 					// XXX better EMPTY check -- use diff
-					if(!('B' in change) || change.B.type == EMPTY.type){
+					if(!('B' in change) || cmp(change.B, EMPTY)){
 						delete target[i]
 
-					} else if(!('B' in change) || change.B.type == NONE.type){
+					} else if(!('B' in change) || cmp(change.B, NONE)){
 						target.splice(i, 1)
 
 					} else {
