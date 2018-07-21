@@ -1085,6 +1085,7 @@ function(diff, obj, options, types){
 
 
 
+// XXX would need to let the type handlers handle themselves a-la .handle(..)
 var _patch = function(diff, obj){
 	var NONE = diff.options.placeholders.NONE
 	var EMPTY = diff.options.placeholders.EMPTY
