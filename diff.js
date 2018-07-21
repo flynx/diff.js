@@ -1087,12 +1087,13 @@ function(diff, obj, options, types){
 
 // XXX would need to let the type handlers handle themselves a-la .handle(..)
 var _patch = function(diff, obj){
-	var NONE = diff.options.placeholders.NONE
-	var EMPTY = diff.options.placeholders.EMPTY
+	var NONE = diff.placeholders.NONE
+	var EMPTY = diff.placeholders.EMPTY
+	var options = diff.options
 
-	Types.walk(diff, function(change){
+	Types.walk(diff.diff, function(change){
 		// replace the object itself...
-		if(path.length == 0){
+		if(change.path.length == 0){
 			return change.B
 		}
 
@@ -1112,6 +1113,16 @@ var _patch = function(diff, obj){
 
 				} else {
 					// XXX also check what is overwritten...
+					// XXX need to correctly check EMPTY/NONE...
+					if('A' in change 
+							&& !(cmp(change.A, EMPTY) ? 
+								!(key in target)
+								: cmp(target[key], change.A))){
+						// XXX
+						console.warn('Patch: Mismatching values at:', change.path, 
+							'expected:', change.A, 
+							'got:', target[key])
+					}
 					target[key] = change.B
 				}
 
