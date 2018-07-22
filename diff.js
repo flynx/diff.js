@@ -6,6 +6,14 @@
 ((typeof define)[0]=='u'?function(f){module.exports=f(require)}:define)
 (function(require){ var module={} // make module AMD/node compatible...
 /*********************************************************************/
+
+var ANY = {type: 'ANY_PLACEHOLDER'}
+var NONE = {type: 'NONE_PLACEHOLDER'}
+var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
+
+
+
+//---------------------------------------------------------------------
 // Helpers...
 
 // 	zip(array, array, ...)
@@ -212,6 +220,9 @@ var proxy = function(path, func){
 // 			
 // 			A: <value>,
 // 			B: <value>,
+//
+// 			// optional payload data...
+// 			...
 // 		}
 // 			
 // 		// A and B are arrays...
@@ -288,6 +299,9 @@ var proxy = function(path, func){
 //			//						or null then it means that the item
 //			//						does not exist in the corresponding
 //			//						array...
+//			//				  NOTE: if both of the array items are arrays
+//			//						it means that we are splicing array 
+//			//						sections instead of array elements...
 // 			path: [<key>, ...],
 //
 // 			// values in A and B...
@@ -300,6 +314,10 @@ var proxy = function(path, func){
 // 			//	EMPTY		- the slot exists but it is empty (set/delete)
 // 			A: <value> | EMPTY | NONE,
 // 			B: <value> | EMPTY | NONE,
+//
+// 			// used if we are splicing array sections to indicate section
+// 			// lengths, useful when splicing sparse sections...
+// 			length: [a, b],
 // 		},
 // 		...
 // 	]
@@ -311,9 +329,12 @@ var proxy = function(path, func){
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
 var Types = {
+	__cache: null,
+
 	// Object-level utilities...
 	clone: function(){
 		var res = Object.create(this)
+		res.__cache = null
 		res.handlers = new Map(this.handlers.entries())
 		return res
 	},
@@ -570,13 +591,13 @@ var Types = {
 		}
 
 		// builtin types...
-		if(DIFF_TYPES.has(A) || DIFF_TYPES.has(B)){
+		if(this.DIFF_TYPES.has(A) || this.DIFF_TYPES.has(B)){
 			return this.handle('Basic', {}, diff, A, B, options)
 		}
 
 
 		// cache...
-		cache = cache || new Map()
+		cache = this.__cache = cache || this.__cache || new Map()
 		var diff = cache.diff = cache.diff || function(a, b){
 			var l2 = cache.get(a) || new Map()
 			var d = l2.get(b) || that.diff(a, b, options, cache)
@@ -610,15 +631,44 @@ var Types = {
 			: res
 	},
 
+	// Deep-compare A and B...
+	//
+	cmp: function(A, B, options){
+		return this.diff(A, B, options) == null },
+
 	// Patch (update) obj via diff...
 	//
+	// XXX would need to let the type handlers handle themselves a-la .handle(..)
 	patch: function(diff, obj, options){
-		// XXX approach:
-		// 		- check
-		// 		- flatten
-		// 		- run patch
-		// 			- might be a good idea to enable handlers to handle 
-		// 			  their own updates...
+		var NONE = diff.placeholders.NONE
+		var EMPTY = diff.placeholders.EMPTY
+		var options = diff.options
+
+		this.walk(diff.diff, function(change){
+			// replace the object itself...
+			if(change.path.length == 0){
+				return change.B
+			}
+
+			var type = change.type || Object
+
+			var target = change.path
+				.slice(0, -1)
+				.reduce(function(res, e){
+					return res[e]}, obj)
+			var key = change.path[change.path.length-1]
+
+			// XXX this needs to be able to replace the target...
+			this.getHandler(type).patch.call(this, target, key, change, options)
+		})
+		return obj
+	},
+
+	// Reverse diff...
+	//
+	// XXX should we do this or reverse patch / undo-patch???
+	reverse: function(diff){
+		// XXX
 	},
 
 	// Check if diff is applicable to obj...
@@ -626,6 +676,7 @@ var Types = {
 	check: function(diff, obj, options){
 		// XXX
 	},
+
 }
 
 
@@ -715,6 +766,8 @@ var Types = {
 // NOTE: a basic type is one that returns a specific non-'object'
 // 		typeof...
 // 		i.e. when typeof(x) != 'object'
+// NOTE: this does not need a .patch(..) method because it is not a 
+// 		container...
 Types.set('Basic', {
 	priority: 50,
 
@@ -727,13 +780,10 @@ Types.set('Basic', {
 			|| (obj.B = B)
 	},
 	walk: function(diff, func, path){
-		var change = {
+		var change = Object.assign({
 			path: path,
-		}
-		'A' in diff 
-			&& (change.A = diff.A)
-		'B' in diff 
-			&& (change.B = diff.B)
+		}, diff)
+		delete change.type
 		return func(change)
 	},
 })
@@ -764,6 +814,24 @@ Types.set(Object, {
 
 				return that.walk(v, func, p)
 			})
+	},
+	// XXX add object compatibility checks...
+	patch: function(obj, key, change){
+		// object attr...
+		if(typeof(key) == typeof('str')){
+			if(this.cmp(change.B, EMPTY)){
+				delete obj[key]
+
+			} else {
+				obj[key] = change.B
+			}
+
+		// array item...
+		// XXX should this make this decision???
+		} else {
+			return this.getHandler(Array).patch.call(this, obj, key, change)
+		}
+		return obj
 	},
 
 	// part handlers...
@@ -855,6 +923,62 @@ Types.set(Array, {
 				})
 				: [])
 	},
+	// XXX add object compatibility checks...
+	patch: function(obj, key, change){
+		var i = key instanceof Array ? key[0] : key
+		var j = key instanceof Array ? key[1] : key
+
+		// sub-array manipulation...
+		if(i instanceof Array){
+			i = i[0]
+			j = j[0]
+
+			// XXX check compatibility...
+
+			obj.splice(j, 
+				'A' in change ? 
+					change.A.length
+					: change.length[0], 
+				...('B' in change ? 
+					change.B
+					: new Array(change.length[1])))
+
+		// item manipulation...
+		} else {
+			if(i == null){
+				// XXX this will mess up the indexing for the rest of
+				// 		item removals...
+				obj.splice(j, 0, change.B)
+
+			} else if(j == null){
+				// obj explicitly empty...
+				if('B' in change && this.cmp(change.B, EMPTY)){
+					delete obj[i]
+
+				// splice out obj...
+				} else if(!('B' in change) || this.cmp(change.B, NONE)){
+					// NOTE: this does not affect the later elements
+					// 		indexing as it essentially shifts the 
+					// 		indexes to their obj state for next 
+					// 		changes...
+					obj.splice(i, 1)
+
+				// XXX
+				} else {
+					// XXX
+					console.log('!!!!!!!!!!')
+				}
+
+			} else if(i == j){
+				obj[j] = change.B
+
+			} else {
+				obj[j] = change.B
+			}
+		}
+		
+		return obj
+	},
 
 	// part handlers...
 	items: function(diff, A, B, options){
@@ -876,6 +1000,24 @@ Types.set(Array, {
 				var j = gap[1][0]
 				var a = gap[0][1]
 				var b = gap[1][1]
+
+				// split into two: a common-length section and tails of 
+				// 0 and l lengths...
+				var l = Math.min(a.length, b.length)
+				var ta = a.slice(l)
+				var tb = b.slice(l)
+				// tail sections...
+				// XXX hack???
+				// XXX should we use a different type/sub-type???
+				var tail = { type: 'Basic', }
+				ta.filter(() => true).length > 0 
+					&& (tail.A = ta)
+				tb.filter(() => true).length > 0 
+					&& (tail.B = tb)
+				tail.length = [ta.length, tb.length]
+
+				a = a.slice(0, l)
+				b = b.slice(0, l)
 
 				return zip(
 						function(n, elems){
@@ -903,8 +1045,17 @@ Types.set(Array, {
 									options), 
 							] }, 
 						a, b)
-					.filter(function(e){ 
+					// clear matching stuff...
+					 .filter(function(e){ 
 						return e[2] != null})
+					// splice array sub-sections...
+					.concat(ta.length + tb.length > 0 ?
+						[[
+							[i+l],
+							[j+l],
+							tail,
+						]]
+						: [])
 			})
 			.reduce(function(res, e){ 
 				return res.concat(e) }, [])
@@ -957,6 +1108,7 @@ Types.set('Text', {
 	},
 
 	// XXX
+	// XXX add object compatibility checks...
 	patch: function(change, obj){
 		// XXX
 		
@@ -977,7 +1129,7 @@ Types.set('Text', {
 var cmp =
 module.cmp =
 function(A, B){
-	return Types.diff(A, B) == null ? true : false }
+	return Types.clone().cmp(A, B) }
 
 
 // Diff interface function...
@@ -1098,98 +1250,6 @@ function(diff, obj, options, types){
 
 
 
-// XXX would need to let the type handlers handle themselves a-la .handle(..)
-// XXX Problems:
-// 		_patch(diff(i = [1,2], [2,1]), i)
-//			-> [2,2]
-var _patch = function(diff, obj){
-	var NONE = diff.placeholders.NONE
-	var EMPTY = diff.placeholders.EMPTY
-	var options = diff.options
-
-	// XXX also check what is overwritten...
-	// XXX need to correctly check EMPTY/NONE...
-	var checkTypeMatch = function(change, target, key){
-		if('A' in change 
-				&& !(cmp(change.A, EMPTY) ? 
-					!(key in target)
-					: cmp(target[key], change.A))){
-			console.warn('Patch: Mismatching values at:', change.path, 
-				'expected:', change.A, 
-				'got:', target[key])
-			return false
-		}
-		return true
-	}
-
-	Types.walk(diff.diff, function(change){
-		// replace the object itself...
-		if(change.path.length == 0){
-			return change.B
-		}
-
-		var type = change.type || 'item'
-
-		var target = change.path
-			.slice(0, -1)
-			.reduce(function(res, e){
-				return res[e]}, obj)
-		var key = change.path[change.path.length-1]
-
-		if(type == 'item'){
-			// object attr...
-			if(typeof(key) == typeof('str')){
-				if(cmp(change.B, EMPTY)){
-					delete target[key]
-
-				} else {
-					checkTypeMatch(change, target, key)
-
-					target[key] = change.B
-				}
-
-			// array item...
-			} else {
-				var i = key instanceof Array ? key[0] : key
-				var j = key instanceof Array ? key[1] : key
-
-				// XXX check A...
-
-				if(i == null){
-					target.splice(j, 0, change.B)
-
-				} else if(j == null){
-					// target explicitly empty...
-					if('B' in change && cmp(change.B, EMPTY)){
-						delete target[i]
-
-					// splice out target...
-					} else if(!('B' in change) || cmp(change.B, NONE)){
-						target.splice(i, 1)
-
-					// XXX
-					} else {
-						// XXX
-						console.log('!!!!!!!!!!')
-					}
-
-				} else if(i == j){
-					target[j] = change.B
-
-				} else {
-					target[j] = change.B
-				}
-			}
-
-		// custom types...
-		} else {
-			// XXX revise...
-			obj = this.getHandler(type).patch.call(this, change, obj)
-		}
-
-	})
-	return obj
-}
 
 
 
