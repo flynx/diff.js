@@ -513,6 +513,7 @@ var Types = {
 			return handler.walk.call(this, diff, func, path || [])
 		}
 	},
+
 	// Flatten the tree diff format...
 	//
 	// XXX might be good to include some type info so as to enable patching 
@@ -829,13 +830,7 @@ Types.set(Array, {
 		var that = this
 		var NONE = this.NONE
 		var res = []
-		// length...
-		diff.length != null
-			&& res.push(func({
-				path: path.concat('length'),
-				A: diff.length[0],
-				B: diff.length[1],
-			}))
+		//*/
 		// items...
 		return res.concat((diff.items || [])
 			.map(function(e){
@@ -849,6 +844,16 @@ Types.set(Array, {
 
 				return that.walk(v, func, p)
 			}))
+			// length...
+			// NOTE: we keep this last as the length should be the last 
+			// 		thing to get patched...
+			.concat(diff.length != null ?
+				func({
+					path: path.concat('length'),
+					A: diff.length[0],
+					B: diff.length[1],
+				})
+				: [])
 	},
 
 	// part handlers...
@@ -918,6 +923,7 @@ Types.set(Array, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Text...
+// XXX add .patch(..)
 Types.set('Text', {
 	// this must be checked before the 'Base'...
 	priority: 100,
@@ -948,6 +954,13 @@ Types.set('Text', {
 			c.type = 'Text'
 			return func(c)
 		}, path)
+	},
+
+	// XXX
+	patch: function(change, obj){
+		// XXX
+		
+		return obj
 	},
 })
 
@@ -1086,10 +1099,28 @@ function(diff, obj, options, types){
 
 
 // XXX would need to let the type handlers handle themselves a-la .handle(..)
+// XXX Problems:
+// 		_patch(diff(i = [1,2], [2,1]), i)
+//			-> [2,2]
 var _patch = function(diff, obj){
 	var NONE = diff.placeholders.NONE
 	var EMPTY = diff.placeholders.EMPTY
 	var options = diff.options
+
+	// XXX also check what is overwritten...
+	// XXX need to correctly check EMPTY/NONE...
+	var checkTypeMatch = function(change, target, key){
+		if('A' in change 
+				&& !(cmp(change.A, EMPTY) ? 
+					!(key in target)
+					: cmp(target[key], change.A))){
+			console.warn('Patch: Mismatching values at:', change.path, 
+				'expected:', change.A, 
+				'got:', target[key])
+			return false
+		}
+		return true
+	}
 
 	Types.walk(diff.diff, function(change){
 		// replace the object itself...
@@ -1112,17 +1143,8 @@ var _patch = function(diff, obj){
 					delete target[key]
 
 				} else {
-					// XXX also check what is overwritten...
-					// XXX need to correctly check EMPTY/NONE...
-					if('A' in change 
-							&& !(cmp(change.A, EMPTY) ? 
-								!(key in target)
-								: cmp(target[key], change.A))){
-						// XXX
-						console.warn('Patch: Mismatching values at:', change.path, 
-							'expected:', change.A, 
-							'got:', target[key])
-					}
+					checkTypeMatch(change, target, key)
+
 					target[key] = change.B
 				}
 
@@ -1131,19 +1153,24 @@ var _patch = function(diff, obj){
 				var i = key instanceof Array ? key[0] : key
 				var j = key instanceof Array ? key[1] : key
 
+				// XXX check A...
+
 				if(i == null){
 					target.splice(j, 0, change.B)
 
 				} else if(j == null){
-					// XXX better EMPTY check -- use diff
-					if(!('B' in change) || cmp(change.B, EMPTY)){
+					// target explicitly empty...
+					if('B' in change && cmp(change.B, EMPTY)){
 						delete target[i]
 
+					// splice out target...
 					} else if(!('B' in change) || cmp(change.B, NONE)){
 						target.splice(i, 1)
 
+					// XXX
 					} else {
 						// XXX
+						console.log('!!!!!!!!!!')
 					}
 
 				} else if(i == j){
@@ -1153,6 +1180,11 @@ var _patch = function(diff, obj){
 					target[j] = change.B
 				}
 			}
+
+		// custom types...
+		} else {
+			// XXX revise...
+			obj = this.getHandler(type).patch.call(this, change, obj)
 		}
 
 	})
