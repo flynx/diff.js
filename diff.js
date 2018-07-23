@@ -328,6 +328,15 @@ var proxy = function(path, func){
 // NOTE: this will lose some meta-information the diff format contains 
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
+//
+// XXX should we change this to a different API?
+// 		...the only "bad" thing I can think of is the dependency on object.js
+// 		Example:
+// 			var d = new Diff(A, B)
+//			d.patch(X)
+//			d.undo(X)	// same as: d.reverse().patch(X)
+//			d.json()
+//			...
 var Types = {
 	__cache: null,
 
@@ -676,7 +685,6 @@ var Types = {
 	check: function(diff, obj, options){
 		// XXX
 	},
-
 }
 
 
