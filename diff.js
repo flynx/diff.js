@@ -337,6 +337,17 @@ var proxy = function(path, func){
 //			d.undo(X)	// same as: d.reverse().patch(X)
 //			d.json()
 //			...
+//
+//		API (class):
+//			.cmp(A, B)
+//			.diff(A, B)
+//			...
+//		API (instance):
+//			.patch(X)
+//			.check(X)
+//			.json()
+//			.load(json) // same as: new Diff(json)
+//			...
 var Types = {
 	__cache: null,
 
