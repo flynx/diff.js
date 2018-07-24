@@ -1,0 +1,34 @@
+{
+  "name": "object-diff",
+  "version": "0.0.1",
+  "description": "",
+  "main": "diff.js",
+  "author": {
+    "name": "Alex A. Naanou",
+    "email": "alex.nanou@gmail.com",
+    "url": "https://github.com/flynx"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flynx/object-diff.js.git"
+  },
+  "keywords": [
+    "diff",
+    "utility",
+    "object",
+    "array",
+    "json"
+  ],
+  "author": "Alex A. Naanou <alex.nanou@gmail.com> (https://github.com/flynx)",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/flynx/object-diff.js/issues"
+  },
+  "homepage": "https://github.com/flynx/object-diff.js#readme",
+  "dependencies": {
+    "ig-object": "^1.0.2"
+  }
+}

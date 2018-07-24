@@ -7,7 +7,7 @@
 (function(require){ var module={} // make module AMD/node compatible...
 /*********************************************************************/
 
-
+var object = require('ig-object')
 
 
 
@@ -335,25 +335,6 @@ var proxy = function(path, func){
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
 //
-// XXX should we change this to a different API?
-// 		...the only "bad" thing I can think of is the dependency on object.js
-// 		Example:
-// 			var d = new Diff(A, B)
-//			d.patch(X)
-//			d.undo(X)	// same as: d.reverse().patch(X)
-//			d.json()
-//			...
-//
-//		API (class):
-//			.cmp(A, B)
-//			.diff(A, B)
-//			...
-//		API (instance):
-//			.patch(X)
-//			.check(X)
-//			.json()
-//			.load(json) // same as: new Diff(json)
-//			...
 var Types = {
 	__cache: null,
 
@@ -379,10 +360,12 @@ var Types = {
 	// 		positions nor does it affect the the array lengths.
 	// NOTE: these are compared by identity while diffing but are compared
 	// 		by value when patching...
+	ANY: ANY,
 	NONE: NONE,
 	EMPTY: EMPTY,
 	get DIFF_TYPES(){
 		return new Set([
+			this.ANY,
 			this.NONE,
 			this.EMPTY, 
 		]) },
@@ -601,17 +584,22 @@ var Types = {
 	diff: function(A, B, options, cache){
 		var that = this
 		options = options ? Object.create(options) : {}
-		options.cmp = options.cmp || function(a, b){
-			return a === b 
-				|| a == b 
-				// NOTE: diff(..) is in closure, see cache setup below...
-				|| (diff(a, b) == null) }
+		options.cmp = options.cmp 
+			|| function(a, b){
+				return a === that.ANY 
+					|| b === that.ANY 
+					|| a === b 
+					|| a == b 
+					// NOTE: diff(..) is in closure, so we do not need to 
+					// 		pass options and cache down. 
+					// 		see cache setup below...
+					|| (diff(a, b) == null) }
 		options.as_object = options.as_object || []
 
 
 		// same object...
 		// XXX do we need to differentiate things like: new Number(123) vs. 123???
-		if(A === B || A == B){
+		if(A === that.ANY || B === that.ANY || A === B || A == B){
 			return null
 		}
 
@@ -697,6 +685,9 @@ var Types = {
 	// XXX should we do this or reverse patch / undo-patch???
 	reverse: function(diff){
 		// XXX
+		//this.walk(diff, function(change){
+		//	// XXX
+		//})
 	},
 
 	// Check if diff is applicable to obj...
@@ -1276,6 +1267,42 @@ function(diff, obj, options, types){
 }
 
 
+
+//---------------------------------------------------------------------
+
+var DiffClassPrototype = {
+	cmp: function(A, B){
+	},
+	fromJSON: function(json){
+	},
+}
+
+var DiffPrototype = {
+
+	__init__: function(A, B, options){
+	},
+
+	reverse: function(obj){
+	},
+
+	// XXX need to be able to check the other side...
+	check: function(obj){
+	},
+	patch: function(obj){
+	},
+	unpatch: function(obj){
+		return this.reverse().patch(obj) },
+
+	json: function(){
+	},
+}
+
+var Diff = 
+module.Diff = 
+object.makeConstructor('Diff', 
+		DiffClassPrototype, 
+		DiffPrototype)
+		
 
 
 
