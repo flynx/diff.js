@@ -7,6 +7,12 @@
 (function(require){ var module={} // make module AMD/node compatible...
 /*********************************************************************/
 
+
+
+
+
+/*********************************************************************/
+
 var ANY = {type: 'ANY_PLACEHOLDER'}
 var NONE = {type: 'NONE_PLACEHOLDER'}
 var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
@@ -385,7 +391,25 @@ var Types = {
 	// Type handlers...
 	handlers: new Map(), 
 	has: proxy('handlers.has'),
-	get: proxy('handlers.get'),
+	// Get handler...
+	//
+	// 	.get(object)
+	// 	.get(handler-type)
+	// 	.get(handler-type-name)
+	// 		-> handler | null
+	//
+	get: function(o){
+		var h = this.handlers
+		// get the type if there is no direct match...
+		o = !h.has(o) ? this.detect(o) : o
+
+		// resolve aliases...
+		do {
+			o = h.get(o)
+		} while(o != null && h.has(o))
+
+		return o
+	},
 	set: proxy('handlers.set', 
 		function(res, key, handler){
 			// auto-alias...
@@ -425,25 +449,6 @@ var Types = {
 	get typeNames(){
 		return this.types.map(function(e){ return e.name || e }) },
 
-
-	// Get handler...
-	//
-	// 	.getHandler(object)
-	// 	.getHandler(handler-type)
-	// 	.getHandler(handler-type-name)
-	// 		-> handler | null
-	//
-	getHandler: function(o){
-		// get the type if there is no direct match...
-		o = !this.has(o) ? this.detect(o) : o
-
-		// resolve aliases...
-		do {
-			o = this.get(o)
-		} while(o != null && this.has(o))
-
-		return o
-	},
 
 	// Detect handler type...
 	//
@@ -515,7 +520,7 @@ var Types = {
 		obj.type = obj.type || (type.name ? type.name : type)
 
 		// get the handler + resolve aliases...
-		var handler = this.getHandler(type)
+		var handler = this.get(type)
 
 		// unhandled type...
 		if(handler == null 
@@ -547,7 +552,7 @@ var Types = {
 
 		// tree diff...
 		} else {
-			var handler = this.getHandler(diff.type)
+			var handler = this.get(diff.type)
 			if(handler == null || !handler.walk){
 				throw new TypeError('Can\'t walk type: '+ diff.type)
 			}
@@ -658,8 +663,11 @@ var Types = {
 
 	// Patch (update) obj via diff...
 	//
-	// XXX would need to let the type handlers handle themselves a-la .handle(..)
+	// XXX this needs to be able to replace obj or parts of it...
+	// XXX this does not work for:
+	// 		patch(diff(4,5), 4)
 	patch: function(diff, obj, options){
+		var that = this
 		var NONE = diff.placeholders.NONE
 		var EMPTY = diff.placeholders.EMPTY
 		var options = diff.options
@@ -679,7 +687,7 @@ var Types = {
 			var key = change.path[change.path.length-1]
 
 			// XXX this needs to be able to replace the target...
-			this.getHandler(type).patch.call(this, target, key, change, options)
+			that.get(type).patch.call(that, target, key, change, options)
 		})
 		return obj
 	},
@@ -848,7 +856,7 @@ Types.set(Object, {
 		// array item...
 		// XXX should this make this decision???
 		} else {
-			return this.getHandler(Array).patch.call(this, obj, key, change)
+			return this.get(Array).patch.call(this, obj, key, change)
 		}
 		return obj
 	},
