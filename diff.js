@@ -335,6 +335,7 @@ var proxy = function(path, func){
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
 //
+// XXX Q: do we need to support both the flat and tree diff formats???
 var Types = {
 	__cache: null,
 
@@ -404,7 +405,8 @@ var Types = {
 
 	// sorted list of types...
 	// XXX do we need to cache this???
-	get types(){
+	get typeKeys(){
+		var that = this
 		var h = this.handlers
 		var order = new Map()
 		var i = 0
@@ -429,8 +431,14 @@ var Types = {
 					: order.get(a) - order.get(b)
 			})
 	},
+	get types(){
+		var that = this
+		return this.typeKeys
+			.map(function(e){ 
+				return that.get(e) })
+	},
 	get typeNames(){
-		return this.types.map(function(e){ return e.name || e }) },
+		return this.typeKeys.map(function(e){ return e.name || e }) },
 
 
 	// Detect handler type...
@@ -447,7 +455,7 @@ var Types = {
 	// NOTE: if A and B types mismatch we treat them as Object...
 	detect: function(A, B, options){
 		var type
-		var types = this.types
+		var types = this.typeKeys
 
 		// explicit checkers have priority over instance tests...
 		for(var t of types){
@@ -561,6 +569,28 @@ var Types = {
 		options = options || {}
 		var res = []
 		this.walk(diff, function(change){ res.push(change) })
+		return res
+	},
+
+
+	reverse: function(diff){
+		var that = this
+		var res = []
+		this.walk(diff, function(change){ 
+			var c = Object.assign({}, change)
+
+			// path...
+			c.path = c.path.slice().map(function(e){
+				return e instanceof Array ?
+					e.slice().reverse()
+					: e })
+
+			that.types.forEach(function(type){
+				type.reverse 
+					&& (c = type.reverse.call(that, c)) })
+
+			res.push(c)
+		})
 		return res
 	},
 
@@ -680,16 +710,6 @@ var Types = {
 		return obj
 	},
 
-	// Reverse diff...
-	//
-	// XXX should we do this or reverse patch / undo-patch???
-	reverse: function(diff){
-		// XXX
-		//this.walk(diff, function(change){
-		//	// XXX
-		//})
-	},
-
 	// Check if diff is applicable to obj...
 	//
 	check: function(diff, obj, options){
@@ -760,6 +780,12 @@ var Types = {
 // 		walk: function(diff, func, path){
 // 			.. 
 // 		},
+//
+// 		// Reverse the change...
+//		//
+// 		reverse: function(change){
+// 			..
+// 		},
 // 	}
 //
 //
@@ -803,6 +829,15 @@ Types.set('Basic', {
 		}, diff)
 		delete change.type
 		return func(change)
+	},
+	reverse: function(change){
+		var t = change.B
+		var b = 'B' in change
+		'A' in change 
+			&& (change.B = change.A)
+		b 
+			&& (change.A = t)
+		return change
 	},
 })
 
@@ -996,6 +1031,12 @@ Types.set(Array, {
 		}
 		
 		return obj
+	},
+	reverse: function(change){
+		if('length' in change){
+			change.length = change.length.slice().reverse()
+		}
+		return change
 	},
 
 	// part handlers...
@@ -1270,6 +1311,7 @@ function(diff, obj, options, types){
 
 //---------------------------------------------------------------------
 
+// XXX
 var DiffClassPrototype = {
 	// system meta information...
 	format: 'object-diff',
@@ -1289,6 +1331,7 @@ var DiffClassPrototype = {
 	},
 }
 
+// XXX
 var DiffPrototype = {
 	// system meta information...
 	get format(){
