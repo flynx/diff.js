@@ -1271,29 +1271,77 @@ function(diff, obj, options, types){
 //---------------------------------------------------------------------
 
 var DiffClassPrototype = {
+	// system meta information...
+	format: 'object-diff',
+	varsion: '0.0.0',
+
+	// XXX PROTOTYPE -- uses Types...
+	// XXX return the diff structure...
+	diff: function(A, B, options){
+		return Types.clone().diff(A, B, options) },
+
+	// XXX PROTOTYPE -- uses Types...
 	cmp: function(A, B){
-	},
+		return Types.clone().cmp(A, B) },
+
+	// XXX
 	fromJSON: function(json){
 	},
 }
 
 var DiffPrototype = {
+	// system meta information...
+	get format(){
+		return this.constructor.format },
+	get version(){
+		return this.constructor.version },
 
+	structure: null, 
+	placeholders: null,
+	options: null,
+	diff: null,
+
+	// XXX PROTOTYPE -- uses Types...
 	__init__: function(A, B, options){
+		// XXX should we add a defaults prototype???
+		options = this.options = options || {}
+		this.structure = options.tree_diff ? 'tree' : 'flat'
+		this.placeholders = {
+			NONE: options.NONE || Types.NONE,
+			EMPTY: options.NONE || Types.EMPTY,
+		}
+
+		// XXX should the Types instance be stored/cached here???
+		this.diff = this.constructor.diff(A, B, options)
 	},
 
+	// XXX
 	reverse: function(obj){
+		// XXX
 	},
 
 	// XXX need to be able to check the other side...
 	check: function(obj){
+		// XXX
 	},
+	// XXX PROTOTYPE -- uses Types...
 	patch: function(obj){
-	},
+		return Types.patch(this, obj) },
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
+	// XXX need to normalize .diff and .options...
 	json: function(){
+		return {
+			format: this.format,
+			version: this.version,
+			structure: this.structure,
+			placeholders: this.placeholders,
+
+			// XXX these need to be prepared for JSON compatibility...
+			options: this.options,
+			diff: this.diff,
+		}
 	},
 }
 
