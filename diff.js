@@ -12,13 +12,6 @@ var object = require('ig-object')
 
 
 /*********************************************************************/
-
-var ANY = {type: 'ANY_PLACEHOLDER'}
-var NONE = {type: 'NONE_PLACEHOLDER'}
-var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
-
-
-
 //---------------------------------------------------------------------
 // Helpers...
 
@@ -28,7 +21,7 @@ var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
 // 	zip(func, array, array, ...)
 // 		-> [func(i, [item, item, ...]), ...]
 //
-// XXX revise -- is this too complicated...
+// XXX revise -- is this too complicated???
 var zip = function(func, ...arrays){
 	var i = arrays[0] instanceof Array ? 0 : arrays.shift()
 	if(func instanceof Array){
@@ -208,6 +201,103 @@ var proxy = function(path, func){
 			: res
 	}
 }
+
+
+
+
+//---------------------------------------------------------------------
+// Placeholders...
+
+//var ANY = {type: 'ANY_PLACEHOLDER'}
+var NONE = {type: 'NONE_PLACEHOLDER'}
+var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
+
+
+
+//---------------------------------------------------------------------
+// Logic patterns...
+// XXX should this also include the above placeholders, especially ANY???
+
+var LogicTypeClassPrototype = {
+}
+
+var LogicTypePrototype = {
+	cmp: function(obj, cmp){
+		return false
+	},
+}
+
+var LogicType = 
+module.LogicType = 
+object.makeConstructor('LogicType', 
+		LogicTypeClassPrototype, 
+		LogicTypePrototype)
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// ANY...
+// XXX should this be a singleton???
+var ANYPrototype = {
+	cmp: function(obj, cmp){
+		return true
+	},
+}
+ANYPrototype.__proto__ = LogicTypePrototype
+
+var ANY = 
+module.ANY = 
+object.makeConstructor('ANY', 
+		ANYPrototype)
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// OR...
+var ORPrototype = {
+	cmp: function(obj, cmp){
+		cmp = cmp || function(a, b){
+			return a === b || a == b }
+		for(var m of this.members){
+			if(cmp(m, obj)){
+				return true
+			}
+		}
+		return false
+	},
+	__init__: function(...members){
+		this.members = members
+	},
+}
+ORPrototype.__proto__ = LogicTypePrototype
+
+var OR = 
+module.OR = 
+object.makeConstructor('OR', 
+		ORPrototype)
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// AND...
+var ANDPrototype = {
+	cmp: function(obj, cmp){
+		cmp = cmp || function(a, b){
+			return a === b || a == b }
+		for(var m of this.members){
+			if(!cmp(m, obj)){
+				return false
+			}
+		}
+		return true
+	},
+	__init__: function(...members){
+		this.members = members
+	},
+}
+ANDPrototype.__proto__ = LogicTypePrototype
+
+var AND = 
+module.AND = 
+object.makeConstructor('AND', 
+		ANDPrototype)
 
 
 
@@ -614,10 +704,16 @@ var Types = {
 		options = options ? Object.create(options) : {}
 		options.cmp = options.cmp 
 			|| function(a, b){
-				return a === that.ANY 
-					|| b === that.ANY 
-					|| a === b 
+				return a === b 
 					|| a == b 
+					// basic patters...
+					|| a === that.ANY 
+					|| b === that.ANY 
+					// logic patterns...
+					// XXX not final...
+					|| (a instanceof LogicType && a.cmp(b, cmp))
+					|| (b instanceof LogicType && b.cmp(a, cmp))
+					// diff...
 					// NOTE: diff(..) is in closure, so we do not need to 
 					// 		pass options and cache down. 
 					// 		see cache setup below...
@@ -972,8 +1068,6 @@ Types.set(Object, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Array...
-// XXX might be a good idea to add sub-section splicing, i.e. sub-arrays
-//		and not just rely on item-level...
 // XXX add item order support...
 Types.set(Array, {
 	handle: function(obj, diff, A, B, options){
@@ -1166,7 +1260,7 @@ Types.set(Array, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Text...
-// XXX add .patch(..)
+// XXX TEST: .patch(..)
 Types.set('Text', {
 	// this must be checked before the 'Base'...
 	priority: 100,
@@ -1311,8 +1405,6 @@ function(A, B){
 // 		at least the differences between them must be JSON compatible.
 // NOTE: recursive inputs will result in recursive diff objects.
 //
-// XXX should we instantiate Types here so as to make all the caching 
-// 		call-specific???
 // XXX revise how the types can be passed in...
 var diff =
 module.diff = 
@@ -1348,10 +1440,10 @@ function(A, B, options, types){
 var patch =
 module.patch = 
 function(diff, obj, options, types){
-	var t = Object.create(types || Types)
+	var types = types || Types.clone()
 	diff.placeholders 
-		&& Object.assign(t, diff.placeholders)
-	return t.patch(diff, obj, options) 
+		&& Object.assign(types, diff.placeholders)
+	return types.patch(diff, obj, options) 
 }
 
 
@@ -1362,12 +1454,7 @@ function(diff, obj, options, types){
 var DiffClassPrototype = {
 	// system meta information...
 	format: 'object-diff',
-	varsion: '0.0.0',
-
-	// XXX PROTOTYPE -- uses Types...
-	// XXX return the diff structure...
-	diff: function(A, B, options){
-		return Types.clone().diff(A, B, options) },
+	version: '0.0.0',
 
 	// XXX PROTOTYPE -- uses Types...
 	cmp: function(A, B){
@@ -1393,7 +1480,7 @@ var DiffPrototype = {
 
 	// XXX PROTOTYPE -- uses Types...
 	__init__: function(A, B, options){
-		// XXX should we add a defaults prototype???
+		// XXX should we add a default options as prototype???
 		options = this.options = options || {}
 		this.structure = options.tree_diff ? 'tree' : 'flat'
 		this.placeholders = {
@@ -1401,19 +1488,43 @@ var DiffPrototype = {
 			EMPTY: options.NONE || Types.EMPTY,
 		}
 
+		var types = types || Types.clone()
+
 		// XXX should the Types instance be stored/cached here???
-		this.diff = this.constructor.diff(A, B, options)
+		this.diff = arguments.length == 0 ?
+				null
+			: options.tree_diff ? 
+				types.diff(A, B, options) 
+			: types.flatten(Types.diff(A, B, options), options)
 	},
 
-	// XXX
+	// XXX should this be a deep copy???
+	clone: function(){
+		var res = new this.constructor()
+		res.structure = this.structure
+		res.placeholders = Object.assign({}, this.placeholders)
+		// XXX should this be a deep copy???
+		res.options = Object.assign({}, this.options)
+		// XXX should this be a deep copy???
+		res.diff = this.diff instanceof Array ? 
+				this.diff.slice()
+			: this.diff ?
+				Object.assign({}, this.diff)
+			: null
+		return res
+	},
+
+	// NOTE: this will not mutate this...
+	// XXX PROTOTYPE -- uses Types...
 	reverse: function(obj){
-		// XXX
-	},
+		var res = this.clone()
+		res.diff = Types.reverse(this.diff)
+		return res
+	}, 
 
-	// XXX need to be able to check the other side...
+	// XXX PROTOTYPE -- uses Types...
 	check: function(obj){
-		// XXX
-	},
+		Types.clone().check(this.diff, obj) },
 	// XXX PROTOTYPE -- uses Types...
 	patch: function(obj){
 		return Types.patch(this, obj) },
@@ -1441,7 +1552,6 @@ object.makeConstructor('Diff',
 		DiffClassPrototype, 
 		DiffPrototype)
 		
-
 
 
 
