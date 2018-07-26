@@ -681,33 +681,57 @@ var Types = {
 
 	// Patch (update) obj via diff...
 	//
-	// XXX this needs to be able to replace obj or parts of it...
-	// XXX this does not work for:
-	// 		patch(diff(4,5), 4)
+	// XXX should we check for patch integrity???
+	// 		bad patches would include:
+	// 			- including both a.b and a.b.c is a conflict.
 	patch: function(diff, obj, options){
 		var that = this
 		var NONE = diff.placeholders.NONE
 		var EMPTY = diff.placeholders.EMPTY
 		var options = diff.options
 
-		this.walk(diff.diff, function(change){
-			// replace the object itself...
-			if(change.path.length == 0){
-				return change.B
-			}
+		// NOTE: in .walk(..) we always return the root object bing 
+		// 		patched, this way the handlers have control over the 
+		// 		patching process and it's results on all levels...
+		// 		...and this is why we can just pop the last item and 
+		// 		return it...
+		// NOTE: this will do odd things for conflicting patches...
+		// 		a conflict can be for example patching both a.b and 
+		// 		a.b.c etc.
+		return this
+			.walk(diff.diff, function(change){
+				// replace the object itself...
+				if(change.path.length == 0){
+					return change.B
+				}
 
-			var type = change.type || Object
+				var type = change.type || Object
 
-			var target = change.path
-				.slice(0, -1)
-				.reduce(function(res, e){
-					return res[e]}, obj)
-			var key = change.path[change.path.length-1]
+				var parent
+				var parent_key
+				var target = change.path
+					.slice(0, -1)
+					.reduce(function(res, e){
+							parent = res
+							parent_key = e
+							return res[e]
+						}, obj)
+				var key = change.path[change.path.length-1]
 
-			// XXX this needs to be able to replace the target...
-			that.get(type).patch.call(that, target, key, change, options)
-		})
-		return obj
+				// call the actual patch...
+				var res = that.get(type).patch.call(that, target, key, change, obj, options)
+
+				// replace the parent value...
+				if(parent){
+					parent[parent_key] = res
+
+				} else {
+					obj = res
+				}
+
+				return obj
+			})
+			.pop()
 	},
 
 	// Check if diff is applicable to obj...
@@ -779,6 +803,12 @@ var Types = {
 // 		//
 // 		walk: function(diff, func, path){
 // 			.. 
+// 		},
+//
+// 		// Patch the object...
+//		//
+// 		patch: function(target, key, change, root, options){
+// 			..
 // 		},
 //
 // 		// Reverse the change...
@@ -882,7 +912,7 @@ Types.set(Object, {
 		// array item...
 		// XXX should this make this decision???
 		} else {
-			return this.get(Array).patch.call(this, obj, key, change)
+			this.get(Array).patch.call(this, obj, key, change)
 		}
 		return obj
 	},
@@ -1166,12 +1196,26 @@ Types.set('Text', {
 		}, path)
 	},
 
-	// XXX
+	// XXX this is not efficient...
+	// 		...find a way to do all the changes in one go...
 	// XXX add object compatibility checks...
-	patch: function(change, obj){
-		// XXX
+	patch: function(obj, key, change){
+		var lines = obj.split(/\n/)
+
+		// remove line...
+		if(!('B' in change) || change.B == this.NONE){
+			lines.splice(key, 1)
+
+		// insert line...
+		} else if(!('A' in change) || change.A == this.NONE){
+			lines.splice(key, 0, change.B)
+
+		// replace line...
+		} else {
+			obj.split(/\n/)[key] = change.B
+		} 
 		
-		return obj
+		return lines.join('\n')
 	},
 })
 
