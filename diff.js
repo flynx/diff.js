@@ -12,6 +12,18 @@ var object = require('ig-object')
 
 
 /*********************************************************************/
+// XXX General ToDo:
+//		- revise architecture...
+//		- revise name -- this contains two parts:
+//			1. diff / patch and friends
+//			2. cmp and patterns
+//		  we need the name to be short and descriptive, possible 
+//		  candidates:
+//		  	- objdiff / object-diff
+//		  	- diffcmp / diff-cmp
+//		  	- compare
+//
+//
 //---------------------------------------------------------------------
 // Helpers...
 
@@ -216,6 +228,8 @@ var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
 
 //---------------------------------------------------------------------
 // Logic patterns...
+// XXX we should handle LogicType-LogicType comparisons in a graceful 
+// 		way...
 // XXX should this also include the above placeholders, especially ANY???
 
 var LogicTypeClassPrototype = {
@@ -236,22 +250,19 @@ object.makeConstructor('LogicType',
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // ANY...
-// XXX should this be a singleton???
 var ANYPrototype = {
-	cmp: function(obj, cmp){
-		return true
-	},
+	cmp: function(obj, cmp){ 
+		return true },
 }
 ANYPrototype.__proto__ = LogicTypePrototype
 
 var ANY = 
-module.ANY = 
-object.makeConstructor('ANY', 
-		ANYPrototype)
+module.ANY = new (object.makeConstructor('ANY', ANYPrototype))()
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // OR...
+// XXX does not work with diff at the moment...
 var ORPrototype = {
 	cmp: function(obj, cmp){
 		cmp = cmp || function(a, b){
@@ -277,6 +288,7 @@ object.makeConstructor('OR',
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // AND...
+// XXX does not work with diff at the moment...
 var ANDPrototype = {
 	cmp: function(obj, cmp){
 		cmp = cmp || function(a, b){
@@ -702,7 +714,7 @@ var Types = {
 	diff: function(A, B, options, cache){
 		var that = this
 		options = options ? Object.create(options) : {}
-		options.cmp = options.cmp 
+		var cmp = options.cmp = options.cmp 
 			|| function(a, b){
 				return a === b 
 					|| a == b 
@@ -711,8 +723,10 @@ var Types = {
 					|| b === that.ANY 
 					// logic patterns...
 					// XXX not final...
-					|| (a instanceof LogicType && a.cmp(b, cmp))
-					|| (b instanceof LogicType && b.cmp(a, cmp))
+					|| (a instanceof LogicType 
+						&& a.cmp(b, cmp))
+					|| (b instanceof LogicType 
+						&& b.cmp(a, cmp))
 					// diff...
 					// NOTE: diff(..) is in closure, so we do not need to 
 					// 		pass options and cache down. 
@@ -1449,6 +1463,7 @@ function(diff, obj, options, types){
 
 
 //---------------------------------------------------------------------
+// XXX EXPERIMENTAL...
 
 // XXX
 var DiffClassPrototype = {

@@ -1,13 +1,8 @@
 {
-  "name": "object-diff",
+  "name": "diff-cmp",
   "version": "0.0.1",
   "description": "",
   "main": "diff.js",
-  "author": {
-    "name": "Alex A. Naanou",
-    "email": "alex.nanou@gmail.com",
-    "url": "https://github.com/flynx"
-  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
