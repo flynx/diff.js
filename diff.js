@@ -530,7 +530,6 @@ var Types = {
 
 	// Diff format walker...
 	//
-	// XXX need to sort out return values...
 	walk: function(diff, func, path){
 		// no changes...
 		if(diff == null){
@@ -564,7 +563,6 @@ var Types = {
 	// 		the changes in ordered containers...
 	// 		...it might also be possible to provide vertical/topological 
 	// 		"fuzz", need to think about this...
-	// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
 	flatten: function(diff, options){
 		options = options || {}
 		var res = []
@@ -573,10 +571,11 @@ var Types = {
 	},
 
 
+	// Reverse diff...
+	//
 	reverse: function(diff){
 		var that = this
-		var res = []
-		this.walk(diff, function(change){ 
+		return this.walk(diff, function(change){ 
 			var c = Object.assign({}, change)
 
 			// path...
@@ -589,9 +588,8 @@ var Types = {
 				type.reverse 
 					&& (c = type.reverse.call(that, c)) })
 
-			res.push(c)
+			return c
 		})
-		return res
 	},
 
 
@@ -861,12 +859,17 @@ Types.set('Basic', {
 		return func(change)
 	},
 	reverse: function(change){
-		var t = change.B
 		var b = 'B' in change
-		'A' in change 
-			&& (change.B = change.A)
-		b 
-			&& (change.A = t)
+		var a = 'A' in change 
+		var t = change.B
+
+		a ?
+			(change.B = change.A)
+			: (delete change.B)
+		b ? 
+			(change.A = t)
+			: (delete change.A)
+
 		return change
 	},
 })
