@@ -228,16 +228,40 @@ var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
 
 //---------------------------------------------------------------------
 // Logic patterns...
-// XXX we should handle LogicType-LogicType comparisons in a graceful 
-// 		way...
 // XXX should this also include the above placeholders, especially ANY???
+// XXX need to avoid recursion...
 
 var LogicTypeClassPrototype = {
 }
 
 var LogicTypePrototype = {
-	cmp: function(obj, cmp){
+	__cmp__: function(obj, cmp){
 		return false
+	},
+	// XXX need to track loops...
+	cmp: function(obj, cmp, cache){
+		cmp = cmp || function(a, b){
+			return a === b 
+				|| a == b 
+				|| (a.__cmp__ && a.__cmp__(b, cmp, cache))
+				|| (b.__cmp__ && b.__cmp__(a, cmp, cache)) }
+
+		// cache...
+		cache = cache || new Map()
+		var c = cache.get(this) || new Map()
+		cache.has(c) 
+			|| cache.set(this, c)
+		if(c.has(obj)){
+			return c.get(obj)
+		}
+
+		var res = this.__cmp__(obj, cmp, cache)
+			|| (obj.__cmp__ ? 
+				obj.__cmp__(this, cmp, cache) 
+				: false)
+		c.set(obj, res)
+
+		return res
 	},
 }
 
@@ -251,7 +275,7 @@ object.makeConstructor('LogicType',
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // ANY...
 var ANYPrototype = {
-	cmp: function(obj, cmp){ 
+	__cmp__: function(obj, cmp){ 
 		return true },
 }
 ANYPrototype.__proto__ = LogicTypePrototype
@@ -262,11 +286,8 @@ module.ANY = new (object.makeConstructor('ANY', ANYPrototype))()
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // OR...
-// XXX does not work with diff at the moment...
 var ORPrototype = {
-	cmp: function(obj, cmp){
-		cmp = cmp || function(a, b){
-			return a === b || a == b }
+	__cmp__: function(obj, cmp){
 		for(var m of this.members){
 			if(cmp(m, obj)){
 				return true
@@ -288,11 +309,8 @@ object.makeConstructor('OR',
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // AND...
-// XXX does not work with diff at the moment...
 var ANDPrototype = {
-	cmp: function(obj, cmp){
-		cmp = cmp || function(a, b){
-			return a === b || a == b }
+	__cmp__: function(obj, cmp){
 		for(var m of this.members){
 			if(!cmp(m, obj)){
 				return false
@@ -438,7 +456,8 @@ object.makeConstructor('AND',
 // 		may be useful for a more thorough compatibility check.
 //
 // XXX Q: do we need to support both the flat and tree diff formats???
-var Types = {
+var Types =
+module.Types = {
 	__cache: null,
 
 	// Object-level utilities...
@@ -714,38 +733,32 @@ var Types = {
 	diff: function(A, B, options, cache){
 		var that = this
 		options = options ? Object.create(options) : {}
+		options.as_object = options.as_object || []
+
+		// basic compare...
+		// XXX do we need to differentiate things like: new Number(123) vs. 123???
+		var bcmp = function(a, b, cmp){
+			return a === b 
+				|| a == b 
+				// basic patters...
+				|| a === that.ANY 
+				|| b === that.ANY 
+				// logic patterns...
+				// XXX not final...
+				|| (a instanceof LogicType 
+					&& a.cmp(b, cmp))
+				|| (b instanceof LogicType 
+					&& b.cmp(a, cmp))
+		}
+		// deep compare...
 		var cmp = options.cmp = options.cmp 
 			|| function(a, b){
-				return a === b 
-					|| a == b 
-					// basic patters...
-					|| a === that.ANY 
-					|| b === that.ANY 
-					// logic patterns...
-					// XXX not final...
-					|| (a instanceof LogicType 
-						&& a.cmp(b, cmp))
-					|| (b instanceof LogicType 
-						&& b.cmp(a, cmp))
+				return bcmp(a, b, cmp)
 					// diff...
 					// NOTE: diff(..) is in closure, so we do not need to 
 					// 		pass options and cache down. 
 					// 		see cache setup below...
 					|| (diff(a, b) == null) }
-		options.as_object = options.as_object || []
-
-
-		// same object...
-		// XXX do we need to differentiate things like: new Number(123) vs. 123???
-		if(A === that.ANY || B === that.ANY || A === B || A == B){
-			return null
-		}
-
-		// builtin types...
-		if(this.DIFF_TYPES.has(A) || this.DIFF_TYPES.has(B)){
-			return this.handle('Basic', {}, diff, A, B, options)
-		}
-
 
 		// cache...
 		cache = this.__cache = cache || this.__cache || new Map()
@@ -756,6 +769,16 @@ var Types = {
 			return d
 		}
 
+
+		// same object...
+		if(bcmp(A, B)){
+			return null
+		}
+
+		// builtin types...
+		if(this.DIFF_TYPES.has(A) || this.DIFF_TYPES.has(B)){
+			return this.handle('Basic', {}, diff, A, B, options)
+		}
 
 		// find the matching type...
 		var type = this.detect(A, B, options)
