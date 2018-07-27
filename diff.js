@@ -736,6 +736,8 @@ module.Types = {
 		options.as_object = options.as_object || []
 
 		// basic compare...
+		// XXX nesting still does not work...
+		// 		diff(OR([1,2], [2,1]), [1,2]) -> false (should be true)
 		// XXX do we need to differentiate things like: new Number(123) vs. 123???
 		var bcmp = function(a, b, cmp){
 			return a === b 
@@ -746,10 +748,9 @@ module.Types = {
 				// logic patterns...
 				// XXX not final...
 				|| (a instanceof LogicType 
-					&& a.cmp(b, cmp))
+					&& a.cmp(b, cmp, cache))
 				|| (b instanceof LogicType 
-					&& b.cmp(a, cmp))
-		}
+					&& b.cmp(a, cmp, cache)) }
 		// deep compare...
 		var cmp = options.cmp = options.cmp 
 			|| function(a, b){
