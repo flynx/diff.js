@@ -12,6 +12,13 @@ var object = require('ig-object')
 
 
 /*********************************************************************/
+
+var FORMAT_NAME = 'object-diff'
+var FORMAT_VERSION = '0.0.0'
+
+
+
+/*********************************************************************/
 // XXX General ToDo:
 //		- revise architecture...
 //		- revise name -- this contains two parts:
@@ -228,9 +235,11 @@ var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
 
 //---------------------------------------------------------------------
 // Logic patterns...
-// XXX should this also include the above placeholders, especially ANY???
+//
+// XXX add use-case docs...
 // XXX need to avoid recursion...
-
+//
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var LogicTypeClassPrototype = {
 }
 
@@ -272,7 +281,7 @@ object.makeConstructor('LogicType',
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// ANY...
+// Singleton, will compare to anything as true...
 var ANY = 
 module.ANY = 
 new (object.makeConstructor('ANY', Object.assign(new LogicType(), {
@@ -281,7 +290,7 @@ new (object.makeConstructor('ANY', Object.assign(new LogicType(), {
 })))()
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// NOT...
+// Will compare as true to anything but .value...
 var NOT = 
 module.NOT = 
 object.makeConstructor('NOT', Object.assign(new LogicType(), {
@@ -293,7 +302,7 @@ object.makeConstructor('NOT', Object.assign(new LogicType(), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// OR...
+// Will compare as true if one of the .members compares as true...
 var OR = 
 module.OR = 
 object.makeConstructor('OR', Object.assign(new LogicType(), {
@@ -311,7 +320,7 @@ object.makeConstructor('OR', Object.assign(new LogicType(), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// AND...
+// Will compare as true if all of the .members compare as true...
 var AND = 
 module.AND = 
 object.makeConstructor('AND', Object.assign(new LogicType(), {
@@ -1458,8 +1467,8 @@ function(A, B, options, types){
 
 	return {
 		// system meta information...
-		format: 'object-diff',
-		varsion: '0.0.0',
+		format: FORMAT_NAME,
+		varsion: FORMAT_VERSION,
 		structure: options.tree_diff ? 'tree' : 'flat',
 		placeholders: {
 			NONE: options.NONE || Types.NONE,
@@ -1495,11 +1504,12 @@ function(diff, obj, options, types){
 //---------------------------------------------------------------------
 // XXX EXPERIMENTAL...
 
+// XXX make this an instance of Types...
 // XXX
 var DiffClassPrototype = {
 	// system meta information...
-	format: 'object-diff',
-	version: '0.0.0',
+	format: FORMAT_NAME,
+	version: FORMAT_VERSION,
 
 	// XXX PROTOTYPE -- uses Types...
 	cmp: function(A, B){
@@ -1509,6 +1519,8 @@ var DiffClassPrototype = {
 	fromJSON: function(json){
 	},
 }
+// XXX hack...
+//DiffClassPrototype.__proto__ = Types.clone()
 
 // XXX
 var DiffPrototype = {
