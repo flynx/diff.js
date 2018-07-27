@@ -273,19 +273,30 @@ object.makeConstructor('LogicType',
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // ANY...
-var ANYPrototype = {
+var ANY = 
+module.ANY = 
+new (object.makeConstructor('ANY', Object.assign(new LogicType(), {
 	__cmp__: function(obj, cmp){ 
 		return true },
-}
-ANYPrototype.__proto__ = LogicTypePrototype
+})))()
 
-var ANY = 
-module.ANY = new (object.makeConstructor('ANY', ANYPrototype))()
-
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// NOT...
+var NOT = 
+module.NOT = 
+object.makeConstructor('NOT', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp){
+		return !cmp(this.value, obj) },
+	__init__: function(value){
+		this.value = value
+	},
+}))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // OR...
-var ORPrototype = {
+var OR = 
+module.OR = 
+object.makeConstructor('OR', Object.assign(new LogicType(), {
 	__cmp__: function(obj, cmp){
 		for(var m of this.members){
 			if(cmp(m, obj)){
@@ -297,18 +308,13 @@ var ORPrototype = {
 	__init__: function(...members){
 		this.members = members
 	},
-}
-ORPrototype.__proto__ = LogicTypePrototype
-
-var OR = 
-module.OR = 
-object.makeConstructor('OR', 
-		ORPrototype)
-
+}))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // AND...
-var ANDPrototype = {
+var AND = 
+module.AND = 
+object.makeConstructor('AND', Object.assign(new LogicType(), {
 	__cmp__: function(obj, cmp){
 		for(var m of this.members){
 			if(!cmp(m, obj)){
@@ -320,13 +326,7 @@ var ANDPrototype = {
 	__init__: function(...members){
 		this.members = members
 	},
-}
-ANDPrototype.__proto__ = LogicTypePrototype
-
-var AND = 
-module.AND = 
-object.makeConstructor('AND', 
-		ANDPrototype)
+}))
 
 
 
