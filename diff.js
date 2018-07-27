@@ -256,9 +256,8 @@ var LogicTypePrototype = {
 		}
 
 		var res = this.__cmp__(obj, cmp, cache)
-			|| (obj.__cmp__ ? 
-				obj.__cmp__(this, cmp, cache) 
-				: false)
+			|| (obj.__cmp__ 
+				&& obj.__cmp__(this, cmp, cache))
 		c.set(obj, res)
 
 		return res
@@ -772,7 +771,11 @@ module.Types = {
 
 
 		// same object...
-		if(bcmp(A, B)){
+		// XXX this will essentially do a full diff of sub-objects, not 
+		// 		sure if this is the right way to go here...
+		// 		...this is not that big a dean as we are caching everything
+		// 		but still this is not obvious...
+		if(bcmp(A, B, cmp)){
 			return null
 		}
 
