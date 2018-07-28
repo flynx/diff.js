@@ -19,8 +19,11 @@ var FORMAT_VERSION = '0.0.0'
 
 
 /*********************************************************************/
+//
 // XXX General ToDo:
 //		- revise architecture...
+//			- merge Types and Diff
+//			- cmp(..) / diff(..) / patch(..) to use Diff(..)
 //		- revise name -- this contains two parts:
 //			1. diff / patch and friends
 //			2. cmp and patterns
@@ -1023,7 +1026,6 @@ Types.set('Basic', {
 	},
 })
 
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Object...
 // XXX add attr order support...
@@ -1117,7 +1119,6 @@ Types.set(Object, {
 		return items
 	},
 })
-
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Array...
@@ -1305,11 +1306,9 @@ Types.set(Array, {
 	},
 })
 
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX add JS types like Map, Set, ...
 // XXX
-
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Text...
@@ -1368,6 +1367,22 @@ Types.set('Text', {
 		return lines.join('\n')
 	},
 })
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// LogicType...
+/*/ XXX show the actual part of the pattern we got a mismatch...
+Types.set(LogicType, {
+	handle: function(obj, diff, A, B, options){
+		// XXX
+	}
+	walk: function(diff, func, path){
+		// XXX
+	},
+	reverse: function(change){
+		// XXX
+	},
+})
+//*/
 
 
 
