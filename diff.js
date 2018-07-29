@@ -475,8 +475,6 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 // NOTE: this will lose some meta-information the diff format contains 
 // 		like the type information which is not needed for patching but 
 // 		may be useful for a more thorough compatibility check.
-//
-// XXX Q: do we need to support both the flat and tree diff formats???
 var Types =
 module.Types = {
 	// system meta information...
@@ -597,7 +595,22 @@ module.Types = {
 	// 		-> handler-type
 	//
 	//
-	// NOTE: if A and B types mismatch we treat them as Object...
+	// Basic type detection rules (single object):
+	// 	1. use type's .check(..) to check object belongs to a type
+	// 	2. use instanceof / .constructor to get object type
+	//
+	// NOTE: for single object stage 2 will return the actual object 
+	// 		type (.constructor)
+	//
+	//
+	// Basic common type detection rules:
+	// 	- A and B types mismatch
+	// 		-> 'Basic'
+	// 	- A and B types match and type handler is in .types
+	// 		-> type
+	// 	- A and B types match and type handler is NOT in .types
+	// 		-> 'Basic'
+	//
 	detect: function(A, B, options){
 		var type
 		var types = this.typeKeys
@@ -614,7 +627,8 @@ module.Types = {
 
 		// search instances...
 		if(!type){
-			type = Object
+			//type = Object
+			type = A.constructor
 			for(var t of types){
 				// leave pure objects for last...
 				if(t === Object 
@@ -636,7 +650,8 @@ module.Types = {
 			var typeB = this.detect(B, undefined, options)
 
 			// type match...
-			if(type === typeB){
+			//if(type === typeB){
+			if(type === typeB && this.has(type)){
 				return type
 
 			// partial hit -- type mismatch...
@@ -650,6 +665,7 @@ module.Types = {
 
 	// Handle the difference between A and B...
 	//
+	// NOTE: this uses .detect(..) for type detection.
 	handle: function(type, obj, diff, A, B, options){
 		// set .type
 		type = type == null ? this.detect(A, B, options) : type
@@ -1327,7 +1343,7 @@ Types.set(Array, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX add JS types like Map, Set, ...
-/*/ XXX for now unsupported types will be treated as basic changes...
+/*/ XXX for now unsupported types will be treated as object...
 Types.set(Map, {
 	handle: function(obj, diff, A, B, options){
 		throw new TypeError('Map handling not implemented.')
