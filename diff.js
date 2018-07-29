@@ -230,7 +230,6 @@ var proxy = function(path, func){
 //---------------------------------------------------------------------
 // Placeholders...
 
-//var ANY = {type: 'ANY_PLACEHOLDER'}
 var NONE = {type: 'NONE_PLACEHOLDER'}
 var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
 
@@ -583,6 +582,10 @@ module.Types = {
 				return that.get(e) })
 	},
 
+	// helper...
+	typeCall: function(type, func, ...args){
+		return this.get(type)[func].call(this, ...args) },
+
 
 	// Detect handler type...
 	//
@@ -776,8 +779,6 @@ module.Types = {
 		options.as_object = options.as_object || []
 
 		// basic compare...
-		// XXX nesting still does not work...
-		// 		diff(OR([1,2], [2,1]), [1,2]) -> false (should be true)
 		// XXX do we need to differentiate things like: new Number(123) vs. 123???
 		var bcmp = function(a, b, cmp){
 			return a === b 
@@ -786,7 +787,6 @@ module.Types = {
 				|| a === that.ANY 
 				|| b === that.ANY 
 				// logic patterns...
-				// XXX not final...
 				|| (a instanceof LogicType 
 					&& a.cmp(b, cmp, cache))
 				|| (b instanceof LogicType 
@@ -834,10 +834,10 @@ module.Types = {
 		// handle type...
 		var res = this.handle(type, {}, diff, A, B, options)
 		// handle things we treat as objects (skipping object itself)...
-		if(type !== Object && type != 'Basic'
-				&& (options.as_object == 'all' 
-					|| options.as_object.indexOf(type) >= 0
-					|| (type.name && options.as_object.indexOf(type.name) >= 0))){
+		if(!options.no_attributes 
+				&& type !== Object 
+				&& type != 'Basic'){
+			// XXX need to strip array items from this...
 			this.handle(Object, res, diff, A, B, options)
 		}
 
@@ -986,6 +986,20 @@ module.Types = {
 // 		//	.walk(diff, func, path)
 // 		//		-> res
 // 		//
+// 		// NOTE: by default this will not handle attributes (.attrs), so
+// 		//		if one needs to handle them Object's .walk(..) should be 
+// 		//		explicitly called...
+// 		//		Example:
+// 		//			walk: function(diff, func, path){
+// 		//				var res = []
+// 		//
+// 		//				// handle specific diff stuff...
+// 		//				
+// 		//				return res
+// 		//					// pass the .items handling to Object
+// 		//					.concat(this.typeCall(Object, 'walk', diff, func, path))
+// 		//			}
+// 		//		XXX can this be automated???
 // 		walk: function(diff, func, path){
 // 			.. 
 // 		},
@@ -1107,19 +1121,20 @@ Types.set(Object, {
 	},
 
 	// part handlers...
-	attributes: function(diff, A, B, options, filter){
-		// JSON mode -> ignore attr order...
+	//
+	// NOTE: attr filtering depends on the order that Object.keys(..) 
+	// 		returns indexed items and attributes it...
+	attributes: function(diff, A, B, options){
+		// get the attributes...
+		// special case: we omit array indexes from the attribute list...
 		var kA = Object.keys(A)
+		kA = A instanceof Array ? 
+			kA.slice(A.filter(function(){ return true }).length)
+			: kA
 		var kB = Object.keys(B)
-
-		if(filter){
-			kA = filter instanceof Array ? 
-				filter.slice() 
-				: kA.filter(filter)
-			kB = filter instanceof Array ? 
-				filter.slice() 
-				: kB.filter(filter)
-		}
+		kB = B instanceof Array ? 
+			kB.slice(B.filter(function(){ return true }).length)
+			: kB
 
 		var B_index = kB.reduce(function(res, k){
 			res[k] = null 
@@ -1161,15 +1176,19 @@ Types.set(Object, {
 Types.set(Array, {
 	handle: function(obj, diff, A, B, options){
 		obj.length = A.length != B.length ? [A.length, B.length] : []
-		obj.items = this.get(Array).items.call(this, diff, A, B, options)
+		obj.items = this.typeCall(Array, 'items', diff, A, B, options)
 	},
 	walk: function(diff, func, path){
 		var that = this
 		var NONE = this.NONE
-		var res = []
-		//*/
+		var attrs = []
 		// items...
-		return res.concat((diff.items || [])
+		return (diff.items || [])
+			.filter(function(e){ 
+				return e.length == 2 ? 
+					attrs.push(e) && false 
+					: true
+			})
 			.map(function(e){
 				var v = e[2]
 
@@ -1180,7 +1199,7 @@ Types.set(Array, {
 				var p = path.concat([i])
 
 				return that.walk(v, func, p)
-			}))
+			})
 			// length...
 			// NOTE: we keep this last as the length should be the last 
 			// 		thing to get patched...
@@ -1191,6 +1210,8 @@ Types.set(Array, {
 					B: diff.length[1],
 				})
 				: [])
+			// attributes...
+			.concat(this.typeCall(Object, 'walk', {items: attrs}, func, path))
 	},
 	// XXX add object compatibility checks...
 	patch: function(obj, key, change){
@@ -1377,7 +1398,7 @@ Types.set('Text', {
 		// use the array walk but add 'Text' type to each change...
 		// NOTE: we need to abide by the protocol and call Array's 
 		// 		.flatten(..) the context of the main object...
-		return this.get(Array).walk.call(this, diff, function(c){
+		return this.typeCall(Array, 'walk', diff, function(c){
 			// skip length changes...
 			if(c.path[c.path.length-1] == 'length'){
 				return
