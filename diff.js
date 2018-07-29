@@ -339,6 +339,71 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 	},
 }))
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Will match a number greater than or equal to min and less than max... 
+var NUMBER = 
+module.NUMBER = 
+object.makeConstructor('NUMBER', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp){
+		if(typeof(obj) == 'number' 
+				&& obj >= this.min
+				&& obj <= this.max){
+			return true
+		}
+		return false
+	},
+	__init__: function(min, max){
+		this.min = min
+		this.max = max
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX IN(A) == L iff A in L
+var IN = 
+module.IN = 
+object.makeConstructor('IN', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp){
+		// XXX
+	},
+	__init__: function(value){
+		this.value = value
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX AT(A, K) == L iff A in L and L[K] == A
+// XXX .key can't be a pattern at this point...
+var AT = 
+module.AT = 
+object.makeConstructor('AT', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp){
+		if(cmp(obj[this.key], this.value)){
+			return true
+		}
+		return false
+	},
+	__init__: function(value, key){
+		this.key = key
+		this.value = value
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX OF(A, N) == L iff L contains N occurrences of A
+var OF = 
+module.OF = 
+object.makeConstructor('OF', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp){
+		// XXX
+	},
+	__init__: function(value, count){
+		this.count = count
+		this.value = value
+	},
+}))
+
+
 
 
 //---------------------------------------------------------------------
@@ -951,8 +1016,8 @@ module.Types = {
 // 		// General guide:
 // 		//	>50			- to be checked before 'Basic'
 // 		//	<50 and >0	- after Basic but before unprioritized types
-// 		//	<-50 and <0	- after unprioritized types but before Object
-// 		//	<-100		- to be checked after Object -- this is a bit 
+// 		//	<=50 and <0	- after unprioritized types but before Object
+// 		//	<=100		- to be checked after Object -- this is a bit 
 // 		//				  pointless in JavaScript.
 // 		//
 // 		// NOTE: when this is set to 0, then type will be checked in 
@@ -1474,8 +1539,10 @@ Types.set(LogicType, {
 // 		//		diffed...
 // 		min_text_length: 1000 | -1,
 //
-// 		// list of types we treat as objects, i.e. check attributes...
-// 		as_object: [ .. ] | Set([ .. ]),
+//		// If true, disable attribute diff for non Object's...
+//		//
+//		// XXX should be more granular...
+//		no_attributes: false | true,
 //
 // 		// Plaeholders to be used in the diff..
 // 		//
