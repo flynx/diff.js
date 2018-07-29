@@ -346,6 +346,17 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 // Diff framework...
 //
 //
+// General architecture:
+// 	Types
+// 		Low-level diff routines.
+// 	Diff
+// 		User interface to Types.
+// 		XXX should this encapsulate or inherit (current) or do a mix of two??
+// 			...a mix of the two seems logical as we might need access to 
+// 			the type handlers (proxy) and the rest of the low-level stuff 
+// 			can be hidden apart for very specific things (.cmp(..))...
+//
+//
 // Format (tree):
 // 	<diff> ::=
 // 		// no difference...
@@ -377,7 +388,6 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 //  
 // 				// Slice change, the <diff> is treated as two arrays that 
 // 				// must be sliced in/out of the targets...
-// 				// XXX not implemented -- need to think about this...
 // 				[[<key-a>], [<key-b>], <diff>],
 // 				
 // 				...
@@ -469,18 +479,21 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 // XXX Q: do we need to support both the flat and tree diff formats???
 var Types =
 module.Types = {
-	__cache: null,
+	// system meta information...
+	format: FORMAT_NAME,
+	version: FORMAT_VERSION,
 
 	// Object-level utilities...
 	clone: function(){
 		var res = Object.create(this)
-		res.__cache = null
+		//res.__cache = null
 		res.handlers = new Map(this.handlers.entries())
 		return res
 	},
 	clear: function(){
 		// XXX should we instead this.handlers.clear() ???
-		this.handlers = new Map()
+		//this.handlers = new Map()
+		this.handlers.clear()
 		return this
 	},
 
@@ -563,14 +576,14 @@ module.Types = {
 					: order.get(a) - order.get(b)
 			})
 	},
+	get typeNames(){
+		return this.typeKeys.map(function(e){ return e.name || e }) },
 	get types(){
 		var that = this
 		return this.typeKeys
 			.map(function(e){ 
 				return that.get(e) })
 	},
-	get typeNames(){
-		return this.typeKeys.map(function(e){ return e.name || e }) },
 
 
 	// Detect handler type...
@@ -773,7 +786,8 @@ module.Types = {
 					|| (diff(a, b) == null) }
 
 		// cache...
-		cache = this.__cache = cache || this.__cache || new Map()
+		//cache = this.__cache = cache || this.__cache || new Map()
+		cache = cache || new Map()
 		var diff = cache.diff = cache.diff || function(a, b){
 			var l2 = cache.get(a) || new Map()
 			var d = l2.get(b) || that.diff(a, b, options, cache)
@@ -826,6 +840,11 @@ module.Types = {
 
 	// Deep-compare A and B...
 	//
+	// XXX would be nice to do a fast fail version of this, i.e. fail on 
+	// 		first mismatch and do not waste time compiling a full diff we 
+	// 		are going to throw away anyway...
+	// 		...this would be possible with a live .walk(..) that would 
+	// 		report changes as it finds them...
 	cmp: function(A, B, options){
 		return this.diff(A, B, options) == null },
 
@@ -1308,7 +1327,14 @@ Types.set(Array, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX add JS types like Map, Set, ...
-// XXX
+/*/ XXX for now unsupported types will be treated as basic changes...
+Types.set(Map, {
+	handle: function(obj, diff, A, B, options){
+		throw new TypeError('Map handling not implemented.')
+	},
+})
+//*/
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Text...
@@ -1387,23 +1413,12 @@ Types.set(LogicType, {
 
 
 //---------------------------------------------------------------------
-// Deep-compare objects...
+// The diff object...
 //
-// XXX would be nice to do a fast fail version of this, i.e. fail on 
-// 		first mismatch and do not waste time compiling a full diff we 
-// 		are going to throw away anyway...
-// 		...this would be possible with a live .walk(..) that would 
-// 		report changes as it finds them...
-var cmp =
-module.cmp =
-function(A, B){
-	return Types.clone().cmp(A, B) }
-
-
-// Diff interface function...
-//
-// This is a front-end to Types.diff(..), adding a metadata wrapper to 
-// the format, and optionally handling the topology of the output...
+//	Create a diff...
+// 		Diff(A, B[, options])
+// 		new Diff(A, B[, options])
+// 			-> diff
 //
 //
 // Options format:
@@ -1473,71 +1488,61 @@ function(A, B){
 // 		at least the differences between them must be JSON compatible.
 // NOTE: recursive inputs will result in recursive diff objects.
 //
-// XXX revise how the types can be passed in...
-var diff =
-module.diff = 
-function(A, B, options, types){
-	options = options || {}
-	types = types || Types.clone()
-
-	return {
-		// system meta information...
-		format: FORMAT_NAME,
-		varsion: FORMAT_VERSION,
-		structure: options.tree_diff ? 'tree' : 'flat',
-		placeholders: {
-			NONE: options.NONE || Types.NONE,
-			EMPTY: options.NONE || Types.EMPTY,
-		},
-
-		// user data...
-		options: Object.assign({}, options),
-
-		diff: options.tree_diff ? 
-			types.diff(A, B, options) 
-			//: types.flatten(Types.diff(A, B, options), null, null, options)
-			: types.flatten(Types.diff(A, B, options), options)
-	}}
-
-
-// Apply diff (patch) to obj...
 //
-// This is a front-end to Types.patch(..), handling loading the options
-// from the diff...
 //
-var patch =
-module.patch = 
-function(diff, obj, options, types){
-	var types = types || Types.clone()
-	diff.placeholders 
-		&& Object.assign(types, diff.placeholders)
-	return types.patch(diff, obj, options) 
-}
-
-
-
-//---------------------------------------------------------------------
-// XXX EXPERIMENTAL...
-
-// XXX make this an instance of Types...
-// XXX
+// Extending Diff...
+//
+// 	// create a new diff constructor...
+// 	var ExtendedDiff = Diff.clone('ExtendedDiff')
+//
+// 	// add a new type...
+// 	ExtendedDiff.types.set(SomeType, {
+// 		...
+// 	})
+//
+// 	// add a new synthetic type...
+// 	ExtendedDiff.types.set('SomeOtherType', {
+// 		check: function(..){ .. },
+// 		...
+// 	})
+//
+// 	// remove an existing type...
+// 	ExtendedDiff.types.delete('Text')
+//
+//
 var DiffClassPrototype = {
-	// system meta information...
-	format: FORMAT_NAME,
-	version: FORMAT_VERSION,
+	// encapsulate the low-level types...
+	types: Types,
 
-	// XXX PROTOTYPE -- uses Types...
-	cmp: function(A, B){
-		return Types.clone().cmp(A, B) },
+	// create a new diff constructor with a detached handler set...
+	clone: function(name){
+		var cls = Object.create(this.__proto__)
+		cls.types = this.types.clone()
+		return object.makeConstructor(name || 'EDiff', cls, this())
+	},
 
-	// XXX
+	// proxy generic stuff to .types...
+	cmp: proxy('types.cmp'),
+
+	// XXX do format/version conversion...
 	fromJSON: function(json){
+		var diff = new this()
+
+		if(json.format == diff.format
+				&& json.version == diff.version){
+			// XXX do a deep copy...
+			diff.options = JSON.parse(JSON.stringify(json.options))
+			diff.placeholders = JSON.parse(JSON.stringify(json.placeholders))
+			diff.diff = JSON.parse(JSON.stringify(json.diff))
+
+			return diff
+
+		// XXX do format conversion...
+		} else {
+		}
 	},
 }
-// XXX hack...
-//DiffClassPrototype.__proto__ = Types.clone()
 
-// XXX
 var DiffPrototype = {
 	// system meta information...
 	get format(){
@@ -1550,24 +1555,25 @@ var DiffPrototype = {
 	options: null,
 	diff: null,
 
-	// XXX PROTOTYPE -- uses Types...
 	__init__: function(A, B, options){
 		// XXX should we add a default options as prototype???
 		options = this.options = options || {}
 		this.structure = options.tree_diff ? 'tree' : 'flat'
 		this.placeholders = {
-			NONE: options.NONE || Types.NONE,
-			EMPTY: options.NONE || Types.EMPTY,
+			NONE: options.NONE 
+				|| this.constructor.types.NONE,
+			EMPTY: options.NONE 
+				|| this.constructor.types.EMPTY,
 		}
 
-		var types = types || Types.clone()
+		var diff = this.constructor.types
 
 		// XXX should the Types instance be stored/cached here???
 		this.diff = arguments.length == 0 ?
 				null
 			: options.tree_diff ? 
-				types.diff(A, B, options) 
-			: types.flatten(Types.diff(A, B, options), options)
+				diff.diff(A, B, options) 
+			: diff.flatten(diff.diff(A, B, options), options)
 	},
 
 	// XXX should this be a deep copy???
@@ -1587,19 +1593,16 @@ var DiffPrototype = {
 	},
 
 	// NOTE: this will not mutate this...
-	// XXX PROTOTYPE -- uses Types...
 	reverse: function(obj){
 		var res = this.clone()
-		res.diff = Types.reverse(this.diff)
+		res.diff = this.constructor.types.reverse(this.diff)
 		return res
 	}, 
 
-	// XXX PROTOTYPE -- uses Types...
 	check: function(obj){
-		Types.clone().check(this.diff, obj) },
-	// XXX PROTOTYPE -- uses Types...
+		return this.constructor.types.check(this.diff, obj) },
 	patch: function(obj){
-		return Types.patch(this, obj) },
+		return this.constructor.types.patch(this, obj) },
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
@@ -1621,9 +1624,33 @@ var DiffPrototype = {
 var Diff = 
 module.Diff = 
 object.makeConstructor('Diff', 
-		DiffClassPrototype, 
-		DiffPrototype)
+	DiffClassPrototype, 
+	DiffPrototype)
 		
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Short hands...
+
+// Deep-compare objects...
+//
+var cmp =
+module.cmp =
+function(A, B){
+	return Diff.cmp(A, B) }
+
+
+// Apply diff (patch) to obj...
+//
+// This is a front-end to Types.patch(..), handling loading the options
+// from the diff...
+var patch =
+module.patch = 
+function(diff, obj, options, types){
+	return (diff instanceof Diff ? 
+			diff
+			: Diff.fromJSON(diff))
+		.patch(obj, options) }
+
 
 
 
