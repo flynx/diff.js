@@ -10,6 +10,7 @@ XXX Intro
 			- [Diff class API](#diff-class-api)
 			- [Diff object API](#diff-object-api)
 			- [Supported JavaScript objects](#supported-javascript-objects)
+			- [Extended 'Text' object support](#extended-text-object-support)
 			- [Options](#options)
 		- [Deep compare](#deep-compare)
 		- [Patterns](#patterns)
@@ -106,6 +107,14 @@ Containers that support item changes include:
 
 Additionally attribute changes are supported for all non basic objects (i.e. anything for which `typeof X` yeilds `"object"`). This can be disabled by setting `options.no_attributes` to `true` (see: [Options](#options) below).
 
+#### Extended 'Text' object support
+
+A *text* is JavaScript string that is long (>1000 chars, configurable in [Oprions](#options)) and multiline string.
+
+A *text* is treated as an `Array` containing the string split into lines (split by `'\n'`).
+
+Shorter strings or strings containing just a single line are treated as *basic* monolithic string objects and included in the *diff* as-is.
+
 
 #### Options
 
@@ -200,7 +209,7 @@ The big picture is a bit more complicated, `Diff(..)` and friends support allot 
 
 ## Extending Diff
 
-Create a new diff handler:
+Create a new diff constructor:
 
 ```javascript
 var ExtendedDiff = diff.Diff.clone()
