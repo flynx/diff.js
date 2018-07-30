@@ -232,21 +232,85 @@ If types of the not equal object pair mismatch `'Basic'` is used and both are st
 Adding new *synthetic* type handler:
 ```javascript
 ExtendedDiff.types.set('SomeType', {
+	// Type check priority (optional)...
+	//
+	// Types are checked in order of occurrence in .handlers unless
+	// type .priority is set to a non 0 value.
+	//
+	// Default priorities:
+	//	Text:		100
+	//		Needs to run checks before 'Basic' as its targets are
+	//		long strings that 'Basic' also catches.
+	//	Basic:		50
+	//		Needs to be run before we do other object checks.
+	//	Object:		-100
+	//		Needs to run after everything else as it will match any
+	//		set of objects.
+	//
+	// General guide:
+	//	>50			- to be checked before 'Basic'
+	//	<50 and >0	- after Basic but before unprioritized types
+	//	<=50 and <0	- after unprioritized types but before Object
+	//	<=100		- to be checked after Object -- this is a bit 
+	//				  pointless in JavaScript.
+	//
+	// NOTE: when this is set to 0, then type will be checked in 
+	//		order of occurrence...
 	priority: null,
 
+	// Check if obj is compatible (optional)...
+	//
+	// 	.check(obj[, options])
+	//		-> bool
+	//
 	check: function(obj, options){
 		// ...
 	},
 
+	// Handle/populate the diff of A and B...
+	//
+	// Input diff format:
+	//	{
+	//		type: <type-name>,
+	//	}
+	//
 	handle: function(obj, diff, A, B, options){
 		// ...
 	},
+
+	// Walk the diff...
+	//
+	// This will pass each change to func(..) and return its result...
+	//
+	//	.walk(diff, func, path)
+	//		-> res
+	//
+	// NOTE: by default this will not handle attributes (.attrs), so
+	//		if one needs to handle them Object's .walk(..) should be 
+	//		explicitly called...
+	//		Example:
+	//			walk: function(diff, func, path){
+	//				var res = []
+	//
+	//				// handle specific diff stuff...
+	//				
+	//				return res
+	//					// pass the .items handling to Object
+	//					.concat(this.typeCall(Object, 'walk', diff, func, path))
+	//			}
 	walk: function(diff, func, path){
 		// ...
 	},
+
+ 	// Patch the object...
+	//
 	patch: function(target, key, change, root, options){
 		// ...
 	},
+
+
+ 	// Reverse the change in diff...
+	//
 	reverse: function(change){
 		// ...
 	},
