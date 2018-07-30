@@ -205,7 +205,7 @@ Remove an existing type handler:
 ExtendedDiff.types.delete('Text')
 ```
 
-The [source code](./diff.js#1098) is a good example for this as the base `Diff(..)` is built using this API, but note that we are registirng types on the `Types` object rather that on the `Diff` itself, there is no functional difference other than how the main code is structured internally.
+The [source code](./diff.js#L1098) is a good example for this as the base `Diff(..)` is built using this API, but note that we are registirng types on the `Types` object rather that on the `Diff` itself, there is no functional difference other than how the main code is structured internally.
 
 
 ## The Diff format
