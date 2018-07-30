@@ -4,6 +4,7 @@ XXX Intro
 
 - [Object diff](#object-diff)
 	- [Motivation](#motivation)
+		- [Goals / Features](#goals--features)
 	- [General](#general)
 		- [Diff](#diff)
 			- [Diff class API](#diff-class-api)
@@ -24,7 +25,14 @@ XXX Intro
 
 ## Motivation
 
-XXX goals
+XXX
+
+### Goals / Features
+- Full JSON *diff* support
+- Support for JavaScript objects without restrictions
+- *Text diff* support
+- Configurable and extensible implementation
+- As simple as possible
 
 XXX alternatives
 
@@ -32,7 +40,7 @@ XXX alternatives
 ## General
 
 Install the package:
-```bash
+```shell
 $ npm install --save object-diff
 ```
 
@@ -59,22 +67,29 @@ var diff = new Diff(A, B)
 
 #### Diff class API
 
-`.cmp(A, B) -> bool`
+`Diff.cmp(A, B) -> bool`  
+Deep compare `A` to `B`.
 
-`.clone(<title>)`
+`Diff.clone(<title>)`  
+Clone the `Diff` constructor, useful for extending or tweaking the type handlers (see: [Extending](#extending-diff) below).
 
-`.fromJSON(json) -> diff`
+`Diff.fromJSON(json) -> diff`  
+Build a diff object from JSON (exported via `.json()`).
 
 
 #### Diff object API
 
-`.patch(X) -> X'`
+`diff.patch(X) -> X'`  
+Apply "diff* (or *patch*) `X` to `X'` state.
 
-`.unpatch(X') -> X`
+`diff.unpatch(X') -> X`  
+Undo *diff" application to `X'` returning it to `X` state.
 
-`.check(X) -> bool`
+`diff.check(X) -> bool`  
+Check if *diff* is compatible/applicable to `X`. This essentially checks if the *left hand side* of the *diff* matches the corresponding nodes of `X`.
 
-`.json() -> JSON`
+`diff.json() -> JSON`  
+Serialize the *diff* to JSON. Note that the output may or may not be JSON compatible depending on the inputs.
 
 
 #### Supported JavaScript objects
@@ -89,7 +104,7 @@ Containers that support item changes include:
 - ~~`Map` / `WeakMap`~~ *(planned but not done yet)*
 - ~~`Set` / `WeakSet`~~ *(planned but not done yet)*
 
-Additionally attribute changes are supported for all non basic objects (i.e. anything that `typeof X` yeilds `"object"`) and can be disabled by setting `options.no_attributes` to `true`.
+Additionally attribute changes are supported for all non basic objects (i.e. anything for which `typeof X` yeilds `"object"`). This can be disabled by setting `options.no_attributes` to `true` (see: [Options](#options) below).
 
 
 #### Options
@@ -133,32 +148,37 @@ cmp(A, B)
 
 Diff.cmp(A, B)
 ```
+XXX
 
 
 ### Patterns
 
 XXX General description...
 
-`ANY` - matches anything
+`ANY`  
+Matches anything
 
-`NOT(A)` - match anything but `A`
+`NOT(A)`  
+Match anything but `A`
 
-`OR(A[, .. ])` - match if *one* of the arguments matches
+`OR(A[, .. ])`  
+Match if *one* of the arguments matches
 
-`AND(A[, .. ])` - matches of *all* of the arguments match
+`AND(A[, .. ])`  
+Matches of *all* of the arguments match
 
 XXX examples...
 
 
 ### Patterns (EXPERIMENTAL)
 
-`NUMBER(min, max)`
+`NUMBER(min, max)`  
 
-`IN(A)`
+`IN(A)`  
 
-`AT(A, K)`
+`AT(A, K)`  
 
-`OF(A, N)`
+`OF(A, N)`  
 
 
 ### JSON compatibility
@@ -264,7 +284,9 @@ This format is used internally but may be useful for introspection.
 
 ## Contacts, feedback and contributions
 
-XXX github, npm, email, ...
+- https://github.com/flynx/object-diff.js
+- XXX npm
+- https://github.com/flynx
 
 
 ## License
