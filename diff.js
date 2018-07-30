@@ -549,7 +549,15 @@ module.Types = {
 	clone: function(){
 		var res = Object.create(this)
 		//res.__cache = null
-		res.handlers = new Map(this.handlers.entries())
+		res.handlers = new Map([...this.handlers
+			.entries()]
+			.map(function(e){ 
+				return [
+					e[0], 
+					e[1].handle ? 
+						Object.create(e[1]) 
+						: e[1]
+				] }))
 		return res
 	},
 	clear: function(){

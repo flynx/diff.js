@@ -8,6 +8,7 @@ XXX Intro
 		- [Diff](#diff)
 			- [Diff class API](#diff-class-api)
 			- [Diff object API](#diff-object-api)
+			- [Supported JavaScript object](#supported-javascript-object)
 			- [Options](#options)
 		- [Deep compare](#deep-compare)
 		- [Patterns](#patterns)
@@ -43,6 +44,12 @@ var diff = require('object-diff')
 This module supports both [requirejs](https://requirejs.org/) and [node's](https://nodejs.org/) `require(..)`.
 
 
+XXX list basic use-cases:
+- creating / manipulating a diff
+- patching objects
+- deep comparisons and patterns
+
+
 ### Diff
 
 Create a diff object:
@@ -58,6 +65,7 @@ var diff = new Diff(A, B)
 
 `.fromJSON(json) -> diff`
 
+
 #### Diff object API
 
 `.patch(X) -> X'`
@@ -67,6 +75,21 @@ var diff = new Diff(A, B)
 `.check(X) -> bool`
 
 `.json() -> JSON`
+
+
+#### Supported JavaScript object
+
+The object support can be split into two, basic objects that are stored as-is and containers that support item changes when their types match.
+
+All JavaScript objects/values are supported in the basic form / as-is.
+
+Containers that support item changes include:
+- `Object`
+- `Array`
+- ~~`Map` / `WeakMap`~~ *(planned but not done yet)*
+- ~~`Set` / `WeakSet`~~ *(planned but not done yet)*
+
+Additionally attribute changes are supported for all non basic objects (i.e. anything that `typeof X` yeilds `"object"`) and can be disabled by setting `options.no_attributes` to `true`.
 
 
 #### Options
@@ -163,11 +186,28 @@ Create a new diff handler:
 var ExtendedDiff = diff.Diff.clone()
 ```
 
-Add new type handler:
+This has the same API as `Diff` and inherits from it, but it has an independent handler map that can be manipulated without affecting the original `Diff` setup.
 
+When building a *diff* type checking is done in two stages:
+1. via the `.check(..)` method of each implementing handler, this approach is used for *synthetic* type handlers, as an exmple look at `'Text'` that matches long multi-line string objects.
+2. type-checking via `instanceof` / `.construtor`, this is used for JavaScript objects like `Array` and `Object` instances, for example.
+
+Hence we have two types of handler objects, those that implement `.check(..)` and can have any arbitrary object as a key (though a nice and readable string is recommended), and objects that have the constructor as key against which `instanceof` checks are done.
+
+`.check(..)` has priority to enable handlers to intercept handling of special cases, `'Text'` handler would be a good example.
+
+If types of the not equal object pair mismatch `'Basic'` is used and both are stored in the *diff* as-is.
+
+`.priority` enables sorting of checks and handlers within a stage, can be set to a positive, negative `Number` or `null`, priorities with same numbers are sorted in order of occurrence.
+
+Adding new *synthetic* type handler:
 ```javascript
-ExtendedDiff.types.set(SomeType, {
+ExtendedDiff.types.set('SomeType', {
 	priority: null,
+
+	check: function(obj, options){
+		// ...
+	},
 
 	handle: function(obj, diff, A, B, options){
 		// ...
@@ -184,28 +224,24 @@ ExtendedDiff.types.set(SomeType, {
 })
 ```
 
-
-Add new *synthetic* type handler:
-
+Adding new type handler (checked via `instanceof` / `.constructor`):
 ```javascript
-ExtendedDiff.types.set(SomeType, {
+ExtendedDiff.types.set(SomeOtherType, {
 	priority: null,
 
-	check: function(obj, options){
-		// ...
-	},
+	// NOTE: .check(..) is not needed here...
 
+	// the rest of the methods are the same as before...
 	// ...
 })
 ```
-
 
 Remove an existing type handler:
 ```javascript
 ExtendedDiff.types.delete('Text')
 ```
 
-The [source code](./diff.js#L1098) is a good example for this as the base `Diff(..)` is built using this API, but note that we are registirng types on the `Types` object rather that on the `Diff` itself, there is no functional difference other than how the main code is structured internally.
+The [source code](./diff.js#L1098) is a good example for this as the base `Diff(..)` is built using this API, but note that we are registering types on the `Types` object rather than on the `Diff` itself, there is no functional difference other than how the main code is structured internally.
 
 
 ## The Diff format
@@ -228,7 +264,7 @@ This format is used internally but may be useful for introspection.
 
 ## Contacts, feedback and contributions
 
-XXX github, email, ...
+XXX github, npm, email, ...
 
 
 ## License
