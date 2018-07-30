@@ -1662,6 +1662,12 @@ var DiffPrototype = {
 	get version(){
 		return this.constructor.version },
 
+	// XXX is this the right thing to do???
+	// 		...the bad thing here is that this can be mutated from the 
+	// 		instance when returned like this...
+	get types(){
+		return this.constructor.type },
+
 	structure: null, 
 	placeholders: null,
 	options: null,

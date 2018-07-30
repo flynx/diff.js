@@ -336,6 +336,13 @@ ExtendedDiff.types.delete('Text')
 
 The [source code](./diff.js#L1098) is a good example for this as the base `Diff(..)` is built using this API, but note that we are registering types on the `Types` object rather than on the `Diff` itself, there is no functional difference other than how the main code is structured internally.
 
+The handler methods are all called in the context of the `Diff.types` object.
+
+To call a different type handler's methods use:
+```javascript
+this.typeCall(HandlerType, 'method', ...args)
+```
+For an example see: `Object` handler's `.walk(..)` in [diff.js](./diff.js#L1178).
 
 ## The Diff format
 
