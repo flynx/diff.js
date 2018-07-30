@@ -8,7 +8,7 @@ XXX Intro
 		- [Diff](#diff)
 			- [Diff class API](#diff-class-api)
 			- [Diff object API](#diff-object-api)
-			- [Supported JavaScript object](#supported-javascript-object)
+			- [Supported JavaScript objects](#supported-javascript-objects)
 			- [Options](#options)
 		- [Deep compare](#deep-compare)
 		- [Patterns](#patterns)
@@ -77,7 +77,7 @@ var diff = new Diff(A, B)
 `.json() -> JSON`
 
 
-#### Supported JavaScript object
+#### Supported JavaScript objects
 
 The object support can be split into two, basic objects that are stored as-is and containers that support item changes when their types match.
 
