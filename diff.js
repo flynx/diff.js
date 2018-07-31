@@ -1493,12 +1493,10 @@ Types.set('Text', {
 	},
 
 	// XXX this is not efficient...
-	// 		...find a way to do all the changes in one go...
-	// 		would be nice to cache this but then we would need a finalize 
-	// 		stage to apply the results...
+	// 		...need a way to .join(..) the end result only once (now it 
+	// 		is done once per change)...
 	// XXX add object compatibility checks...
 	patch: function(obj, key, change){
-		/* XXX this needs to be in the context of the diff/pathc instance...
 		var cache = this._text_cache = this._text_cache || {}
 		var lines = cache[obj] || obj.split(/\n/)
 
@@ -1506,9 +1504,6 @@ Types.set('Text', {
 
 		// XXX do this on the finalize stage...
 		return res.join('\n')
-		//*/
-		return this.typeCall(Array, 'patch', obj.split(/\n/), key, change)
-			.join('\n')
 	},
 })
 
@@ -1725,14 +1720,14 @@ var DiffPrototype = {
 	// NOTE: this will not mutate this...
 	reverse: function(obj){
 		var res = this.clone()
-		res.diff = this.constructor.types.reverse(this.diff)
+		res.diff = Object.create(this.constructor.types).reverse(this.diff)
 		return res
 	}, 
 
 	check: function(obj){
-		return this.constructor.types.check(this.diff, obj) },
+		return Object.create(this.constructor.types).check(this.diff, obj) },
 	patch: function(obj){
-		return this.constructor.types.patch(this, obj) },
+		return Object.create(this.constructor.types).patch(this, obj) },
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
