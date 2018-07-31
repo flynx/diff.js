@@ -17,6 +17,9 @@ var FORMAT_NAME = 'object-diff'
 var FORMAT_VERSION = '0.0.0'
 
 
+var MIN_TEXT_LENGTH = 100
+
+
 
 /*********************************************************************/
 //
@@ -908,8 +911,7 @@ module.Types = {
 		var res = this.handle(type, {}, diff, A, B, options)
 		// handle things we treat as objects (skipping object itself)...
 		if(!options.no_attributes 
-				&& type !== Object 
-				&& type != 'Basic'){
+				&& !this.get(type).no_attributes){
 			// XXX need to strip array items from this...
 			this.handle(Object, res, diff, A, B, options)
 		}
@@ -1116,6 +1118,7 @@ module.Types = {
 // 		container...
 Types.set('Basic', {
 	priority: 50,
+	no_attributes: true,
 
 	check: function(obj, options){
 		return typeof(obj) != 'object' },
@@ -1153,6 +1156,9 @@ Types.set('Basic', {
 // XXX add attr order support...
 Types.set(Object, {
 	priority: -100,
+	// NOTE: the object will itself handle the attributes, no need for a 
+	// 		second pass...
+	no_attributes: true,
 
 	handle: function(obj, diff, A, B, options){
 		// attrebutes/items...
@@ -1448,15 +1454,16 @@ Types.set(Map, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Text...
-// XXX TEST: .patch(..)
+// XXX TEST: .patch(..) -- does not work yet...
 Types.set('Text', {
 	// this must be checked before the 'Base'...
 	priority: 100,
+	no_attributes: true,
 
 	check: function(obj, options){
 		options = options || {}
-		min = options.min_text_length || 1000
-		return typeof(obj) == 'string' 
+		min = options.min_text_length || MIN_TEXT_LENGTH
+		return typeof(obj) == typeof('str')
 			&& min > 0 
 			&& (obj.length > min 
 				&& /\n/.test(obj))
@@ -1545,7 +1552,7 @@ Types.set(LogicType, {
 // 		//
 // 		// NOTE: a string must also contain at least one \n to be text 
 // 		//		diffed...
-// 		min_text_length: 1000 | -1,
+// 		min_text_length: 100 | -1,
 //
 //		// If true, disable attribute diff for non Object's...
 //		//
@@ -1665,8 +1672,8 @@ var DiffPrototype = {
 	// XXX is this the right thing to do???
 	// 		...the bad thing here is that this can be mutated from the 
 	// 		instance when returned like this...
-	get types(){
-		return this.constructor.type },
+	//get types(){
+	//	return this.constructor.type },
 
 	structure: null, 
 	placeholders: null,
