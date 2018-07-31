@@ -1034,6 +1034,10 @@ module.Types = {
 // 		//		order of occurrence...
 // 		priority: number | null,
 //
+//		// If set to true will disable additional attribute diffing on 
+//		// matching objects...
+// 		no_attributes: false | true,
+//
 // 		// Check if obj is compatible (optional)...
 // 		//
 // 		// 	.check(obj[, options])
