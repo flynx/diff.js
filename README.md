@@ -258,6 +258,10 @@ ExtendedDiff.types.set('SomeType', {
 	//		order of occurrence...
 	priority: null,
 
+	// If set to true will disable additional attribute diffing on 
+	// matching objects...
+	no_attributes: false | true,
+
 	// Check if obj is compatible (optional)...
 	//
 	// 	.check(obj[, options])
