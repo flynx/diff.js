@@ -1494,24 +1494,12 @@ Types.set('Text', {
 
 	// XXX this is not efficient...
 	// 		...find a way to do all the changes in one go...
+	// 		would be nice to cache this but then we would need a finalize 
+	// 		stage to apply the results...
 	// XXX add object compatibility checks...
 	patch: function(obj, key, change){
-		var lines = obj.split(/\n/)
-
-		// remove line...
-		if(!('B' in change) || change.B == this.NONE){
-			lines.splice(key, 1)
-
-		// insert line...
-		} else if(!('A' in change) || change.A == this.NONE){
-			lines.splice(key, 0, change.B)
-
-		// replace line...
-		} else {
-			obj.split(/\n/)[key] = change.B
-		} 
-		
-		return lines.join('\n')
+		return this.typeCall(Array, 'patch', obj.split(/\n/), key, change)
+			.join('\n')
 	},
 })
 
