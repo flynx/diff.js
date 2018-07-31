@@ -1498,6 +1498,15 @@ Types.set('Text', {
 	// 		stage to apply the results...
 	// XXX add object compatibility checks...
 	patch: function(obj, key, change){
+		/* XXX this needs to be in the context of the diff/pathc instance...
+		var cache = this._text_cache = this._text_cache || {}
+		var lines = cache[obj] || obj.split(/\n/)
+
+		var res = cache[obj] = this.typeCall(Array, 'patch', lines, key, change)
+
+		// XXX do this on the finalize stage...
+		return res.join('\n')
+		//*/
 		return this.typeCall(Array, 'patch', obj.split(/\n/), key, change)
 			.join('\n')
 	},
@@ -1654,6 +1663,10 @@ var DiffClassPrototype = {
 	},
 }
 
+// XXX need to make the diff object the universal context...
+// 		...currently the context for most things is .constructor.types 
+// 		which is global this anything that any handler does is not local
+// 		to a particular diff instance...
 var DiffPrototype = {
 	// system meta information...
 	get format(){
