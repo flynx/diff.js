@@ -958,7 +958,7 @@ module.Types = {
 		// NOTE: this will do odd things for conflicting patches...
 		// 		a conflict can be for example patching both a.b and 
 		// 		a.b.c etc.
-		return this
+		return this.postPatch(this
 			.walk(diff.diff, function(change){
 				// replace the object itself...
 				if(change.path.length == 0){
@@ -991,8 +991,17 @@ module.Types = {
 
 				return obj
 			})
-			.pop()
+			.pop())
 	},
+	// Call the post-patch method of the handlers...
+	//
+	postPatch: function(res){
+		var that = this
+		return [...this.types]
+			.filter(function(e){ 
+				return !!e.postPatch })
+			.reduce(function(r, e){
+				return e.postPatch.call(that, r) }, res) },
 
 	// Check if diff is applicable to obj...
 	//
@@ -1087,6 +1096,19 @@ module.Types = {
 //		//
 // 		patch: function(target, key, change, root, options){
 // 			..
+// 		},
+//
+// 		// Finalize the patch process (optional)...
+// 		//
+// 		// This is useful to cleanup and do any final modifications.
+// 		//
+// 		// This is expected to return the result.
+// 		//
+// 		// see: 'Text' for an example.
+// 		postPatch: function(result){
+// 			..
+//
+// 			return result
 // 		},
 //
 // 		// Reverse the change...
@@ -1458,7 +1480,6 @@ Types.set(Map, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Text...
-// XXX TEST: .patch(..) -- does not work yet...
 Types.set('Text', {
 	// this must be checked before the 'Base'...
 	priority: 100,
@@ -1492,18 +1513,39 @@ Types.set('Text', {
 		}, path)
 	},
 
-	// XXX this is not efficient...
-	// 		...need a way to .join(..) the end result only once (now it 
-	// 		is done once per change)...
+	// NOTE: we return here arrays, joining is done in .postPatch(..) 
 	// XXX add object compatibility checks...
 	patch: function(obj, key, change){
 		var cache = this._text_cache = this._text_cache || {}
-		var lines = cache[obj] || obj.split(/\n/)
+		var path = JSON.stringify(change.path.slice(0, -1))
+		var lines = cache[path] = cache[path] || obj.split(/\n/)
 
-		var res = cache[obj] = this.typeCall(Array, 'patch', lines, key, change)
+		var res = cache[path] = this.typeCall(Array, 'patch', lines, key, change)
 
-		// XXX do this on the finalize stage...
-		return res.join('\n')
+		return res
+	},
+
+	// replace all the cached text items...
+	postPatch: function(res){
+		var cache = this._text_cache = this._text_cache || {}
+
+		Object.keys(cache)
+			.forEach(function(path){
+				var text = cache[path].join('\n')
+				path = JSON.parse(path)
+
+				// root object...
+				if(path.length == 0){
+					res = text
+
+				} else {
+					path.slice(0, -1)
+						.reduce(function(res, k){
+							return res[k] }, res)[path.pop()] = text
+				}
+			})
+
+		return res
 	},
 })
 

@@ -312,6 +312,20 @@ ExtendedDiff.types.set('SomeType', {
 		// ...
 	},
 
+	// Finalize the patch process (optional)...
+	//
+	// This is useful to cleanup and do any final modifications.
+	//
+	// This is expected to return the result.
+	//
+	// see: 'Text' for an example.
+	postPatch: function(result){
+		..
+
+		return result
+	},
+
+
 
  	// Reverse the change in diff...
 	//
