@@ -697,8 +697,8 @@ module.Types = {
 		// explicit checkers have priority over instance tests...
 		for(var t of types){
 			var h = this.get(t)
-			if(h.check
-					&& h.check(A, options)){
+			if(h.compatible
+					&& h.compatible(A, options)){
 				type = t
 				break
 			}
@@ -1005,8 +1005,13 @@ module.Types = {
 
 	// Check if diff is applicable to obj...
 	//
+	// XXX should this return a diff???
+	// XXX need a custom check for custom handler...
+	// 		...we also have a name clash whit .check(..) that checks if
+	// 		the object type is compatible to handler...
+	// XXX EXPERIMENTAL...
 	check: function(diff, obj, options){
-		// XXX
+		// XXX try and use .walk(..) + custom handlers for custom types...
 	},
 }
 
@@ -1049,10 +1054,10 @@ module.Types = {
 //
 // 		// Check if obj is compatible (optional)...
 // 		//
-// 		// 	.check(obj[, options])
+// 		// 	.compatible(obj[, options])
 // 		//		-> bool
 // 		//
-// 		check: function(obj, options){ 
+// 		compatible: function(obj, options){ 
 // 			.. 
 // 		},
 //
@@ -1146,7 +1151,7 @@ Types.set('Basic', {
 	priority: 50,
 	no_attributes: true,
 
-	check: function(obj, options){
+	compatible: function(obj, options){
 		return typeof(obj) != 'object' },
 	handle: function(obj, diff, A, B, options){
 		;(!options.keep_none && A === NONE)
@@ -1485,7 +1490,7 @@ Types.set('Text', {
 	priority: 100,
 	no_attributes: true,
 
-	check: function(obj, options){
+	compatible: function(obj, options){
 		options = options || {}
 		min = options.min_text_length || MIN_TEXT_LENGTH
 		return typeof(obj) == typeof('str')
@@ -1659,7 +1664,7 @@ Types.set(LogicType, {
 //
 // 	// add a new synthetic type...
 // 	ExtendedDiff.types.set('SomeOtherType', {
-// 		check: function(..){ .. },
+// 		compatible: function(..){ .. },
 // 		...
 // 	})
 //

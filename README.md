@@ -32,6 +32,7 @@ XXX
 - Full JSON *diff* support
 - Support for JavaScript objects without restrictions
 - *Text diff* support
+- ~~Optional attribute order support~~ (not done yet)
 - Configurable and extensible implementation
 - As simple as possible
 
@@ -132,7 +133,7 @@ Shorter strings or strings containing just a single line are treated as *basic* 
 	//
 	// NOTE: a string must also contain at least one \n to be text 
 	//		diffed...
-	min_text_length: 1000 | -1,
+	min_text_length: 100 | -1,
 
 	// If true, disable attribute diff for non Object's...
 	//
@@ -267,7 +268,7 @@ ExtendedDiff.types.set('SomeType', {
 	// 	.check(obj[, options])
 	//		-> bool
 	//
-	check: function(obj, options){
+	compatible: function(obj, options){
 		// ...
 	},
 
