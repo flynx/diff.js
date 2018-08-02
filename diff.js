@@ -979,7 +979,65 @@ module.Types = {
 				var key = change.path[change.path.length-1]
 
 				// call the actual patch...
-				var res = that.typeCall(type, target, key, change, obj, options)
+				var res = that.typeCall(type, 'patch', target, key, change, obj, options)
+
+				// replace the parent value...
+				if(parent){
+					parent[parent_key] = res
+
+				} else {
+					obj = res
+				}
+
+				return obj
+			})
+			.pop())
+	},
+
+
+	// XXX make this an extensible walker...
+	//		...ideally passed a func(A, B, obj, handle(action, value)) where:
+	//			A				- change.A
+	//			B				- change.B
+	//			obj				- object at change.path
+	//			action			- action to perform ('replace', 'return', ...)
+	//			value			- action argument...
+	_walk: function(diff, obj, options){
+		var that = this
+		var NONE = diff.placeholders.NONE
+		var EMPTY = diff.placeholders.EMPTY
+		var options = diff.options
+
+		// NOTE: in .walk(..) we always return the root object bing 
+		// 		patched, this way the handlers have control over the 
+		// 		patching process and it's results on all levels...
+		// 		...and this is why we can just pop the last item and 
+		// 		return it...
+		// NOTE: this will do odd things for conflicting patches...
+		// 		a conflict can be for example patching both a.b and 
+		// 		a.b.c etc.
+		return this.postPatch(this
+			.walk(diff.diff, function(change){
+				// replace the object itself...
+				if(change.path.length == 0){
+					return change.B
+				}
+
+				var type = change.type || Object
+
+				var parent
+				var parent_key
+				var target = change.path
+					.slice(0, -1)
+					.reduce(function(res, e){
+							parent = res
+							parent_key = e
+							return res[e]
+						}, obj)
+				var key = change.path[change.path.length-1]
+
+				// call the actual patch...
+				var res = that.typeCall(type, '_walk', target, key, change, obj, options)
 
 				// replace the parent value...
 				if(parent){
