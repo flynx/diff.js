@@ -996,12 +996,19 @@ module.Types = {
 
 
 	// XXX make this an extensible walker...
-	//		...ideally passed a func(A, B, obj, handle(action, value)) where:
+	//		...ideally passed a func(A, B, obj, ...) where:
 	//			A				- change.A
 	//			B				- change.B
 	//			obj				- object at change.path
-	//			action			- action to perform ('replace', 'return', ...)
-	//			value			- action argument...
+	//		func(..) should be able to:
+	//			- replace obj with B (patch)
+	//				...current implementation of .patch(..)
+	//			- check obj against B (check)
+	//			- swap A and B (reverse) ???
+	//			- ...
+	//		one way to do this is to pass func(..) a handler that it 
+	//		would call to control the outcome...
+	//		...still needs thought, but this feels right...
 	_walk: function(diff, obj, options){
 		var that = this
 		var NONE = diff.placeholders.NONE
