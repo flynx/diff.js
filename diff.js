@@ -979,7 +979,7 @@ module.Types = {
 				var key = change.path[change.path.length-1]
 
 				// call the actual patch...
-				var res = that.get(type).patch.call(that, target, key, change, obj, options)
+				var res = that.typeCall(type, target, key, change, obj, options)
 
 				// replace the parent value...
 				if(parent){
@@ -1010,8 +1010,42 @@ module.Types = {
 	// 		...we also have a name clash whit .check(..) that checks if
 	// 		the object type is compatible to handler...
 	// XXX EXPERIMENTAL...
+	// 		...this seems to be mirroring most of the patch architecture
+	// 		need to either merge or generalize...
 	check: function(diff, obj, options){
-		// XXX try and use .walk(..) + custom handlers for custom types...
+		var that = this
+		options = options || {}
+		var NONE = options.NONE || this.NONE
+		var EMPTY = options.EMPTY || this.EMPTY
+
+		return this.flatten(diff)
+			.filter(function(change){
+				var key = change.path[change.path.length-1]
+				var target = change.path
+					.slice(0, -1)
+					.reduce(function(res, k){ 
+						return res[k] }, obj)
+
+				// check root...
+				if(key == null){
+					return !that.cmp(change.A, target)
+				}
+
+				// keep only the mismatching changes...
+				return change.type && that.get(change.type).check ?
+						!that.typeCall(change.type, 'check', target, key, change)
+					: !('A' in change) || change.A === NONE ?
+						!(key in target)
+					: change.A === EMPTY ?
+						!(!(key in target) && target[key] === undefined)
+					// XXX should this be handled by Array???
+					: key instanceof Array ? (
+						key[0] instanceof Array ?
+							!that.cmp(change.A, 
+								target.slice(key[0][0], key[0][0] + target.length[0]))
+						: !that.cmp(change.A, target[key[0]]))
+					: !that.cmp(change.A, target[key])
+			})
 	},
 }
 
@@ -1051,6 +1085,7 @@ module.Types = {
 //		// If set to true will disable additional attribute diffing on 
 //		// matching objects...
 // 		no_attributes: false | true,
+//
 //
 // 		// Check if obj is compatible (optional)...
 // 		//
@@ -1225,7 +1260,7 @@ Types.set(Object, {
 		// array item...
 		// XXX should this make this decision???
 		} else {
-			this.get(Array).patch.call(this, obj, key, change)
+			this.typeCall(Array, 'patch', obj, key, change)
 		}
 		return obj
 	},
