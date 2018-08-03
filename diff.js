@@ -286,13 +286,38 @@ object.makeConstructor('LogicType',
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Singleton, will compare to anything as true...
+// Singletons...
+var makeSingletonPattern = function(name, check){
+	return new (object.makeConstructor(
+		name, 
+		Object.assign(new LogicType(), { __cmp__: check })))() }
+
 var ANY = 
 module.ANY = 
-new (object.makeConstructor('ANY', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp){ 
-		return true },
-})))()
+	makeSingletonPattern('ANY', 
+		function(obj, cmp){ return true }) 
+
+// XXX should support regexp as arg...
+var STRING = 
+module.STRING = 
+	makeSingletonPattern('STRING', 
+		function(obj, cmp){ 
+			return obj === STRING || typeof(obj) == typeof('str') }) 
+
+// XXX support range checking, ...
+var NUMBER = 
+module.NUMBER = 
+	makeSingletonPattern('NUMBER', 
+		function(obj, cmp){ 
+			return obj === NUMBER || typeof(obj) == typeof(123) }) 
+
+// XXX support length, types, ...
+var ARRAY = 
+module.ARRAY = 
+	makeSingletonPattern('ARRAY', 
+		function(obj, cmp){ 
+			return obj === ARRAY || obj instanceof Array }) 
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Will compare as true to anything but .value...
@@ -344,8 +369,9 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Will match a number greater than or equal to min and less than max... 
-var NUMBER = 
-module.NUMBER = 
+// XXX rename...
+var _NUMBER = 
+module._NUMBER = 
 object.makeConstructor('NUMBER', Object.assign(new LogicType(), {
 	__cmp__: function(obj, cmp){
 		if(typeof(obj) == 'number' 

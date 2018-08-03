@@ -6,6 +6,7 @@ XXX Intro
 	- [Motivation](#motivation)
 		- [Goals / Features](#goals--features)
 	- [General](#general)
+	- [Installation and loading](#installation-and-loading)
 		- [Diff](#diff)
 			- [Diff class API](#diff-class-api)
 			- [Diff object API](#diff-object-api)
@@ -40,6 +41,45 @@ XXX alternatives
 
 
 ## General
+
+```javascript
+var {Diff, cmp} = require('object-diff')
+
+
+var Bill = {
+	name: 'Bill',
+	age: 20,
+	hair: 'black',
+	skills: [
+	],
+}
+
+var Ted = {
+	name: 'Ted',
+	age: 20,
+	hair: 'blond',
+	skills: [
+	],
+}
+
+var diff = Diff(Bill, Ted)
+
+// XXX examine the diff...
+
+var PERSON = {
+	name: STRING,
+	age: NUMBER,
+	hair: STRING,
+	skills: ARRAY(STRING),
+}
+
+// we can "type-check" things...
+cmp(Bill, PERSON)
+
+```
+
+
+## Installation and loading
 
 Install the package:
 ```shell
