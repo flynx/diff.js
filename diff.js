@@ -286,37 +286,71 @@ object.makeConstructor('LogicType',
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Singletons...
-var makeSingletonPattern = function(name, check){
-	return new (object.makeConstructor(
-		name, 
-		Object.assign(new LogicType(), { __cmp__: check })))() }
+// XXX rename -- this makes a constructor/instance combination...
+var makeCIPattern = function(name, check, init){
+	var o = Object.assign(Object.create(LogicTypePrototype), { 
+		__cmp__: check,
+	})
+	init
+		&& (o.__init__ = init)
+	return object.makeConstructor(name, o, o) 
+}
 
+// Singleton...
 var ANY = 
 module.ANY = 
-	makeSingletonPattern('ANY', 
-		function(obj, cmp){ return true }) 
+	makeCIPattern('ANY', 
+		function(obj, cmp){ return true })()
 
-// XXX should support regexp as arg...
+//	STRING
+//	STRING(string)
+//	STRING(regexp)
+//	STRING(func)
+//		-> pattern
+//
 var STRING = 
 module.STRING = 
-	makeSingletonPattern('STRING', 
+	makeCIPattern('STRING', 
 		function(obj, cmp){ 
-			return obj === STRING || typeof(obj) == typeof('str') }) 
+			return obj === STRING 
+				|| (typeof(obj) == typeof('str')
+					&& (this.value instanceof RegExp ?
+							this.value.test(obj)
+						: typeof(this.value) == typeof('str') ?
+							this.value == obj
+						: this.value instanceof Function ?
+							this.value(obj)
+						// pattern...
+						: this.value != null ?
+							cmp(this.value, obj)
+				   		: true	)) },
+		function(value){ this.value = value }) 
 
+// 	NUMBER
+// 	NUMBER(n)
+// 	NUMBER(min, max)
+// 	NUMBER(func)
+// 		-> pattern
 // XXX support range checking, ...
 var NUMBER = 
 module.NUMBER = 
-	makeSingletonPattern('NUMBER', 
+	makeCIPattern('NUMBER', 
 		function(obj, cmp){ 
-			return obj === NUMBER || typeof(obj) == typeof(123) }) 
+			// XXX do the .value test....
+			return obj === NUMBER || typeof(obj) == typeof(123) },
+		function(...value){ this.value = value }) 
 
+// 	ARRAY
+// 	ARRAY(length)
+// 		-> pattern
 // XXX support length, types, ...
 var ARRAY = 
 module.ARRAY = 
-	makeSingletonPattern('ARRAY', 
+	makeCIPattern('ARRAY', 
 		function(obj, cmp){ 
-			return obj === ARRAY || obj instanceof Array }) 
+			// XXX do the .value test....
+			return obj === ARRAY || obj instanceof Array }, 
+		function(...value){ this.value = value }) 
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
