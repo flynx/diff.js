@@ -296,12 +296,18 @@ var makeCIPattern = function(name, check, init){
 	return object.makeConstructor(name, o, o) 
 }
 
-// Singleton...
+// Singleton ANY...
+//
+// 	ANY
+// 		-> pattern
+//
 var ANY = 
 module.ANY = 
 	makeCIPattern('ANY', 
 		function(obj, cmp){ return true })()
 
+// String pattern...
+//
 //	STRING
 //	STRING(string)
 //	STRING(regexp)
@@ -326,11 +332,16 @@ module.STRING =
 				   		: true	)) },
 		function(value){ this.value = value }) 
 
+
+// Number pattern...
+//
 // 	NUMBER
 // 	NUMBER(n)
 // 	NUMBER(min, max)
+// 	NUMBER(min, max, step)
 // 	NUMBER(func)
 // 		-> pattern
+//
 // XXX support range checking, ...
 var NUMBER = 
 module.NUMBER = 
@@ -340,9 +351,13 @@ module.NUMBER =
 			return obj === NUMBER || typeof(obj) == typeof(123) },
 		function(...value){ this.value = value }) 
 
+
+// Array pattern...
+//
 // 	ARRAY
 // 	ARRAY(length)
 // 		-> pattern
+//
 // XXX support length, types, ...
 var ARRAY = 
 module.ARRAY = 
