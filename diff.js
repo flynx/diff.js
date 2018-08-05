@@ -312,6 +312,7 @@ module.ANY =
 //	STRING(string)
 //	STRING(regexp)
 //	STRING(func)
+//	STRING(pattern)
 //		-> pattern
 //
 var STRING = 
@@ -340,9 +341,9 @@ module.STRING =
 // 	NUMBER(min, max)
 // 	NUMBER(min, max, step)
 // 	NUMBER(func)
+// 	NUMBER(pattern)
 // 		-> pattern
 //
-// XXX TEST...
 var NUMBER = 
 module.NUMBER = 
 	makeCIPattern('NUMBER', 
@@ -360,7 +361,7 @@ module.NUMBER =
 						: this.value.length == 3 ?
 							this.value[0] <= obj 
 								&& this.value[1] > obj
-								&& (obj + (this.value[0] % this.value[2])) % this.value[2]
+								&& (obj + (this.value[0] % this.value[2])) % this.value[2] == 0
 						: this.value[0] instanceof Function ?
 							this.value[0](obj)
 						// pattern...
