@@ -342,13 +342,31 @@ module.STRING =
 // 	NUMBER(func)
 // 		-> pattern
 //
-// XXX support range checking, ...
+// XXX TEST...
 var NUMBER = 
 module.NUMBER = 
 	makeCIPattern('NUMBER', 
 		function(obj, cmp){ 
 			// XXX do the .value test....
-			return obj === NUMBER || typeof(obj) == typeof(123) },
+			return obj === NUMBER 
+				|| (typeof(obj) == typeof(123) 
+					&& (this.value.length == 1 ?
+							this.value[0] == obj
+						// min/max...
+						: this.value.length == 2 ?
+							this.value[0] <= obj 
+								&& this.value[1] > obj
+						// min/max/step...
+						: this.value.length == 3 ?
+							this.value[0] <= obj 
+								&& this.value[1] > obj
+								&& (obj + (this.value[0] % this.value[2])) % this.value[2]
+						: this.value[0] instanceof Function ?
+							this.value[0](obj)
+						// pattern...
+						: this.value[0] != null ?
+							cmp(this.value[0], obj)
+						: true )) },
 		function(...value){ this.value = value }) 
 
 
