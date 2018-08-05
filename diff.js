@@ -348,10 +348,10 @@ var NUMBER =
 module.NUMBER = 
 	makeCIPattern('NUMBER', 
 		function(obj, cmp){ 
-			// XXX do the .value test....
 			return obj === NUMBER 
 				|| (typeof(obj) == typeof(123) 
-					&& (this.value.length == 1 ?
+					&& (this.value.length == 1 
+								&& typeof(this.value[0]) == typeof(123)?
 							this.value[0] == obj
 						// min/max...
 						: this.value.length == 2 ?
