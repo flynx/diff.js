@@ -456,16 +456,16 @@ object.makeConstructor('NUMBER', Object.assign(new LogicType(), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// XXX IN(A) == L iff A in L
+// IN(A) == L iff A in L
+//
+// NOTE: since this can do a search using cmp(..) thid will be slow on 
+// 		large containers...
 // XXX add support for other containers...
 var IN = 
 module.IN = 
 object.makeConstructor('IN', Object.assign(new LogicType(), {
 	__cmp__: function(obj, cmp){
 		var p = this.value
-		// XXX the problem here is that we need to both directly test and 
-		// 		deep test (seatch) for the .value in obj...
-		// 		...this may get really slow...
 		// XXX add support for other stuff like sets and maps...
 		// XXX make this a break-on-match and not a go-through-the-whole-thing
 		return p in obj
