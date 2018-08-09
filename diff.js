@@ -460,6 +460,7 @@ object.makeConstructor('NUMBER', Object.assign(new LogicType(), {
 //
 // NOTE: since this can do a search using cmp(..) thid will be slow on 
 // 		large containers...
+//
 // XXX add support for other containers...
 var IN = 
 module.IN = 
@@ -468,11 +469,12 @@ object.makeConstructor('IN', Object.assign(new LogicType(), {
 		var p = this.value
 		// XXX add support for other stuff like sets and maps...
 		// XXX make this a break-on-match and not a go-through-the-whole-thing
-		return p in obj
-			|| obj.reduce(function(res, e){
-				return res === false ? 
-					cmp(p, e) 
-					: res }, false) },
+		return typeof(obj) == typeof({}) 
+			&& (p in obj
+				|| obj.reduce(function(res, e){
+					return res === false ? 
+						cmp(p, e) 
+						: res }), false) },
 	__init__: function(value){
 		this.value = value
 	},
@@ -1098,6 +1100,12 @@ module.Types = {
 			.pop())
 	},
 
+	// XXX need to support different path element types...
+	// 		...in addition to Object and Array items, support Map, Set, ...
+	getPath: function(obj, path){
+		return path
+			.reduce(function(res, e){
+				return res[e] }, obj) },
 
 	// XXX make this an extensible walker...
 	//		...ideally passed a func(A, B, obj, ...) where:
@@ -1105,15 +1113,15 @@ module.Types = {
 	//			B				- change.B
 	//			obj				- object at change.path
 	//		func(..) should be able to:
-	//			- replace obj with B (patch)
+	//			- replace obj with B/A (patch/unpatch)
 	//				...current implementation of .patch(..)
-	//			- check obj against B (check)
+	//			- check obj against B/A (check)
 	//			- swap A and B (reverse) ???
 	//			- ...
 	//		one way to do this is to pass func(..) a handler that it 
 	//		would call to control the outcome...
 	//		...still needs thought, but this feels right...
-	_walk: function(diff, obj, options){
+	_walk: function(diff, obj, func, options){
 		var that = this
 		var NONE = diff.placeholders.NONE
 		var EMPTY = diff.placeholders.EMPTY
@@ -1128,6 +1136,7 @@ module.Types = {
 		// 		a conflict can be for example patching both a.b and 
 		// 		a.b.c etc.
 		return this.postPatch(this
+			// XXX do we need to merge .walk(..) into this??
 			.walk(diff.diff, function(change){
 				// replace the object itself...
 				if(change.path.length == 0){
@@ -1148,7 +1157,7 @@ module.Types = {
 				var key = change.path[change.path.length-1]
 
 				// call the actual patch...
-				var res = that.typeCall(type, '_walk', target, key, change, obj, options)
+				var res = that.typeCall(type, '_walk', target, key, change, func, options)
 
 				// replace the parent value...
 				if(parent){
@@ -1416,7 +1425,7 @@ Types.set(Object, {
 			})
 	},
 	// XXX add object compatibility checks...
-	patch: function(obj, key, change){
+	patch: function(obj, key, change, ...rest){
 		// object attr...
 		if(typeof(key) == typeof('str')){
 			if(this.cmp(change.B, EMPTY)){
@@ -1429,9 +1438,21 @@ Types.set(Object, {
 		// array item...
 		// XXX should this make this decision???
 		} else {
-			this.typeCall(Array, 'patch', obj, key, change)
+			this.typeCall(Array, 'patch', obj, key, change, ...rest)
 		}
 		return obj
+	},
+
+	_walk: function(obj, key, change, func, ...rest){
+		// object attr...
+		if(typeof(key) == typeof('str')){
+			return func(obj, key, change)
+
+		// array item...
+		// XXX should this make this decision???
+		} else {
+			return this.typeCall(Array, '_walk', obj, key, change, func, ...rest)
+		}
 	},
 
 	// part handlers...
@@ -1590,6 +1611,61 @@ Types.set(Array, {
 		return change
 	},
 
+	_walk: function(obj, key, change, func, ...rest){
+		var i = key instanceof Array ? key[0] : key
+		var j = key instanceof Array ? key[1] : key
+
+		// sub-array manipulation...
+		if(i instanceof Array){
+			i = i[0]
+			j = j[0]
+
+			// XXX check compatibility...
+
+			obj.splice(j, 
+				'A' in change ? 
+					change.A.length
+					: change.length[0], 
+				...('B' in change ? 
+					change.B
+					: new Array(change.length[1])))
+
+		// item manipulation...
+		} else {
+			if(i == null){
+				// XXX this will mess up the indexing for the rest of
+				// 		item removals...
+				obj.splice(j, 0, change.B)
+
+			} else if(j == null){
+				// obj explicitly empty...
+				if('B' in change && this.cmp(change.B, EMPTY)){
+					delete obj[i]
+
+				// splice out obj...
+				} else if(!('B' in change) || this.cmp(change.B, NONE)){
+					// NOTE: this does not affect the later elements
+					// 		indexing as it essentially shifts the 
+					// 		indexes to their obj state for next 
+					// 		changes...
+					obj.splice(i, 1)
+
+				// XXX
+				} else {
+					// XXX
+					console.log('!!!!!!!!!!')
+				}
+
+			} else if(i == j){
+				obj[j] = change.B
+
+			} else {
+				obj[j] = change.B
+			}
+		}
+		
+		return obj
+	},
 	// part handlers...
 	items: function(diff, A, B, options){
 		var NONE = this.NONE
