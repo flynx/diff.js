@@ -1443,6 +1443,7 @@ Types.set(Object, {
 		return obj
 	},
 
+	// XXX EXPERIMENTAL...
 	_walk: function(obj, key, change, func, ...rest){
 		// object attr...
 		if(typeof(key) == typeof('str')){
@@ -1566,7 +1567,16 @@ Types.set(Array, {
 					: change.length[0], 
 				...('B' in change ? 
 					change.B
+					// NOTE: this will insert a bunch of undefined's and
+					// 		not empty slots, this we will need to cleanup
+					// 		after (see below)...
 					: new Array(change.length[1])))
+			// cleanup...
+			if(!('B' in change)){
+				for(var n=j; n <= change.length[1] + j; n++){
+					delete obj[n]
+				}
+			}
 
 		// item manipulation...
 		} else {
@@ -1611,6 +1621,30 @@ Types.set(Array, {
 		return change
 	},
 
+	// XXX EXPERIMENTAL...
+	get: function(obj, key){
+		return key instanceof Array ? 
+			obj.slice(key[0], key[0] + (key[1] != null ? key[1] : 1))
+			: obj[key] },
+	set: function(obj, key, value){
+		// sub-array...
+		if(key instanceof Array){
+			obj.splice(key[0], key[1] || 0, ...value)
+
+		// EMPTY...
+		} else if(value === this.EMPTY){
+			delete obj[key]
+
+		// NONE...
+		} else if(value === this.NONE){
+			obj.splice(key, 0)
+
+		// item...
+		} else {
+			obj[key] = value
+		}
+		return this
+	},
 	_walk: function(obj, key, change, func, ...rest){
 		var i = key instanceof Array ? key[0] : key
 		var j = key instanceof Array ? key[1] : key
@@ -1628,7 +1662,16 @@ Types.set(Array, {
 					: change.length[0], 
 				...('B' in change ? 
 					change.B
+					// NOTE: this will insert a bunch of undefined's and
+					// 		not empty slots, this we will need to cleanup
+					// 		after (see below)...
 					: new Array(change.length[1])))
+			// cleanup...
+			if(!('B' in change)){
+				for(var n=j; n <= change.length[1] + j; n++){
+					delete obj[n]
+				}
+			}
 
 		// item manipulation...
 		} else {
@@ -1754,6 +1797,25 @@ Types.set(Array, {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX add JS types like Map, Set, ...
+// XXX Q: can Map/Set be supported???
+// 		- there is not uniform item access 
+// 			-> need to type path elements
+// 		- Sets have no keys 
+// 			-> no way to access/identify specific items
+// 		- Maps use specific objects as keys 
+// 			-> no way to store a diff and then still match an item
+// 			-> two different keys may be represented by identical in 
+// 				topology but different in identity objects...
+// 				Ex:
+// 					var m = new Map([
+// 						[ [], 123 ],
+// 						[ [], 321 ],
+// 					])
+// 		Possible approaches:
+// 			- index items by order instead of key
+// 			- use a best overall match as indication...
+// 			- serialize...
+// 				...will need a way to sort the items in a stable way...
 /*/ XXX for now unsupported types will be treated as object...
 Types.set(Map, {
 	handle: function(obj, diff, A, B, options){
