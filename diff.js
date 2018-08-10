@@ -622,6 +622,13 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 //			//				  NOTE: if both of the array items are arrays
 //			//						it means that we are splicing array 
 //			//						sections instead of array elements...
+//			//				  XXX should this be:
+//			//						[
+//			//							null | index | [index, length],
+//			//							null | index | [index, length],
+//			//						]
+//			//						...this way would will be able to drop
+//			//						the .length...
 // 			path: [<key>, ...],
 //
 // 			// values in A and B...
@@ -1071,8 +1078,6 @@ module.Types = {
 					return change.B
 				}
 
-				var type = change.type || Object
-
 				var parent
 				var parent_key
 				var target = change.path
@@ -1083,6 +1088,8 @@ module.Types = {
 							return res[e]
 						}, obj)
 				var key = change.path[change.path.length-1]
+
+				var type = change.type || Object
 
 				// call the actual patch...
 				var res = that.typeCall(type, 'patch', target, key, change, obj, options)
@@ -1143,8 +1150,6 @@ module.Types = {
 					return change.B
 				}
 
-				var type = change.type || Object
-
 				var parent
 				var parent_key
 				var target = change.path
@@ -1156,8 +1161,14 @@ module.Types = {
 						}, obj)
 				var key = change.path[change.path.length-1]
 
+				var type = change.type || Object
+
 				// call the actual patch...
-				var res = that.typeCall(type, '_walk', target, key, change, func, options)
+				// XXX the key can be contextual so we either need to pass
+				// 		down the context (change and what side we are 
+				// 		looking from, A or B) or make the keys context-free
+				// 		and handle them here...
+				var res = that.typeCall(type, 'get', target, key)
 
 				// replace the parent value...
 				if(parent){
@@ -1444,16 +1455,12 @@ Types.set(Object, {
 	},
 
 	// XXX EXPERIMENTAL...
-	_walk: function(obj, key, change, func, ...rest){
-		// object attr...
-		if(typeof(key) == typeof('str')){
-			return func(obj, key, change)
-
-		// array item...
-		// XXX should this make this decision???
-		} else {
-			return this.typeCall(Array, '_walk', obj, key, change, func, ...rest)
-		}
+	get: function(obj, key){
+		return typeof(key) == typeof('str') ?
+			obj[key]
+			: this.typeCall(Array, 'get', obj, key) },
+	set: function(obj, key, value){
+		// XXX
 	},
 
 	// part handlers...
@@ -1645,70 +1652,7 @@ Types.set(Array, {
 		}
 		return this
 	},
-	_walk: function(obj, key, change, func, ...rest){
-		var i = key instanceof Array ? key[0] : key
-		var j = key instanceof Array ? key[1] : key
 
-		// sub-array manipulation...
-		if(i instanceof Array){
-			i = i[0]
-			j = j[0]
-
-			// XXX check compatibility...
-
-			obj.splice(j, 
-				'A' in change ? 
-					change.A.length
-					: change.length[0], 
-				...('B' in change ? 
-					change.B
-					// NOTE: this will insert a bunch of undefined's and
-					// 		not empty slots, this we will need to cleanup
-					// 		after (see below)...
-					: new Array(change.length[1])))
-			// cleanup...
-			if(!('B' in change)){
-				for(var n=j; n <= change.length[1] + j; n++){
-					delete obj[n]
-				}
-			}
-
-		// item manipulation...
-		} else {
-			if(i == null){
-				// XXX this will mess up the indexing for the rest of
-				// 		item removals...
-				obj.splice(j, 0, change.B)
-
-			} else if(j == null){
-				// obj explicitly empty...
-				if('B' in change && this.cmp(change.B, EMPTY)){
-					delete obj[i]
-
-				// splice out obj...
-				} else if(!('B' in change) || this.cmp(change.B, NONE)){
-					// NOTE: this does not affect the later elements
-					// 		indexing as it essentially shifts the 
-					// 		indexes to their obj state for next 
-					// 		changes...
-					obj.splice(i, 1)
-
-				// XXX
-				} else {
-					// XXX
-					console.log('!!!!!!!!!!')
-				}
-
-			} else if(i == j){
-				obj[j] = change.B
-
-			} else {
-				obj[j] = change.B
-			}
-		}
-		
-		return obj
-	},
 	// part handlers...
 	items: function(diff, A, B, options){
 		var NONE = this.NONE
@@ -1870,6 +1814,12 @@ Types.set('Text', {
 		var res = cache[path] = this.typeCall(Array, 'patch', lines, key, change)
 
 		return res
+	},
+
+	// XXX EXPERIMENTAL...
+	get: function(obj, key){
+	},
+	set: function(obj, key, value){
 	},
 
 	// replace all the cached text items...
