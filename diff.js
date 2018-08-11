@@ -1521,6 +1521,7 @@ Types.set(Array, {
 		obj.length = A.length != B.length ? [A.length, B.length] : []
 		obj.items = this.typeCall(Array, 'items', diff, A, B, options)
 	},
+	// XXX need to encode length into path/index...
 	walk: function(diff, func, path){
 		var that = this
 		var NONE = this.NONE
@@ -1563,6 +1564,10 @@ Types.set(Array, {
 
 		// sub-array manipulation...
 		if(i instanceof Array){
+			// XXX remove .length support...
+			var li = i[1] == null ? change.length[0] : i[1]
+			var lj = j[1] == null ? change.length[1] : j[1]
+
 			i = i[0]
 			j = j[0]
 
@@ -1571,16 +1576,16 @@ Types.set(Array, {
 			obj.splice(j, 
 				'A' in change ? 
 					change.A.length
-					: change.length[0], 
+					: li, 
 				...('B' in change ? 
 					change.B
 					// NOTE: this will insert a bunch of undefined's and
 					// 		not empty slots, this we will need to cleanup
 					// 		after (see below)...
-					: new Array(change.length[1])))
+					: new Array(lj)))
 			// cleanup...
 			if(!('B' in change)){
-				for(var n=j; n <= change.length[1] + j; n++){
+				for(var n=j; n <= lj + j; n++){
 					delete obj[n]
 				}
 			}
@@ -1657,6 +1662,7 @@ Types.set(Array, {
 	items: function(diff, A, B, options){
 		var NONE = this.NONE
 		var EMPTY = this.EMPTY
+
 		var sections = getDiffSections(A, B, options.cmp)
 
 		// special case: last section set consists of sparse/empty arrays...
@@ -1682,6 +1688,7 @@ Types.set(Array, {
 				// tail sections...
 				// XXX hack???
 				// XXX should we use a different type/sub-type???
+				// XXX need to encode length into path/index...
 				var tail = { type: 'Basic', }
 				ta.filter(() => true).length > 0 
 					&& (tail.A = ta)
@@ -1692,6 +1699,13 @@ Types.set(Array, {
 				a = a.slice(0, l)
 				b = b.slice(0, l)
 
+				// Builds:
+				// 	[
+				// 		[i, j, diff],
+				// 		...
+				// 		[[i], [i], tail],
+				// 	]
+				// XXX need to encode length into path/index...
 				return zip(
 						function(n, elems){
 							return [
@@ -1719,7 +1733,7 @@ Types.set(Array, {
 							] }, 
 						a, b)
 					// clear matching stuff...
-					 .filter(function(e){ 
+					.filter(function(e){ 
 						return e[2] != null})
 					// splice array sub-sections...
 					.concat(ta.length + tb.length > 0 ?
