@@ -1538,7 +1538,7 @@ Types.set(Array, {
 
 				// index...
 				var i = e[0] == e[1] ? 
-					e[0] 
+						e[0] 
 					: [e[0], e[1]]
 				var p = path.concat([i])
 
@@ -1565,8 +1565,8 @@ Types.set(Array, {
 		// sub-array manipulation...
 		if(i instanceof Array){
 			// XXX remove .length support...
-			var li = i[1] == null ? change.length[0] : i[1]
-			var lj = j[1] == null ? change.length[1] : j[1]
+			var li = i[1]
+			var lj = j[1]
 
 			i = i[0]
 			j = j[0]
@@ -1584,8 +1584,9 @@ Types.set(Array, {
 					// 		after (see below)...
 					: new Array(lj)))
 			// cleanup...
+			// XXX test...
 			if(!('B' in change)){
-				for(var n=j; n <= lj + j; n++){
+				for(var n=j; n <= lj + j - li; n++){
 					delete obj[n]
 				}
 			}
@@ -1616,9 +1617,19 @@ Types.set(Array, {
 					console.log('!!!!!!!!!!')
 				}
 
+			// XXX can we have cases where:
+			// 		B is not in change
+			// 		B is NONE
+			// 			...no because then j would be null and handled above...
 			} else if(i == j){
-				obj[j] = change.B
+				if(this.cmp(change.B, EMPTY)){
+					delete obj[j]
 
+				} else {
+					obj[j] = change.B
+				}
+
+			// XXX this is essentially the same as the above case, do we need both??
 			} else {
 				obj[j] = change.B
 			}
@@ -1694,7 +1705,7 @@ Types.set(Array, {
 					&& (tail.A = ta)
 				tb.filter(() => true).length > 0 
 					&& (tail.B = tb)
-				tail.length = [ta.length, tb.length]
+				//tail.length = [ta.length, tb.length]
 
 				a = a.slice(0, l)
 				b = b.slice(0, l)
@@ -1738,8 +1749,10 @@ Types.set(Array, {
 					// splice array sub-sections...
 					.concat(ta.length + tb.length > 0 ?
 						[[
-							[i+l],
-							[j+l],
+							//[i+l],
+							//[j+l],
+							[i+l, ta.length],
+							[j+l, tb.length],
 							tail,
 						]]
 						: [])
