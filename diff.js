@@ -614,21 +614,20 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 //			//	number		- array key 
 //			//				  NOTE: this is actually not different 
 //			//						from a string...
-//			//	array/2		- a set of 2 keys for A and B respectively
-//			//				  NOTE: if one of the array items in undefined 
-//			//						or null then it means that the item
-//			//						does not exist in the corresponding
-//			//						array...
-//			//				  NOTE: if both of the array items are arrays
-//			//						it means that we are splicing array 
-//			//						sections instead of array elements...
-//			//				  XXX should this be:
-//			//						[
-//			//							null | index | [index, length],
-//			//							null | index | [index, length],
-//			//						]
-//			//						...this way would will be able to drop
-//			//						the .length...
+//			//	[
+//			//		null | index | [index, length],
+//			//		null | index | [index, length],
+//			//	]
+//			//				- a set of 2 keys for A and B respectively
+//			//				  if one of the array items in undefined or 
+//			//				  null then it means that the item does not 
+//			//				  exist in the corresponding array...
+//			//				  if both of the array items are arrays it 
+//			//				  means that we are splicing array sections 
+//			//				  instead of array elements...
+//			//				  length indicates the size of the spliced 
+//			//				  out section...
+//			//					XXX revise docs...
 // 			path: [<key>, ...],
 //
 // 			// values in A and B...
@@ -1558,6 +1557,7 @@ Types.set(Array, {
 			.concat(this.typeCall(Object, 'walk', {items: attrs}, func, path))
 	},
 	// XXX add object compatibility checks...
+	// XXX revise...
 	patch: function(obj, key, change){
 		var i = key instanceof Array ? key[0] : key
 		var j = key instanceof Array ? key[1] : key
