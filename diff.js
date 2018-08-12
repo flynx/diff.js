@@ -640,10 +640,6 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 // 			//	EMPTY		- the slot exists but it is empty (set/delete)
 // 			A: <value> | EMPTY | NONE,
 // 			B: <value> | EMPTY | NONE,
-//
-// 			// used if we are splicing array sections to indicate section
-// 			// lengths, useful when splicing sparse sections...
-// 			length: [a, b],
 // 		},
 // 		...
 // 	]
