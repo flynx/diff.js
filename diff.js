@@ -614,19 +614,17 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 //			//	number		- array key 
 //			//				  NOTE: this is actually not different 
 //			//						from a string...
-//			//	[
-//			//		null | index | [index, length],
-//			//		null | index | [index, length],
-//			//	]
-//			//				- a set of 2 keys for A and B respectively
-//			//				  if one of the array items in undefined or 
-//			//				  null then it means that the item does not 
-//			//				  exist in the corresponding array...
+//			//	[<key>, <key>]
+//			//				- a set of 2 keys for A and B respectively,
+//			//				  <key> can be one of:
+//			//					null			- item does not exist.
+//			//					index			- item index.
+//			//					[index, length]	- item is a sub-array and
+//			//										will replace a section
+//			//										of length length. 
 //			//				  if both of the array items are arrays it 
 //			//				  means that we are splicing array sections 
 //			//				  instead of array elements...
-//			//				  length indicates the size of the spliced 
-//			//				  out section...
 //			//					XXX revise docs...
 // 			path: [<key>, ...],
 //
