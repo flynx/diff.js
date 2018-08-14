@@ -320,6 +320,7 @@ module.STRING =
 	makeCIPattern('STRING', 
 		function(obj, cmp){ 
 			return obj === STRING 
+				|| (typeof(obj) == typeof('str') && this.value == null) 
 				|| (typeof(obj) == typeof('str')
 					&& (this.value instanceof RegExp ?
 							this.value.test(obj)
@@ -349,6 +350,7 @@ module.NUMBER =
 	makeCIPattern('NUMBER', 
 		function(obj, cmp){ 
 			return obj === NUMBER 
+				|| (typeof(obj) == typeof(123) && this.value == null) 
 				|| (typeof(obj) == typeof(123) 
 					&& (this.value.length == 1 
 								&& typeof(this.value[0]) == typeof(123)?
@@ -625,7 +627,6 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 //			//				  if both of the array items are arrays it 
 //			//				  means that we are splicing array sections 
 //			//				  instead of array elements...
-//			//					XXX revise docs...
 // 			path: [<key>, ...],
 //
 // 			// values in A and B...
