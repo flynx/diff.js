@@ -563,7 +563,7 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 //  
 // 				// Slice change, the <diff> is treated as two arrays that 
 // 				// must be sliced in/out of the targets...
-// 				[[<key-a>], [<key-b>], <diff>],
+// 				[[<key-a>, <length>], [<key-b>, <length>], <diff>],
 // 				
 // 				...
 // 			],
