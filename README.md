@@ -5,7 +5,7 @@ XXX Intro
 - [Object diff](#object-diff)
 	- [Motivation](#motivation)
 		- [Goals / Features](#goals--features)
-	- [General](#general)
+	- [Introduction](#introduction)
 	- [Installation and loading](#installation-and-loading)
 		- [Diff](#diff)
 			- [Diff class API](#diff-class-api)
@@ -32,15 +32,16 @@ XXX
 ### Goals / Features
 - Full JSON *diff* support
 - Support for JavaScript objects without restrictions
-- *Text diff* support
 - ~~Optional attribute order support~~ (not done yet)
+- ~~Support extended Javascript types: Map, Set, ...etc.~~ (feasibility testing)
+- *Text diff* support
 - Configurable and extensible implementation
 - As simple as possible
 
 XXX alternatives
 
 
-## General
+## Introduction
 
 ```javascript
 var {Diff, cmp} = require('object-diff')

@@ -35,6 +35,8 @@ var MIN_TEXT_LENGTH = 100
 //		  	- objdiff / object-diff
 //		  	- diffcmp / diff-cmp
 //		  	- compare
+//		- revise docs...
+//			...should be simpler to enter, maybe example-oriented intro
 //
 //
 //---------------------------------------------------------------------
