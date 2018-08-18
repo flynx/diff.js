@@ -1,6 +1,6 @@
 # Object diff
 
-XXX Intro
+*Object diff* is a not-so-basic diff/patch/pattern implementation for JavaScript objects / object trees.
 
 - [Object diff](#object-diff)
 	- [Introduction](#introduction)
@@ -30,7 +30,7 @@ XXX Intro
 
 ## Introduction
 
-Let's start with a couple of objects:
+Let's start with a couple of objects, similar but not quite:
 ```javascript
 var Diff = require('object-diff').Diff
 
@@ -65,7 +65,7 @@ var diff = Diff(Bill, Ted)
 console.log(diff.diff)
 ```
 
-Here's how differenr `Bill` and `Ted` really are (or how the *diff* looks like):
+Here's how different `Bill` and `Ted` really are (or how the *diff* looks like):
 ```javascript
 [
 	{
@@ -91,17 +91,18 @@ Here's how differenr `Bill` and `Ted` really are (or how the *diff* looks like):
 	}
 ]
 ```
-This tells us that we have *four* changes:
-- different `name`
-- different `hair`
-- in `skills` missing `guitar`
-- in `skills` different `length`
+This tells us that we have four *changes*:
+- different `"name"`
+- different `"hair"`
+- in `"skills"` missing `"guitar"`
+- in `"skills"` different `"length"`
 
 A couple of words on the format:
 - `A` and `B` indicate the states of the *change* in the input objects,
 - `path` tells us how to reach the *change* in the inputs,
-- The odd array thing in `"path"` of the third change is the array *index* of the change where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one),
-- The format is redundant in places by design, for example here you can both infer `skills` length from the *changes* applied to it and we have an explicit `["path", "length"]` *change*. This is mainly to support sparse array changes where inferring array length from the sum of changes applied may not be possible.
+- The odd thing in `"path"` of the third change is the *index* of the change in the input `"skills"` arrays where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one),
+- `"A"` or `"B"` may not be present in the change (change #3) if the change describes simple item addition or removal,
+- The format is redundant in places by design, for example here you can both infer `"skills"` *length* from the *changes* applied to it and we have an explicit `["path", "length"]` *change*. This is mainly to support cases where inferring array length from changes to it may not be possible, like for sparse arrays.
 
 Now, we can do different things with this information (*diff object*).
 
