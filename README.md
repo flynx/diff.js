@@ -3,9 +3,9 @@
 XXX Intro
 
 - [Object diff](#object-diff)
+	- [Introduction](#introduction)
 	- [Motivation](#motivation)
 		- [Goals / Features](#goals--features)
-	- [Introduction](#introduction)
 	- [Installation and loading](#installation-and-loading)
 		- [Diff](#diff)
 			- [Diff class API](#diff-class-api)
@@ -23,22 +23,6 @@ XXX Intro
 		- [Tree](#tree)
 	- [Contacts, feedback and contributions](#contacts-feedback-and-contributions)
 	- [License](#license)
-
-
-## Motivation
-
-XXX
-
-### Goals / Features
-- Full JSON *diff* support
-- Support for JavaScript objects without restrictions
-- ~~Optional attribute order support~~ (not done yet)
-- ~~Support extended Javascript types: Map, Set, ...etc.~~ (feasibility testing)
-- *Text diff* support
-- Configurable and extensible implementation
-- As simple as possible
-
-XXX alternatives
 
 
 ## Introduction
@@ -128,7 +112,7 @@ var PERSON = {
 	name: STRING,
 	age: NUMBER,
 	hair: OR(
-		'blind', 
+		'blond', 
 		'blonde', 
 		'black', 
 		'red', 
@@ -143,6 +127,22 @@ var PERSON = {
 // now we can "structure-check" things...
 cmp(Bill, PERSON) // -> true
 ```
+
+
+## Motivation
+
+XXX
+
+### Goals / Features
+- Full JSON *diff* support
+- Support for JavaScript objects without restrictions
+- ~~Optional attribute order support~~ (not done yet)
+- ~~Support extended Javascript types: Map, Set, ...etc.~~ (feasibility testing)
+- *Text diff* support
+- Configurable and extensible implementation
+- As simple as possible
+
+XXX alternatives
 
 
 ## Installation and loading
