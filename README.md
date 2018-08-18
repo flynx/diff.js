@@ -21,7 +21,7 @@
 	- [Deep compare](#deep-compare)
 	- [Patterns](#patterns)
 	- [Patterns (EXPERIMENTAL)](#patterns-experimental)
-		- [JSON compatibility](#json-compatibility)
+	- [JSON compatibility](#json-compatibility)
 	- [Extending Diff](#extending-diff)
 	- [The Diff format](#the-diff-format)
 		- [Flat](#flat)
@@ -339,7 +339,7 @@ XXX examples...
 `OF(A, N)`  
 
 
-### JSON compatibility
+## JSON compatibility
 
 ```javascript
 var json = diff.json()
