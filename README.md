@@ -43,8 +43,9 @@ XXX alternatives
 
 ## Introduction
 
+Let's start with a couple of objects:
 ```javascript
-var {Diff, cmp} = require('object-diff')
+var Diff = require('object-diff').Diff
 
 
 var Bill = {
@@ -52,6 +53,8 @@ var Bill = {
 	age: 20,
 	hair: 'black',
 	skills: [
+		'awsome',
+		'time travel',
 	],
 }
 
@@ -60,23 +63,85 @@ var Ted = {
 	age: 20,
 	hair: 'blond',
 	skills: [
+		'awsome',
+		'time travel',
+		'guitar',
 	],
 }
-
+```
+Now let's see how different they are:
+```javascript
 var diff = Diff(Bill, Ted)
 
-// XXX examine the diff...
+// and log out the relevant part...
+console.log(diff.diff)
+```
+
+Here's how the `diff` looks like:
+```javascript
+[
+	{
+		"path": ["name"],
+		"A": "Bill",
+		"B": "Ted"
+	},
+	{
+		"path": ["hair"],
+		"A": "black",
+		"B": "blond"
+	},
+	{
+		"path": ["skills", [[2, 0], [2, 1]]],
+		"B": [
+			"guitar"
+		]
+	},
+	{
+		"path": ["skills", "length"],
+		"A": 2,
+		"B": 3
+	}
+]
+```
+This tells us that we have *four* changes:
+- different `name`
+- different `hair`
+- in `skills` missing `guitar`
+- in `skills` different `length`
+
+A couple of words on the format:
+- `A` and `B` indicate the states of the *change* in the input objects,
+- `path` tells us how to reach the *change* in the inputs,
+- The odd array thing in `"path"` of the third change is the array *index* of the change where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one).
+
+Now, we can do different things with this information (*diff object*).
+
+XXX check...  
+XXX patch...  
+XXX modify the diff -- teach Ted guitar...  
+
+And for further checking we can create a *pattern*:
+```javascript
+var {cmp, OR, STRING, NUMBER, ARRAY} = require('object-diff')
 
 var PERSON = {
 	name: STRING,
 	age: NUMBER,
-	hair: STRING,
+	hair: OR(
+		'blind', 
+		'blonde', 
+		'black', 
+		'red', 
+		'dark', 
+		'light',
+		// and before someone asks for blue we'll cheat ;)
+		STRING
+	),
 	skills: ARRAY(STRING),
 }
 
-// we can "type-check" things...
-cmp(Bill, PERSON)
-
+// now we can "structure-check" things...
+cmp(Bill, PERSON) // -> true
 ```
 
 
