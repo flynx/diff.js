@@ -4,18 +4,21 @@ XXX Intro
 
 - [Object diff](#object-diff)
 	- [Introduction](#introduction)
+		- [Seeing the difference (*diff*)](#seeing-the-difference-diff)
+		- [Applying changes (*patch*)](#applying-changes-patch)
+		- [Patterns](#patterns)
 	- [Motivation](#motivation)
 		- [Goals / Features](#goals--features)
 	- [Installation and loading](#installation-and-loading)
-		- [Diff](#diff)
-			- [Diff class API](#diff-class-api)
-			- [Diff object API](#diff-object-api)
-			- [Supported JavaScript objects](#supported-javascript-objects)
-			- [Extended 'Text' object support](#extended-text-object-support)
-			- [Options](#options)
-		- [Deep compare](#deep-compare)
-		- [Patterns](#patterns)
-		- [Patterns (EXPERIMENTAL)](#patterns-experimental)
+	- [Diff](#diff)
+		- [Diff class API](#diff-class-api)
+		- [Diff object API](#diff-object-api)
+		- [Supported JavaScript objects](#supported-javascript-objects)
+		- [Extended 'Text' object support](#extended-text-object-support)
+		- [Options](#options)
+	- [Deep compare](#deep-compare)
+	- [Patterns](#patterns)
+	- [Patterns (EXPERIMENTAL)](#patterns-experimental)
 		- [JSON compatibility](#json-compatibility)
 	- [Extending Diff](#extending-diff)
 	- [The Diff format](#the-diff-format)
@@ -30,7 +33,6 @@ XXX Intro
 Let's start with a couple of objects:
 ```javascript
 var Diff = require('object-diff').Diff
-
 
 var Bill = {
 	name: 'Bill',
@@ -53,7 +55,9 @@ var Ted = {
 	],
 }
 ```
-Now let's see how different they are:
+
+### Seeing the difference (*diff*)
+
 ```javascript
 var diff = Diff(Bill, Ted)
 
@@ -61,7 +65,7 @@ var diff = Diff(Bill, Ted)
 console.log(diff.diff)
 ```
 
-Here's how the `diff` looks like:
+Here's how differenr `Bill` and `Ted` really are (or how the *diff* looks like):
 ```javascript
 [
 	{
@@ -96,13 +100,43 @@ This tells us that we have *four* changes:
 A couple of words on the format:
 - `A` and `B` indicate the states of the *change* in the input objects,
 - `path` tells us how to reach the *change* in the inputs,
-- The odd array thing in `"path"` of the third change is the array *index* of the change where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one).
+- The odd array thing in `"path"` of the third change is the array *index* of the change where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one),
+- The format is redundant in places by design, for example here you can both infer `skills` length from the *changes* applied to it and we have an explicit `["path", "length"]` *change*. This is mainly to support sparse array changes where inferring array length from the sum of changes applied may not be possible.
 
 Now, we can do different things with this information (*diff object*).
 
+### Applying changes (*patch*)
+
+```javascript
+// let's clone Bill, just in case...
+var Bill2 = JSON.parse(JSON.stringify(Bill))
+
+// now apply the patch...
+diff.patch(Bill2)
+
+console.log(Bill2)
+```
+
+Since we applied all the changes to `Bill2`, now he looks just like `Ted`:
+```javascript
+{
+	"name": "Ted",
+	"age": 20,
+	"hair": "blond",
+	"skills": [
+		"awsome",
+		"time travel",
+		"guitar"
+	]
+}
+```
+
+
+XXX partial patch...  
 XXX check...  
-XXX patch...  
 XXX modify the diff -- teach Ted guitar...  
+
+### Patterns
 
 And for further checking we can create a *pattern*:
 ```javascript
@@ -128,6 +162,7 @@ var PERSON = {
 cmp(Bill, PERSON) // -> true
 ```
 
+*Now for the serious stuff...*
 
 ## Motivation
 
@@ -166,14 +201,14 @@ XXX list basic use-cases:
 - deep comparisons and patterns
 
 
-### Diff
+## Diff
 
 Create a diff object:
 ```javascript
 var diff = new Diff(A, B)
 ```
 
-#### Diff class API
+### Diff class API
 
 `Diff.cmp(A, B) -> bool`  
 Deep compare `A` to `B`.
@@ -185,7 +220,7 @@ Clone the `Diff` constructor, useful for extending or tweaking the type handlers
 Build a diff object from JSON (exported via `.json()`).
 
 
-#### Diff object API
+### Diff object API
 
 `diff.patch(X) -> X'`  
 Apply "diff* (or *patch*) `X` to `X'` state.
@@ -200,7 +235,7 @@ Check if *diff* is compatible/applicable to `X`. This essentially checks if the 
 Serialize the *diff* to JSON. Note that the output may or may not be JSON compatible depending on the inputs.
 
 
-#### Supported JavaScript objects
+### Supported JavaScript objects
 
 The object support can be split into two, basic objects that are stored as-is and containers that support item changes when their types match.
 
@@ -214,7 +249,7 @@ Containers that support item changes include:
 
 Additionally attribute changes are supported for all non basic objects (i.e. anything for which `typeof X` yeilds `"object"`). This can be disabled by setting `options.no_attributes` to `true` (see: [Options](#options) below).
 
-#### Extended 'Text' object support
+### Extended 'Text' object support
 
 A *text* is JavaScript string that is long (>1000 chars, configurable in [Oprions](#options)) and multiline string.
 
@@ -223,7 +258,7 @@ A *text* is treated as an `Array` containing the string split into lines (split 
 Shorter strings or strings containing just a single line are treated as *basic* monolithic string objects and included in the *diff* as-is.
 
 
-#### Options
+### Options
 
 ```javascript
 {
@@ -257,7 +292,7 @@ Shorter strings or strings containing just a single line are treated as *basic* 
 }
 ```
 
-### Deep compare
+## Deep compare
 
 ```javascript
 cmp(A, B)
@@ -267,7 +302,7 @@ Diff.cmp(A, B)
 XXX
 
 
-### Patterns
+## Patterns
 
 XXX General description...
 
@@ -286,7 +321,7 @@ Matches of *all* of the arguments match
 XXX examples...
 
 
-### Patterns (EXPERIMENTAL)
+## Patterns (EXPERIMENTAL)
 
 `NUMBER(min, max)`  
 
