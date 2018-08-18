@@ -8,7 +8,7 @@
 		- [Applying changes (*patch*)](#applying-changes-patch)
 		- [Partial patching](#partial-patching)
 		- [Checking](#checking)
-		- [Patterns](#patterns)
+		- [Generic ways to compare objects (*patterns*)](#generic-ways-to-compare-objects-patterns)
 	- [Motivation](#motivation)
 		- [Goals / Features](#goals--features)
 	- [Installation and loading](#installation-and-loading)
@@ -20,6 +20,9 @@
 		- [Options](#options)
 	- [Deep compare](#deep-compare)
 	- [Patterns](#patterns)
+		- [Logic patterns](#logic-patterns)
+		- [String patterns](#string-patterns)
+		- [Number patterns](#number-patterns)
 	- [Patterns (EXPERIMENTAL)](#patterns-experimental)
 	- [JSON compatibility](#json-compatibility)
 	- [Extending Diff](#extending-diff)
@@ -143,7 +146,7 @@ XXX modify the diff -- teach Ted guitar...
 
 XXX
 
-### Patterns
+### Generic ways to compare objects (*patterns*)
 
 And for further checking we can create a *pattern*:
 ```javascript
@@ -313,24 +316,61 @@ XXX
 
 XXX General description...
 
+### Logic patterns
+
 `ANY`  
 Matches anything
+
 
 `NOT(A)`  
 Match anything but `A`
 
+
 `OR(A[, .. ])`  
 Match if *one* of the arguments matches
 
+
 `AND(A[, .. ])`  
 Matches of *all* of the arguments match
+
+
+### String patterns
+
+`STRING`  
+Match any string.
+
+`STRING(string)`  
+Match a specific string.
+
+`STRING(regexp)`  
+Match a string via a `RegExp` object.
+
+`STRING(func)`  
+Match a string via a function predicate.
+
+`STRING(pattern)`  
+Match a string via a nested pattern.
+
+
+### Number patterns
+
+`NUMBER`  
+`NUMBER(number)`  
+`NUMBER(min, max)`  
+`NUMBER(min, max, step)`  
+`NUMBER(func)`  
+`NUMBER(pattern)`  
+Matches a number
+
 
 XXX examples...
 
 
 ## Patterns (EXPERIMENTAL)
 
-`NUMBER(min, max)`  
+`ARRAY`
+`ARRAY(length)`
+
 
 `IN(A)`  
 
