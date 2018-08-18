@@ -6,6 +6,8 @@
 	- [Introduction](#introduction)
 		- [Seeing the difference (*diff*)](#seeing-the-difference-diff)
 		- [Applying changes (*patch*)](#applying-changes-patch)
+		- [Partial patching](#partial-patching)
+		- [Checking](#checking)
 		- [Patterns](#patterns)
 	- [Motivation](#motivation)
 		- [Goals / Features](#goals--features)
@@ -32,8 +34,6 @@
 
 Let's start with a couple of objects, similar but not quite:
 ```javascript
-var Diff = require('object-diff').Diff
-
 var Bill = {
 	name: 'Bill',
 	age: 20,
@@ -59,6 +59,8 @@ var Ted = {
 ### Seeing the difference (*diff*)
 
 ```javascript
+var Diff = require('object-diff').Diff
+
 var diff = Diff(Bill, Ted)
 
 // and log out the relevant part...
@@ -132,10 +134,14 @@ Since we applied all the changes to `Bill2`, now he looks just like `Ted`:
 }
 ```
 
+### Partial patching
 
 XXX partial patch...  
-XXX check...  
 XXX modify the diff -- teach Ted guitar...  
+
+### Checking
+
+XXX
 
 ### Patterns
 
