@@ -23,6 +23,7 @@
 		- [Logic patterns](#logic-patterns)
 		- [String patterns](#string-patterns)
 		- [Number patterns](#number-patterns)
+		- [Array patterns](#array-patterns)
 	- [Patterns (EXPERIMENTAL)](#patterns-experimental)
 	- [JSON compatibility](#json-compatibility)
 	- [Extending Diff](#extending-diff)
@@ -71,6 +72,11 @@ console.log(diff.diff)
 ```
 
 Here's how different `Bill` and `Ted` really are (or how the *diff* looks like):
+```javascript
+// log out the relevant part...
+console.log(diff.diff)
+```
+And the output is:
 ```javascript
 [
 	{
@@ -363,14 +369,28 @@ Match a string via a nested pattern.
 Matches a number
 
 
+### Array patterns
+
+`ARRAY`  
+Matches any array.
+
+`ARRAY(length)`  
+Matches an array of length `length`.
+
+`ARRAY(func)`  
+Match if `func` returns true when applied to each array item.
+
+`ARRAY(pattern)`  
+Match if `pattern` matches each array item.
+
+`ARRAY(x, y, ..)`  
+A combination of the above where `x`, `y` and `..` may be any of *length*, *functions* or *patterns*.  
+This is a shorthand for: `AND(ARRAY(x), ARRAY(y), ..)`
+
 XXX examples...
 
 
 ## Patterns (EXPERIMENTAL)
-
-`ARRAY`
-`ARRAY(length)`
-
 
 `IN(A)`  
 

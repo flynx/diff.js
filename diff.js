@@ -298,6 +298,7 @@ var makeCIPattern = function(name, check, init){
 	return object.makeConstructor(name, o, o) 
 }
 
+
 // Singleton ANY...
 //
 // 	ANY
@@ -306,7 +307,8 @@ var makeCIPattern = function(name, check, init){
 var ANY = 
 module.ANY = 
 	makeCIPattern('ANY', 
-		function(obj, cmp){ return true })()
+		function(){ return true })()
+
 
 // String pattern...
 //
@@ -379,15 +381,41 @@ module.NUMBER =
 //
 // 	ARRAY
 // 	ARRAY(length)
+// 	ARRAY(func)
+// 	ARRAY(pattern)
+// 	ARRAY(test, ...)
 // 		-> pattern
 //
-// XXX support length, types, ...
+// NOTE: func and pattern if given are applied to each array item and 
+// 		the match is made iff for each item the function returns true or
+// 		the pattern matches.
+// NOTE: multiple tests (length, func, pattern) can be combined in any 
+// 		order, this is a shorthand:
+// 			ARRAY(4, STRING) 
+// 		is the same as:
+// 			AND(ARRAY(4), ARRAY(STRING))
+// NOTE: order of arguments is not important, but it is possible to add
+// 		a set of conflicting arguments...
 var ARRAY = 
 module.ARRAY = 
 	makeCIPattern('ARRAY', 
 		function(obj, cmp){ 
-			// XXX do the .value test....
-			return obj === ARRAY || obj instanceof Array }, 
+			return obj === ARRAY 
+				//|| (obj instanceof Array && this.value.length == 0)
+				|| (obj instanceof Array
+					// XXX make this fail on first fail -- currently 
+					// 		this runs every test on every elem...
+					&& this.value.filter(function(value){
+							return (typeof(value) == typeof(123) ?
+									obj.length == value
+								// function...
+								: value instanceof Function ?
+									obj.filter(value).length == obj.length
+								// pattern...
+								: obj.filter(function(e){
+										return cmp(value, e)
+									}).length == obj.length)
+						}).length == this.value.length) }, 
 		function(...value){ this.value = value }) 
 
 
