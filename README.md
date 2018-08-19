@@ -1,6 +1,6 @@
 # Object diff
 
-*Object diff* is a not-so-basic diff/patch/pattern implementation for JavaScript objects / object trees.
+*Object diff* is a not-so-basic diff/patch/pattern/compare implementation for JavaScript objects / object trees.
 
 - [Object diff](#object-diff)
 	- [Introduction](#introduction)
@@ -361,12 +361,23 @@ Match a string via a nested pattern.
 ### Number patterns
 
 `NUMBER`  
+Match any number.
+
 `NUMBER(number)`  
+Match a specific number.
+
 `NUMBER(min, max)`  
+Match any number greater or equal to *min* and less than *max*.
+
 `NUMBER(min, max, step)`  
+Match any number greater or equal to *min* and less than *max* but only if it is a escrete number of *step* away from *min*.  
+Examples: `NUMBER(4, 10, 2)` will match *odd* numbers between 4 and 10, while `NUMBER(1, 10, 2)` will match *even* numbers between 1 and 10.
+
 `NUMBER(func)`  
+Match a number via a function predicate.
+
 `NUMBER(pattern)`  
-Matches a number
+Match a number via a nested pattern.
 
 
 ### Array patterns
