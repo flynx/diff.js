@@ -24,6 +24,6 @@
   },
   "homepage": "https://github.com/flynx/object-diff.js#readme",
   "dependencies": {
-    "ig-object": "^1.0.2"
+    "ig-object": "^1.0.6"
   }
 }
