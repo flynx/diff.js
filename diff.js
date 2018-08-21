@@ -2122,6 +2122,29 @@ var DiffPrototype = {
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
+	// XXX .filter(..) -- keep only part of the changes and generate a new diff...
+	// 		...should accept a path pattern (glob) as well as a function...
+	filter: function(filter){
+		var res = this.clone()
+
+		// path filter...
+		if(!(filter instanceof Function)){
+			var path = filter instanceof Array ? filter : [filter]
+
+			filter = function(change, i, lst){
+				// XXX
+			}
+		}
+
+		// XXX should we add filter to options or at least set a .filtered attr???
+		// 		...or maybe a reference to the original diff...
+		// 			...might event implement a jQuery-like .end()
+
+		res.diff = res.diff.filter(filter.bind(this))
+
+		return res
+	},
+
 	// XXX need to normalize .diff and .options...
 	json: function(){
 		return {
