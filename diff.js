@@ -2122,18 +2122,62 @@ var DiffPrototype = {
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
-	// XXX .filter(..) -- keep only part of the changes and generate a new diff...
-	// 		...should accept a path pattern (glob) as well as a function...
+	// XXX add support for '**' path globs...
 	filter: function(filter){
 		var res = this.clone()
 
-		// path filter...
-		if(!(filter instanceof Function)){
-			var path = filter instanceof Array ? filter : [filter]
+		// string filter...
+		filter = typeof(filter) == typeof('str') ? 
+			filter.split(/[\\\/]/) 
+			: filter
 
-			filter = function(change, i, lst){
-				// XXX
+		// path filter (non-function)...
+		if(!(filter instanceof Function)){
+			// format:
+			// 	[
+			// 		'**' | [ .. ],
+			// 		...
+			// 	]
+			var path = (filter instanceof Array ? filter : [filter])
+				// '*' -> ANY
+				.map(function(e){ 
+					return e == '*' ? ANY : e })
+				// split to array sections at '**'...
+				// XXX when OF(..) is ready, replace '**' with OF(ANY, ANY)...
+				// XXX need to remove sets of consecutive '**'...
+				.reduce(function(res, e){
+					var n = res.length-1
+					e == '**' ? res.push(2) 
+						: (res.length == 0 || res[n] == '**') ? res.push([e])
+						: res[n].push(e)
+					return res
+				}, [])
+			// min length...
+			var min = path
+				.reduce(function(l, e){ 
+					return l + (e instanceof Array ? e.length : 0) }, 0)
+
+			// XXX account for pattern/path end...
+			var test = function(p, pattern, path){
+				return p == '**' ?
+						// compare next pattern section and path...
+						cmp(pattern[0], path.slice(0, next.length)) 
+							// shift path and test...
+							// XXX need to stop if we run put of path...
+							|| (test(p, 
+									pattern, 
+									path.slice(1))
+								// shift to next pattern section...
+								// XXX need to stop if we run put of pattern...
+								&& test(pattern[1], 
+									pattern.slice(2), 
+									path.slice(pattern[0].length)))
+					: cmp(pattern[0], path)
 			}
+
+			// XXX Q: should we ignore the last element of the path???
+			filter = function(change, i, lst){
+				return cmp(path, change.path) }
 		}
 
 		// XXX should we add filter to options or at least set a .filtered attr???
