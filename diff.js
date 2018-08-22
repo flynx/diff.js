@@ -2133,6 +2133,7 @@ var DiffPrototype = {
 
 		// path filter (non-function)...
 		if(!(filter instanceof Function)){
+			// normalize path...
 			// format:
 			// 	[
 			// 		'**' | [ .. ],
@@ -2152,6 +2153,7 @@ var DiffPrototype = {
 						: res[n].push(e)
 					return res
 				}, [])
+
 			// min length...
 			var min = path
 				.reduce(function(l, e){ 
@@ -2161,17 +2163,22 @@ var DiffPrototype = {
 			var test = function(p, pattern, path){
 				return p == '**' ?
 						// compare next pattern section and path...
-						cmp(pattern[0], path.slice(0, next.length)) 
-							// shift path and test...
-							// XXX need to stop if we run put of path...
-							|| (test(p, 
-									pattern, 
-									path.slice(1))
-								// shift to next pattern section...
-								// XXX need to stop if we run put of pattern...
-								&& test(pattern[1], 
-									pattern.slice(2), 
-									path.slice(pattern[0].length)))
+						(cmp(pattern[0], path.slice(0, next.length))
+							// next pattern/path section
+							// XXX need to stop if we run put of path or pattern...
+							&& test(pattern[1],
+								pattern.slice(2),
+								path.slice(next.length)))
+						// shift path and test...
+						// XXX need to stop if we run put of path...
+						|| (test(p, 
+								pattern, 
+								path.slice(1))
+							// shift to next pattern section...
+							// XXX need to stop if we run put of pattern...
+							&& test(pattern[1], 
+								pattern.slice(2), 
+								path.slice(pattern[0].length)))
 					: cmp(pattern[0], path)
 			}
 
