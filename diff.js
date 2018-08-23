@@ -2184,7 +2184,8 @@ var DiffPrototype = {
 
 			// XXX Q: should we ignore the last element of the path???
 			filter = function(change, i, lst){
-				return cmp(path, change.path) }
+				//return cmp(path, change.path) }
+				return test(change.path) }
 		}
 
 		// XXX should we add filter to options or at least set a .filtered attr???
