@@ -2139,18 +2139,22 @@ var DiffPrototype = {
 			// 		'**' | [ .. ],
 			// 		...
 			// 	]
+			// XXX when OF(..) is ready, replace '**' with OF(ANY, ANY)...
 			var path = (filter instanceof Array ? filter : [filter])
 				// '*' -> ANY
 				.map(function(e){ 
 					return e == '*' ? ANY : e })
+				// remove consecutive repeating '**'
+				.filter(function(e, i, lst){
+					return e == '**' && lst[i-1] != '**' || true })
 				// split to array sections at '**'...
-				// XXX when OF(..) is ready, replace '**' with OF(ANY, ANY)...
-				// XXX need to remove sets of consecutive '**'...
 				.reduce(function(res, e){
 					var n = res.length-1
-					e == '**' ? res.push(2) 
-						: (res.length == 0 || res[n] == '**') ? res.push([e])
-						: res[n].push(e)
+					e == '**' ? 
+						res.push('**') 
+					: (res.length == 0 || res[n] == '**') ? 
+						res.push([e])
+					: res[n].push(e)
 					return res
 				}, [])
 
@@ -2160,27 +2164,30 @@ var DiffPrototype = {
 					return l + (e instanceof Array ? e.length : 0) }, 0)
 
 			// XXX account for pattern/path end...
-			var test = function(p, pattern, path){
-				return p == '**' ?
-						// compare next pattern section and path...
-						(cmp(pattern[0], path.slice(0, next.length))
-							// next pattern/path section
-							// XXX need to stop if we run put of path or pattern...
-							&& test(pattern[1],
-								pattern.slice(2),
-								path.slice(next.length)))
-						// shift path and test...
-						// XXX need to stop if we run put of path...
-						|| (test(p, 
-								pattern, 
-								path.slice(1))
-							// shift to next pattern section...
-							// XXX need to stop if we run put of pattern...
-							&& test(pattern[1], 
-								pattern.slice(2), 
-								path.slice(pattern[0].length)))
-					: cmp(pattern[0], path)
-			}
+			var test = function(path, pattern){
+				return (
+					// end of path/pattern...
+					path.length == 0 && pattern.length == 0 ?
+						true
+						
+					// consumed pattern with path left over -> fail...
+					: (path.length > 0 && pattern.length == 0)
+					   		|| (path.length == 0 && pattern.length > 1)?
+						false
+						
+					// '**' -> test, skip elem and repeat...
+					: pattern[0] == '**' ?
+						(test(path, pattern.slice(1))
+							|| test(path.slice(1), pattern))
+							
+					// compare sections...
+					: (cmp(
+							path.slice(0, pattern[0].length),
+							pattern[0])
+						// test next section...
+						&& test(
+							path.slice(pattern[0].length),
+							pattern.slice(1)))) }
 
 			// XXX Q: should we ignore the last element of the path???
 			filter = function(change, i, lst){
