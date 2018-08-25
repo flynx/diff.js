@@ -2122,7 +2122,11 @@ var DiffPrototype = {
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
-	// XXX add support for '**' path globs...
+	//
+	// 	.filter(path)
+	// 	.filter(func)
+	// 		-> diff
+	//
 	filter: function(filter){
 		var res = this.clone()
 
@@ -2140,7 +2144,7 @@ var DiffPrototype = {
 			// 		...
 			// 	]
 			// XXX when OF(..) is ready, replace '**' with OF(ANY, ANY)...
-			var path = (filter instanceof Array ? filter : [filter])
+			var pattern = (filter instanceof Array ? filter : [filter])
 				// '*' -> ANY
 				.map(function(e){ 
 					return e == '*' ? ANY : e })
@@ -2159,7 +2163,7 @@ var DiffPrototype = {
 				}, [])
 
 			// min length...
-			var min = path
+			var min = pattern
 				.reduce(function(l, e){ 
 					return l + (e instanceof Array ? e.length : 0) }, 0)
 
@@ -2191,8 +2195,7 @@ var DiffPrototype = {
 
 			// XXX Q: should we ignore the last element of the path???
 			filter = function(change, i, lst){
-				//return cmp(path, change.path) }
-				return test(change.path) }
+				return test(change.path, pattern) }
 		}
 
 		// XXX should we add filter to options or at least set a .filtered attr???

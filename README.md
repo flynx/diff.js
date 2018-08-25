@@ -145,8 +145,30 @@ Since we applied all the changes to `Bill2`, now he looks just like `Ted`:
 
 ### Partial patching
 
-XXX partial patch...  
-XXX modify the diff -- teach Ted guitar...  
+Lets just *patch* `Bill`'s the skill level...
+
+```javascript
+diff
+	// only keep the changes to skills...
+	.filter('skills/*')
+	.patch(Bill)
+```
+
+Now, `Bill` can also play guitar!
+
+```json
+{
+	"name": "Bill",
+	"age": 20,
+	"hair": "black",
+	"skills": [
+		"awsome",
+		"time travel",
+		"guitar"
+	]
+}
+```
+
 
 ### Checking
 
