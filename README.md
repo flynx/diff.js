@@ -66,18 +66,15 @@ var Ted = {
 var Diff = require('object-diff').Diff
 
 var diff = Diff(Bill, Ted)
-
-// and log out the relevant part...
-console.log(diff.diff)
 ```
 
 Here's how different `Bill` and `Ted` really are (or how the *diff* looks like):
 ```javascript
 // log out the relevant part...
-console.log(diff.diff)
+JSON.stringify(diff.diff, null, '\t')
 ```
 And the output is:
-```javascript
+```json
 [
 	{
 		"path": ["name"],
@@ -125,12 +122,15 @@ var Bill2 = JSON.parse(JSON.stringify(Bill))
 
 // now apply the patch...
 diff.patch(Bill2)
-
-console.log(Bill2)
 ```
 
+
 Since we applied all the changes to `Bill2`, now he looks just like `Ted`:
+
 ```javascript
+JSON.stringify(Bill2, null, '\t')
+```
+```json
 {
 	"name": "Ted",
 	"age": 20,
@@ -156,6 +156,9 @@ diff
 
 Now, `Bill` can also play guitar!
 
+```javascript
+JSON.stringify(Bill, null, '\t')
+```
 ```json
 {
 	"name": "Bill",
