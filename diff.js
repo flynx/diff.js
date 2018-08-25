@@ -1260,6 +1260,95 @@ module.Types = {
 					: !that.cmp(change.A, target[key])
 			})
 	},
+
+
+	// Filter diff changes and return a new diff...
+	//
+	// 	.filter(path)
+	// 	.filter(func)
+	// 		-> diff
+	//
+	// path can be either a '/' separated string of path elements or 
+	// an array...
+	//
+	// path supports a limited glob syntax:
+	// 	*		- matches any single path element (like ANY)
+	// 	**		- matches 0 or more path elements
+	//
+	// NOTE: array path also supports patterns...
+	//
+	filter: function(diff, filter){
+		// string filter...
+		filter = typeof(filter) == typeof('str') ? 
+			filter.split(/[\\\/]/) 
+			: filter
+
+		// path filter (non-function)...
+		if(!(filter instanceof Function)){
+			// normalize path...
+			// format:
+			// 	[
+			// 		'**' | [ .. ],
+			// 		...
+			// 	]
+			// XXX when OF(..) is ready, replace '**' with OF(ANY, ANY)...
+			var pattern = (filter instanceof Array ? filter : [filter])
+				// '*' -> ANY
+				.map(function(e){ 
+					return e == '*' ? ANY : e })
+				// remove consecutive repeating '**'
+				.filter(function(e, i, lst){
+					return e == '**' && lst[i-1] != '**' || true })
+				// split to array sections at '**'...
+				.reduce(function(res, e){
+					var n = res.length-1
+					e == '**' ? 
+						res.push('**') 
+					: (res.length == 0 || res[n] == '**') ? 
+						res.push([e])
+					: res[n].push(e)
+					return res
+				}, [])
+
+			// min length...
+			var min = pattern
+				.reduce(function(l, e){ 
+					return l + (e instanceof Array ? e.length : 0) }, 0)
+
+			// XXX account for pattern/path end...
+			var test = function(path, pattern){
+				return (
+					// end of path/pattern...
+					path.length == 0 && pattern.length == 0 ?
+						true
+						
+					// consumed pattern with path left over -> fail...
+					: (path.length > 0 && pattern.length == 0)
+					   		|| (path.length == 0 && pattern.length > 1)?
+						false
+						
+					// '**' -> test, skip elem and repeat...
+					: pattern[0] == '**' ?
+						(test(path, pattern.slice(1))
+							|| test(path.slice(1), pattern))
+							
+					// compare sections...
+					: (cmp(
+							path.slice(0, pattern[0].length),
+							pattern[0])
+						// test next section...
+						&& test(
+							path.slice(pattern[0].length),
+							pattern.slice(1)))) }
+
+			// XXX Q: should we ignore the last element of the path???
+			filter = function(change, i, lst){
+				return test(change.path, pattern) }
+		}
+
+		return diff.filter(filter.bind(this))
+	},
+
 }
 
 
@@ -2065,7 +2154,7 @@ var DiffPrototype = {
 	// 		instance when returned like this...
 	//get types(){
 	//	return this.constructor.type },
-
+	
 	structure: null, 
 	placeholders: null,
 	options: null,
@@ -2108,13 +2197,6 @@ var DiffPrototype = {
 		return res
 	},
 
-	// NOTE: this will not mutate this...
-	reverse: function(obj){
-		var res = this.clone()
-		res.diff = Object.create(this.constructor.types).reverse(this.diff)
-		return res
-	}, 
-
 	check: function(obj){
 		return Object.create(this.constructor.types).check(this.diff, obj) },
 	patch: function(obj){
@@ -2122,90 +2204,36 @@ var DiffPrototype = {
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
-	//
-	// 	.filter(path)
-	// 	.filter(func)
-	// 		-> diff
-	//
+	// these are non-mutating...
+	reverse: function(obj){
+		var res = this.clone()
+		res.diff = Object.create(this.constructor.types).reverse(this.diff)
+		res.parent = this
+		return res
+	}, 
 	filter: function(filter){
 		var res = this.clone()
-
-		// string filter...
-		filter = typeof(filter) == typeof('str') ? 
-			filter.split(/[\\\/]/) 
-			: filter
-
-		// path filter (non-function)...
-		if(!(filter instanceof Function)){
-			// normalize path...
-			// format:
-			// 	[
-			// 		'**' | [ .. ],
-			// 		...
-			// 	]
-			// XXX when OF(..) is ready, replace '**' with OF(ANY, ANY)...
-			var pattern = (filter instanceof Array ? filter : [filter])
-				// '*' -> ANY
-				.map(function(e){ 
-					return e == '*' ? ANY : e })
-				// remove consecutive repeating '**'
-				.filter(function(e, i, lst){
-					return e == '**' && lst[i-1] != '**' || true })
-				// split to array sections at '**'...
-				.reduce(function(res, e){
-					var n = res.length-1
-					e == '**' ? 
-						res.push('**') 
-					: (res.length == 0 || res[n] == '**') ? 
-						res.push([e])
-					: res[n].push(e)
-					return res
-				}, [])
-
-			// min length...
-			var min = pattern
-				.reduce(function(l, e){ 
-					return l + (e instanceof Array ? e.length : 0) }, 0)
-
-			// XXX account for pattern/path end...
-			var test = function(path, pattern){
-				return (
-					// end of path/pattern...
-					path.length == 0 && pattern.length == 0 ?
-						true
-						
-					// consumed pattern with path left over -> fail...
-					: (path.length > 0 && pattern.length == 0)
-					   		|| (path.length == 0 && pattern.length > 1)?
-						false
-						
-					// '**' -> test, skip elem and repeat...
-					: pattern[0] == '**' ?
-						(test(path, pattern.slice(1))
-							|| test(path.slice(1), pattern))
-							
-					// compare sections...
-					: (cmp(
-							path.slice(0, pattern[0].length),
-							pattern[0])
-						// test next section...
-						&& test(
-							path.slice(pattern[0].length),
-							pattern.slice(1)))) }
-
-			// XXX Q: should we ignore the last element of the path???
-			filter = function(change, i, lst){
-				return test(change.path, pattern) }
-		}
-
-		// XXX should we add filter to options or at least set a .filtered attr???
-		// 		...or maybe a reference to the original diff...
-		// 			...might event implement a jQuery-like .end()
-
-		res.diff = res.diff.filter(filter.bind(this))
-
+		res.diff = this.constructor.types.filter.call(this, this.diff, filter)
+		res.parent = this
 		return res
 	},
+	// XXX
+	merge: function(diff){
+		var res = this.clone()
+
+		// XXX there are two approaches to this:
+		// 		1) naive: simply concatenate all the changes in order...
+		// 		2) filter and merge changes based on path...
+		// XXX do we need a conflict resolution policy???
+
+		res.parent = this
+		
+		return res
+	},
+
+	// XXX EXPERIMENTAL...
+	end: function(){
+		return this.parent || this },
 
 	// XXX need to normalize .diff and .options...
 	json: function(){
