@@ -71,10 +71,7 @@ var diff = Diff(Bill, Ted)
 Here's how different `Bill` and `Ted` really are (or how the *diff* looks like):
 ```javascript
 // log out the relevant part...
-JSON.stringify(diff.diff, null, '\t')
-```
-And the output is:
-```json
+//JSON.stringify(diff.diff, null, '\t')
 [
 	{
 		"path": ["name"],
@@ -125,12 +122,10 @@ diff.patch(Bill2)
 ```
 
 
-Since we applied all the changes to `Bill2`, now he looks just like `Ted`:
+Since we applied *all* the changes to `Bill2`, now he looks just like `Ted`:
 
 ```javascript
-JSON.stringify(Bill2, null, '\t')
-```
-```json
+//JSON.stringify(Bill2, null, '\t')
 {
 	"name": "Ted",
 	"age": 20,
@@ -145,7 +140,7 @@ JSON.stringify(Bill2, null, '\t')
 
 ### Partial patching
 
-Lets just *patch* `Bill`'s the skill level...
+Lets just *patch* `Bill`'s skill level...
 
 ```javascript
 diff
@@ -157,9 +152,7 @@ diff
 Now, `Bill` can also play guitar!
 
 ```javascript
-JSON.stringify(Bill, null, '\t')
-```
-```json
+//JSON.stringify(Bill, null, '\t')
 {
 	"name": "Bill",
 	"age": 20,
