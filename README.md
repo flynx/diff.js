@@ -262,8 +262,30 @@ Apply "diff* (or *patch*) `X` to `X'` state.
 `diff.unpatch(X') -> X`  
 Undo *diff" application to `X'` returning it to `X` state.
 
+This is equivalent to: `diff.reverse().patch(X')`
+
 `diff.check(X) -> bool`  
 Check if *diff* is compatible/applicable to `X`. This essentially checks if the *left hand side* of the *diff* matches the corresponding nodes of `X`.
+
+`diff.reverse() -> diff`  
+Generate a new *child diff* where `A` and `B` are reversed.
+
+`diff.filter(path | filter) -> diff`  
+Generate a new *child diff* leaving only changes that match the `path`/`filter`
+
+The `path` is a `"/"` or `"\"` separated string that supports the following item syntax:
+- `"*"`		- matches any item (same as: `ANY`).
+- `"**"`	- matches 0 or more items.
+- `"a|b"`	- matches either `a` or `b` (same as: `OR('a', 'b')`)
+- `"!a"`	- matches anything but `a` (smae as: `NOT('a')`)
+
+*Note that `"**"` is a special case in that it can not be combined with other patterns above (e.g. in `"a|**"` the string `"**"` is treated literally and has not special meaning).*
+
+`diff.merge(diff) -> diff`  
+XXX
+
+`diff.end() -> diff`  
+Return the *parent diff* that was used to generate the current *child diff* or the current diff if there is not parent.
 
 `diff.json() -> JSON`  
 Serialize the *diff* to JSON. Note that the output may or may not be JSON compatible depending on the inputs.
