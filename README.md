@@ -282,7 +282,9 @@ The `path` is a `"/"` or `"\"` separated string that supports the following item
 *Note that `"**"` is a special case in that it can not be combined with other patterns above (e.g. in `"a|**"` the string `"**"` is treated literally and has not special meaning).*
 
 `diff.merge(diff) -> diff`  
-XXX
+Generate a merged *diff* containing the changes from both diff object.
+
+*Note that this method currently simply concatenates the changes of two diff objects together, at this point no effort is made to optimize the new change list (changes can be redundant or canceling but there should not be any conflicts unless a merged diff is missing or is out of order).*
 
 `diff.end() -> diff`  
 Return the *parent diff* that was used to generate the current *child diff* or the current diff if there is not parent.

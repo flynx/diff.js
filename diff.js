@@ -2180,6 +2180,16 @@ var DiffClassPrototype = {
 // 		...currently the context for most things is .constructor.types 
 // 		which is global this makes anything that any handler does not 
 // 		local to a particular diff instance...
+// XXX patching should be possible with a simple empty object...
+// 		...not sure how to create the path elements though...
+// 		this would make optimizing .merge(..) simple:
+// 			var diff = x.merge(y)
+// 			// reference -- the unchanged section of the input...
+// 			var pre = diff
+// 				.reverse()
+// 				.patch()
+// 			var post = diff.patch(ref)
+// 			var optimized = Diff(pre, post)
 var DiffPrototype = {
 	// system meta information...
 	get format(){
@@ -2197,6 +2207,7 @@ var DiffPrototype = {
 	placeholders: null,
 	options: null,
 	diff: null,
+	timestamp: null,
 
 	parent: null,
 
@@ -2220,6 +2231,8 @@ var DiffPrototype = {
 			: options.tree_diff ? 
 				diff.diff(A, B, options) 
 			: diff.flatten(diff.diff(A, B, options), options)
+
+		this.timestamp = Date.now()
 	},
 
 	// XXX should this be a deep copy???
