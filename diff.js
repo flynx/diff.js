@@ -252,8 +252,7 @@ var LogicTypeClassPrototype = {
 
 var LogicTypePrototype = {
 	__cmp__: function(obj, cmp){
-		return false
-	},
+		return false },
 	// XXX need to track loops...
 	cmp: function(obj, cmp, cache){
 		cmp = cmp || function(a, b){
@@ -288,7 +287,7 @@ object.makeConstructor('LogicType',
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// XXX rename -- this makes a constructor/instance combination...
+// Make a constructor/instance combination...
 var makeCIPattern = function(name, check, init){
 	var o = Object.assign(Object.create(LogicTypePrototype), { 
 		__cmp__: check,
@@ -468,26 +467,6 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Will match a number greater than or equal to min and less than max... 
-// XXX rename...
-var _NUMBER = 
-module._NUMBER = 
-object.makeConstructor('NUMBER', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp){
-		if(typeof(obj) == 'number' 
-				&& obj >= this.min
-				&& obj <= this.max){
-			return true
-		}
-		return false
-	},
-	__init__: function(min, max){
-		this.min = min
-		this.max = max
-	},
-}))
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // IN(A) == L iff A in L
 //
 // NOTE: since this can do a search using cmp(..) thid will be slow on 
@@ -497,9 +476,9 @@ object.makeConstructor('NUMBER', Object.assign(new LogicType(), {
 var IN = 
 module.IN = 
 object.makeConstructor('IN', Object.assign(new LogicType(), {
+	// XXX add support for other stuff like sets and maps...
 	__cmp__: function(obj, cmp){
 		var p = this.value
-		// XXX add support for other stuff like sets and maps...
 		// XXX make this a break-on-match and not a go-through-the-whole-thing
 		return typeof(obj) == typeof({}) 
 			&& (p in obj
@@ -513,8 +492,10 @@ object.makeConstructor('IN', Object.assign(new LogicType(), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// XXX AT(A, K) == L iff A in L and L[K] == A
+// AT(A, K) == L iff A in L and L[K] == A
 // XXX .key can't be a pattern at this point...
+// XXX this is a potential problem as with a pattern key we would need to
+// 		look ahead to pick the correct candidate...
 var AT = 
 module.AT = 
 object.makeConstructor('AT', Object.assign(new LogicType(), {
@@ -532,6 +513,8 @@ object.makeConstructor('AT', Object.assign(new LogicType(), {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX OF(A, N) == L iff L contains N occurrences of A
+// XXX this is a potential problem as it would require us to look ahead 
+// 		on matching...
 var OF = 
 module.OF = 
 object.makeConstructor('OF', Object.assign(new LogicType(), {
@@ -543,7 +526,6 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 		this.value = value
 	},
 }))
-
 
 
 
@@ -2167,8 +2149,8 @@ var DiffClassPrototype = {
 
 // XXX need to make the diff object the universal context...
 // 		...currently the context for most things is .constructor.types 
-// 		which is global this anything that any handler does is not local
-// 		to a particular diff instance...
+// 		which is global this makesanything that any handler does is not 
+// 		local to a particular diff instance...
 var DiffPrototype = {
 	// system meta information...
 	get format(){
@@ -2180,12 +2162,15 @@ var DiffPrototype = {
 	// 		...the bad thing here is that this can be mutated from the 
 	// 		instance when returned like this...
 	//get types(){
-	//	return this.constructor.type },
+	//	return this.constructor.types },
 	
 	structure: null, 
 	placeholders: null,
 	options: null,
 	diff: null,
+
+	parent: null,
+
 
 	__init__: function(A, B, options){
 		// XXX should we add a default options as prototype???
