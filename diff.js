@@ -231,20 +231,24 @@ var proxy = function(path, func){
 
 
 
-
-//---------------------------------------------------------------------
-// Placeholders...
-
-var NONE = {type: 'NONE_PLACEHOLDER'}
-var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
-
-
-
 //---------------------------------------------------------------------
 // Logic patterns...
 //
+// NOTE: there seems to be no actual benefit from splitting patterns 
+// 		into a separate module...
+// 			- pointless without cmp(..) and thus diff.js
+// 			- importing it alone is a mistake waiting to happen...
+// 			- more work more abstraction, more code, more structure, 
+// 				more notes and more maintenance...
+// 			- more files to download/upload/...
+// 		...the only thing in favor of the split are the warm-and-fuzzies
+// 		of being modular, but in this case it's modularity for the sake 
+// 		of modularity.
+//
 // XXX add use-case docs...
 // XXX need to avoid recursion...
+// XXX should we avoid backtracking when pattern matching???
+// 		...specifically when working with IN and OF...
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var LogicTypeClassPrototype = {
@@ -526,6 +530,27 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 		this.value = value
 	},
 }))
+
+
+
+//---------------------------------------------------------------------
+// Placeholders...
+//
+// NOTE: these can be anything as long as they are unique and JSON 
+// 		compatible. This is done specifically to enable replacing the 
+// 		actual values before diffing to avoid clashes with the input 
+// 		objects -- this can occur as we use cmp(..) to structurally 
+// 		compare values on the patch stage rather than identity 
+// 		compares (i.e. '===') as all object linking can/will be severed 
+// 		by JSON.stringify(..).
+// NOTE: using Symbol(..) here is a bad idea because symbols are not 
+// 		serializable to JSON.
+
+// Used to represen non-existent items.
+var NONE = {type: 'NONE_PLACEHOLDER'}
+
+// Used to represent empty item slots (in sparse arrays).
+var EMPTY = {type: 'EMPTY_PLACEHOLDER'}
 
 
 
@@ -1559,6 +1584,7 @@ Types.set(Object, {
 	},
 	// XXX add object compatibility checks...
 	patch: function(obj, key, change, ...rest){
+		var EMPTY = this.EMPTY
 		// object attr...
 		if(typeof(key) == typeof('str')){
 			if(this.cmp(change.B, EMPTY)){
@@ -1682,6 +1708,9 @@ Types.set(Array, {
 	// XXX add object compatibility checks...
 	// XXX revise...
 	patch: function(obj, key, change){
+		var NONE = this.NONE
+		var EMPTY = this.EMPTY
+
 		var i = key instanceof Array ? key[0] : key
 		var j = key instanceof Array ? key[1] : key
 
@@ -2212,7 +2241,11 @@ var DiffPrototype = {
 	check: function(obj){
 		return Object.create(this.constructor.types).check(this.diff, obj) },
 	patch: function(obj){
-		return Object.create(this.constructor.types).patch(this, obj) },
+		return Object.assign(
+				Object.create(this.constructor.types), 
+				// get the actual placeholders...
+				this.placeholders)
+			.patch(this, obj) },
 	unpatch: function(obj){
 		return this.reverse().patch(obj) },
 
