@@ -279,7 +279,7 @@ The `path` is a `"/"` or `"\"` separated string that supports the following item
 - `"a|b"`	- matches either `a` or `b` (same as: `OR('a', 'b')`)
 - `"!a"`	- matches anything but `a` (smae as: `NOT('a')`)
 
-*Note that `"**"` is a special case in that it can not be combined with other patterns above (e.g. in `"a|**"` the string `"**"` is treated literally and has not special meaning).*
+*Note that `"**"` is a special case in that it can not be combined with other patterns above (e.g. in `"a|**"` the string `"**"` is treated literally and has no special meaning).*
 
 `diff.merge(diff) -> diff`  
 Generate a merged *diff* containing the changes from both diff object.
