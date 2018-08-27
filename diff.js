@@ -2252,7 +2252,11 @@ var DiffPrototype = {
 	},
 
 	check: function(obj){
-		return Object.create(this.constructor.types).check(this.diff, obj) },
+		return Object.assign(
+				Object.create(this.constructor.types), 
+				// get the actual placeholders...
+				this.placeholders)
+			.check(this.diff, obj) },
 	patch: function(obj){
 		return Object.assign(
 				Object.create(this.constructor.types), 
