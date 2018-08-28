@@ -122,7 +122,7 @@ diff.patch(Bill2)
 ```
 
 
-Since we applied *all* the changes to `Bill2`, now he looks just like `Ted`:
+Since we applied *all* the changes to `Bill2`, now he is just another `Ted` (or rather `Ted`'s copy):
 
 ```javascript
 //JSON.stringify(Bill2, null, '\t')

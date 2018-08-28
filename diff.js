@@ -955,6 +955,8 @@ module.Types = {
 	},
 
 
+	// User API...
+
 	// Reverse diff...
 	//
 	reverse: function(diff){
@@ -1092,9 +1094,6 @@ module.Types = {
 		return this.flatten(diff).concat(this.flatten(other))
 	},
 
-
-	// User API...
-	
 	// Build a diff between A and B...
 	//
 	// NOTE: this will include direct links to items.
@@ -1253,6 +1252,16 @@ module.Types = {
 			})
 			.pop())
 	},
+	// Call the post-patch method of the handlers...
+	//
+	postPatch: function(res){
+		var that = this
+		return [...this.types]
+			.filter(function(e){ 
+				return !!e.postPatch })
+			.reduce(function(r, e){
+				return e.postPatch.call(that, r) }, res) },
+
 
 	// XXX need to support different path element types...
 	// 		...in addition to Object and Array items, support Map, Set, ...
@@ -1329,15 +1338,7 @@ module.Types = {
 			})
 			.pop())
 	},
-	// Call the post-patch method of the handlers...
-	//
-	postPatch: function(res){
-		var that = this
-		return [...this.types]
-			.filter(function(e){ 
-				return !!e.postPatch })
-			.reduce(function(r, e){
-				return e.postPatch.call(that, r) }, res) },
+
 
 	// Check if diff is applicable to obj...
 	//
