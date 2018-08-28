@@ -68,7 +68,7 @@ var Diff = require('object-diff').Diff
 var diff = Diff(Bill, Ted)
 ```
 
-Here's how different `Bill` and `Ted` really are (or how the *diff* looks like):
+Here's how different `Bill` and `Ted` really are (this is how the *diff* looks like):
 ```javascript
 // log out the relevant part...
 //JSON.stringify(diff.diff, null, '\t')
@@ -102,7 +102,7 @@ This tells us that we have four *changes*:
 - in `"skills"` missing `"guitar"`
 - in `"skills"` different `"length"`
 
-A couple of words on the format:
+Some words on the format:
 - `A` and `B` indicate the states of the *change* in the input objects,
 - `path` tells us how to reach the *change* in the inputs,
 - The odd thing in `"path"` of the third change is the *index* of the change in the input `"skills"` arrays where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one),
@@ -120,7 +120,6 @@ var Bill2 = JSON.parse(JSON.stringify(Bill))
 // now apply the patch...
 diff.patch(Bill2)
 ```
-
 
 Since we applied *all* the changes to `Bill2`, now he is just another `Ted` (or rather `Ted`'s copy):
 
@@ -140,16 +139,17 @@ Since we applied *all* the changes to `Bill2`, now he is just another `Ted` (or 
 
 ### Partial patching
 
-Lets just *patch* `Bill`'s skill level...
+Sometimes we need to apply only a subset of the changes. So lets just *patch* `Bill`'s skillset...
 
 ```javascript
 diff
 	// only keep the changes to skills...
 	.filter('skills/*')
+	// use the filtered diff to update Bill...
 	.patch(Bill)
 ```
 
-Now, `Bill` can also play guitar!
+Now, `Bill` can finally play guitar!
 
 ```javascript
 //JSON.stringify(Bill, null, '\t')
@@ -168,13 +168,13 @@ Now, `Bill` can also play guitar!
 
 ### Checking
 
-XXX
+XXX API here is not finalized...
 
 ### Generic ways to compare objects (*patterns*)
 
 And for further checking we can create a *pattern*:
 ```javascript
-var {cmp, OR, STRING, NUMBER, ARRAY} = require('object-diff')
+var {cmp, AND, OR, STRING, NUMBER, ARRAY, AT} = require('object-diff')
 
 var PERSON = {
 	name: STRING,
@@ -196,11 +196,33 @@ var PERSON = {
 cmp(Bill, PERSON) // -> true
 ```
 
+Patterns can also be extended to construct more specific (or rather just different) patterns:
+```javascript
+// prototype extension...
+var BILL_or_TED = Object.assign(
+	Object.create(PERSON),
+	{
+		name: OR('Bill', 'Ted'),
+	})
+
+// logical extension/specialization...
+var BILL_or_TED_L = AND(
+	PERSON, 
+	AT('name', 
+		OR(
+			'Bill', 
+			'Ted')))
+
+// testing is the same...
+cmp(Bill, BILL_or_TED) // -> true
+cmp(Bill, BILL_or_TED_L) // -> true
+```
+
 *Now for the serious stuff...*
 
 ## Motivation
 
-XXX
+Originally this module was designed/written as a way to locate and store only the changed parts of rather big JSON objects/trees, but the specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
 
 ### Goals / Features
 - Full JSON *diff* support
@@ -208,8 +230,10 @@ XXX
 - ~~Optional attribute order support~~ (not done yet)
 - ~~Support extended Javascript types: Map, Set, ...etc.~~ (feasibility testing)
 - *Text diff* support
+- Object patterns as a means to simplify structural comparison/testing
 - Configurable and extensible implementation
 - As simple as possible
+- *Fun*
 
 XXX alternatives
 
@@ -227,12 +251,6 @@ var diff = require('object-diff')
 ```
 
 This module supports both [requirejs](https://requirejs.org/) and [node's](https://nodejs.org/) `require(..)`.
-
-
-XXX list basic use-cases:
-- creating / manipulating a diff
-- patching objects
-- deep comparisons and patterns
 
 
 ## Diff
@@ -264,7 +282,7 @@ Undo *diff" application to `X'` returning it to `X` state.
 
 This is equivalent to: `diff.reverse().patch(X')`
 
-`diff.check(X) -> bool`  
+~~`diff.check(X) -> bool`~~ (work in progress)  
 Check if *diff* is compatible/applicable to `X`. This essentially checks if the *left hand side* of the *diff* matches the corresponding nodes of `X`.
 
 `diff.reverse() -> diff`  

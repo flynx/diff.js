@@ -509,7 +509,7 @@ object.makeConstructor('AT', Object.assign(new LogicType(), {
 		}
 		return false
 	},
-	__init__: function(value, key){
+	__init__: function(key, value){
 		this.key = key
 		this.value = value
 	},
