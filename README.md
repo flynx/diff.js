@@ -323,7 +323,7 @@ Containers that support item changes include:
 - ~~`Map` / `WeakMap`~~ *(planned but not done yet)*
 - ~~`Set` / `WeakSet`~~ *(planned but not done yet)*
 
-Additionally attribute changes are supported for all non basic objects (i.e. anything for which `typeof X` yeilds `"object"`). This can be disabled by setting `options.no_attributes` to `true` (see: [Options](#options) below).
+Additionally attribute changes are supported for all non basic objects (i.e. any `x` for which `x instanceof Object` is `true`). This can be disabled by setting `options.no_attributes` to `true` (see: [Options](#options) below).
 
 ### Extended 'Text' object support
 
