@@ -251,6 +251,14 @@ var proxy = function(path, func){
 // XXX need to avoid recursion...
 // XXX should we avoid backtracking when pattern matching???
 // 		...specifically when working with IN and OF...
+// XXX diffing a mismatching pattern should yield the exact position 
+// 		(sub-pattern/rule) that failed and not just the whole pattern...
+// 		...usually a pattern chain fails, i.e. the nested failing pattern
+// 		also fails its parent and so on, so it is not a trivial task 
+// 		getting the source and probably the whole failed chain...
+// 		...might be a good idea to build a trace failure pattern and 
+// 		store it in .trace in the diff...
+//
 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var LogicTypeClassPrototype = {
@@ -280,9 +288,9 @@ var LogicTypePrototype = {
 			|| (obj != null 
 				&& obj.__cmp__ 
 				&& obj.__cmp__(this, cmp, cache))
-		c.set(obj, res)
+		c.set(obj, !!res)
 
-		return res
+		return !!res
 	},
 }
 
@@ -456,8 +464,8 @@ module.ARRAY =
 var NOT = 
 module.NOT = 
 object.makeConstructor('NOT', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp){
-		return !cmp(this.value, obj) },
+	__cmp__: function(obj, cmp, cache){
+		return !cmp(this.value, obj, cache) },
 	__init__: function(value){
 		this.value = value
 	},
@@ -468,9 +476,9 @@ object.makeConstructor('NOT', Object.assign(new LogicType(), {
 var OR = 
 module.OR = 
 object.makeConstructor('OR', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp){
+	__cmp__: function(obj, cmp, cache){
 		for(var m of this.members){
-			if(cmp(m, obj)){
+			if(cmp(m, obj, cache)){
 				return true
 			}
 		}
@@ -486,9 +494,9 @@ object.makeConstructor('OR', Object.assign(new LogicType(), {
 var AND = 
 module.AND = 
 object.makeConstructor('AND', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp){
+	__cmp__: function(obj, cmp, cache){
 		for(var m of this.members){
-			if(!cmp(m, obj)){
+			if(!cmp(m, obj, cache)){
 				return false
 			}
 		}
@@ -510,14 +518,14 @@ var IN =
 module.IN = 
 object.makeConstructor('IN', Object.assign(new LogicType(), {
 	// XXX add support for other stuff like sets and maps...
-	__cmp__: function(obj, cmp){
+	__cmp__: function(obj, cmp, cache){
 		var p = this.value
 		// XXX make this a break-on-match and not a go-through-the-whole-thing
 		return typeof(obj) == typeof({}) 
 			&& (p in obj
 				|| obj.reduce(function(res, e){
 					return res === false ? 
-						cmp(p, e) 
+						cmp(p, e, cache) 
 						: res }), false) },
 	__init__: function(value){
 		this.value = value
@@ -538,8 +546,8 @@ object.makeConstructor('IN', Object.assign(new LogicType(), {
 var AT = 
 module.AT = 
 object.makeConstructor('AT', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp){
-		if(cmp(obj != null ? obj[this.key] : null, this.value)){
+	__cmp__: function(obj, cmp, cache){
+		if(cmp(obj != null ? obj[this.key] : null, this.value, cache)){
 			return true
 		}
 		return false
@@ -1033,6 +1041,7 @@ module.Types = {
 	// 					the above.
 	//
 	// NOTE: array path also supports patterns...
+	// XXX should this use cmp(..) or this.cmp(..)
 	filter: function(diff, filter){
 		// string filter...
 		filter = typeof(filter) == typeof('str') ? 
@@ -1169,10 +1178,10 @@ module.Types = {
 					// 		pass options and cache down. 
 					// 		see cache setup below...
 					|| (diff(a, b) == null) }
-
 		// cache...
 		//cache = this.__cache = cache || this.__cache || new Map()
 		cache = cache || new Map()
+		// cached diff...
 		var diff = cache.diff = cache.diff || function(a, b){
 			var l2 = cache.get(a) || new Map()
 			var d = l2.get(b) || that.diff(a, b, options, cache)
