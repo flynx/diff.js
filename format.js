@@ -52,7 +52,8 @@ var DIFF_FORMAT_FLAT =
 module.DIFF_FORMAT_FLAT = ARRAY(CHANGE) 
 
 
-// XXX
+// XXX it makes sense to make this a recursive pattern...
+// 		...need to check if we stop on a recursive pattern...
 var DIFF_FORMAT_TREE =
 module.DIFF_FORMAT_TREE = ANY 
 

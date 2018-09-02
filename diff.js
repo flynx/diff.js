@@ -527,11 +527,17 @@ object.makeConstructor('IN', Object.assign(new LogicType(), {
 // XXX .key can't be a pattern at this point...
 // XXX this is a potential problem as with a pattern key we would need to
 // 		look ahead to pick the correct candidate...
+// XXX this falls into recursion on:
+// 		X = AT('moo')
+// 		X.value = OR(123, X)
+// 		cmp(X, {'moo', 333})
+// 			...this would also break on checking a recursive structure against 
+// 			a recursive pattern...
 var AT = 
 module.AT = 
 object.makeConstructor('AT', Object.assign(new LogicType(), {
 	__cmp__: function(obj, cmp){
-		if(cmp(obj[this.key], this.value)){
+		if(cmp(obj != null ? obj[this.key] : null, this.value)){
 			return true
 		}
 		return false
