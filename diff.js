@@ -32,6 +32,11 @@ var MIN_TEXT_LENGTH = 100
 //		- revise name -- this contains two parts:
 //			1. diff / patch and friends
 //			2. cmp and patterns
+//			open candidates:
+//				ig-diff
+//				cdiff
+//				pattern diff
+//
 //		  we need the name to be short and descriptive, possible 
 //		  candidates:
 //		  	- objdiff / object-diff
@@ -39,6 +44,8 @@ var MIN_TEXT_LENGTH = 100
 //		  	- compare
 //		- revise docs...
 //			...should be simpler to enter, maybe example-oriented intro
+//		- diff visualization -- for example see:
+//			https://www.npmjs.com/package/jsondiffpatch
 //
 //
 //---------------------------------------------------------------------

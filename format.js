@@ -1,5 +1,8 @@
 /**********************************************************************
 * 
+* This module describes the diff format and provides basic verification.
+*
+* XXX EXPERIMENTAL...
 *
 *
 **********************************************************************/
@@ -31,6 +34,7 @@ var {
 
 var VALUE =
 module.VALUE = OR(
+	// XXX use these taken from .placeholders...
 	EMPTY,
 	NONE,
 	ANY)
@@ -161,7 +165,7 @@ module.DIFF_OBJECT = AND(
 			AT('diff', DIFF_FLAT)), 
 		AND(
 			AT('structure', 'tree'),
-			AT('diff', DIFF_TREE))) )
+			AT('diff', DIFF_TREE))))
 
 
 
