@@ -13,9 +13,11 @@ var object = require('ig-object')
 
 /*********************************************************************/
 
-var FORMAT_NAME = 'object-diff'
-var FORMAT_VERSION = '0.0.0'
+var FORMAT_NAME =
+module.FORMAT_NAME = 'object-diff'
 
+var FORMAT_VERSION =
+module.FORMAT_VERSION = '0.0.0'
 
 var MIN_TEXT_LENGTH = 100
 
@@ -2226,9 +2228,9 @@ var DiffClassPrototype = {
 var DiffPrototype = {
 	// system meta information...
 	get format(){
-		return this.constructor.format },
+		return this.constructor.types.format },
 	get version(){
-		return this.constructor.version },
+		return this.constructor.types.version },
 
 	// XXX is this the right thing to do???
 	// 		...the bad thing here is that this can be mutated from the 

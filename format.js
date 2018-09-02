@@ -62,10 +62,8 @@ var DIFF_OBJECT =
 module.DIFF_OBJECT = AND(
 	AT('format', diff.FORMAT_NAME),
 	//AT('version', STRING(/\d+\.\d+\.\d+/)),
-	AT('placeholders', AND(
-		// XXX must be unique ANY...
-		AT('NONE', ANY),
-		AT('EMPTY', ANY))),
+	AT('version', diff.FORMAT_VERSION),
+
 	AT('options', AND(
  		AT('tree_diff', OR(BOOL, null)),
  		AT('keep_none', OR(BOOL, null)),
@@ -75,6 +73,11 @@ module.DIFF_OBJECT = AND(
  		AT('EMPTY', OR(ANY, null)),
  		AT('no_length', OR(BOOL, null)),
  		AT('cmp', OR(FUNCTION, null)) )),
+	AT('placeholders', AND(
+		// XXX would be nice to store these and to use them to test later...
+		AT('NONE', ANY),
+		AT('EMPTY', ANY))),
+
 	AT('timestamp', NUMBER),
 	OR(
 		AND(
