@@ -878,7 +878,7 @@ module.Types = {
 		// search instances...
 		if(!type){
 			//type = Object
-			type = A.constructor
+			type = A != null ? A.constructor : null
 			for(var t of types){
 				// leave pure objects for last...
 				if(t === Object 
