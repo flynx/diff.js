@@ -275,7 +275,8 @@ var LogicTypePrototype = {
 		}
 
 		var res = this.__cmp__(obj, cmp, cache)
-			|| (obj.__cmp__ 
+			|| (obj != null 
+				&& obj.__cmp__ 
 				&& obj.__cmp__(this, cmp, cache))
 		c.set(obj, res)
 
@@ -307,10 +308,36 @@ var makeCIPattern = function(name, check, init){
 // 	ANY
 // 		-> pattern
 //
+// XXX AT('moo', ANY) matches L even if 'moo' in L is false...
 var ANY = 
 module.ANY = 
 	makeCIPattern('ANY', 
 		function(){ return true })()
+
+
+// Bool pattern...
+//
+//	BOOL
+//		-> pattern
+//
+var BOOL = 
+module.BOOL = 
+	makeCIPattern('BOOL', 
+		function(obj){ 
+			return obj === true || obj === false })()
+
+
+// Function pattern...
+//
+// 	FUNCTION
+// 		-> pattern
+//
+// XXX add signature checking...
+var FUNCTION = 
+module.FUNCTION = 
+	makeCIPattern('FUNCTION', 
+		function(obj){ 
+			return obj instanceof Function })()
 
 
 // String pattern...
@@ -408,7 +435,7 @@ module.ARRAY =
 				|| (obj instanceof Array
 					// XXX make this fail on first fail -- currently 
 					// 		this runs every test on every elem...
-					&& this.value.filter(function(value){
+					&& (this.value || []).filter(function(value){
 							return (typeof(value) == typeof(123) ?
 									obj.length == value
 								// function...
@@ -418,7 +445,7 @@ module.ARRAY =
 								: obj.filter(function(e){
 										return cmp(value, e)
 									}).length == obj.length)
-						}).length == this.value.length) }, 
+						}).length == (this.value || []).length) }, 
 		function(...value){ this.value = value }) 
 
 
@@ -873,7 +900,6 @@ module.Types = {
 			var typeB = this.detect(B, undefined, options)
 
 			// type match...
-			//if(type === typeB){
 			if(type === typeB && this.has(type)){
 				return type
 
