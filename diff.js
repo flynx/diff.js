@@ -287,21 +287,31 @@ var LogicTypeClassPrototype = {
 
 var LogicTypePrototype = {
 	__context__: null,
-	context: function(){
-		return (this.__context__ = this.__context__ || {}) },
+	context: function(context){
+		var res = (this.__context__ == null || context != null) ? 
+			Object.create(this) 
+			: this
+		res.__context__ = res.__context__ || context || {} 
+		return res
+	},
 
 	__cmp__: function(obj, cmp, context){
 		return false },
 	// XXX need to track loops...
 	cmp: function(obj, cmp, context){
+		// XXX HACK???
+		if(arguments.length < 3){
+			return Diff.cmp(
+				cmp instanceof Function ? this : this.context(cmp),
+				obj)
+		}
+
 		cmp = cmp || function(a, b){
 			return a === b 
 				//|| a == b 
 				|| (a.__cmp__ && a.__cmp__(b, cmp, context))
 				|| (b.__cmp__ && b.__cmp__(a, cmp, context)) }
-
-		// create a pattern context...
-		var context = context || this.context()
+		context = context || this.context().__context__
 
 		// cache...
 		var cache = context.cache = context.cache || new Map() 
@@ -503,11 +513,6 @@ object.makeConstructor('NOT', Object.assign(new LogicType(), {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Will compare as true if one of the .members compares as true...
-//
-// XXX BUG:
-// 		cmp(OR(1,[2],3), 2)
-// 			-> true
-// 		...this is likely due to [2] == 2 -> true
 var OR = 
 module.OR = 
 object.makeConstructor('OR', Object.assign(new LogicType(), {
@@ -543,11 +548,25 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX BUG: 
+// 		CONTEXT([ANY, ANY, ANY]).cmp([1, 2, 3]) 
+// 			-> false
+var CONTEXT = 
+module.CONTEXT = 
+object.makeConstructor('CONTEX', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp, context){
+		return cmp(this.pattern, obj) },
+	__init__: function(pattern){
+		this.pattern = arguments.length == 0 ? ANY : pattern
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var VAR = 
 module.VAR = 
 object.makeConstructor('VAR', Object.assign(new LogicType(), {
 	__cmp__: function(obj, cmp, context){
-		var context = context || this.context()
+		var context = context || this.context().__context__
 		var ns = context.ns = context.ns || {}
 		var pattern = ns[this.name] = 
 			this.name in ns ?
@@ -573,7 +592,7 @@ var LIKE =
 module.LIKE = 
 object.makeConstructor('LIKE', Object.assign(new VAR(), {
 	__cmp__: function(obj, cmp, context){
-		var context = context || this.context()
+		var context = context || this.context().__context__
 
 		return VAR.prototype.__cmp__.call(this, obj, cmp, context)
 			|| Diff.cmp(
@@ -1239,7 +1258,7 @@ module.Types = {
 	// XXX might be a god idea to mix in default options (different 
 	// 		defaults per mode)...
 	// XXX TEST: the format should survive JSON.parse(JSON.stringify(..))...
-	diff: function(A, B, options, cache){
+	diff: function(A, B, options, context){
 		var that = this
 		options = options ? Object.create(options) : {}
 		options.as_object = options.as_object || []
@@ -1254,9 +1273,9 @@ module.Types = {
 				|| b === that.ANY 
 				// logic patterns...
 				|| (a instanceof LogicType 
-					&& a.cmp(b, cmp, cache))
+					&& a.cmp(b, cmp, context))
 				|| (b instanceof LogicType 
-					&& b.cmp(a, cmp, cache)) }
+					&& b.cmp(a, cmp, context)) }
 		// deep compare...
 		var cmp = options.cmp = options.cmp 
 			|| function(a, b){
@@ -1267,12 +1286,15 @@ module.Types = {
 					// 		see cache setup below...
 					|| (diff(a, b) == null) }
 		// cache...
-		//cache = this.__cache = cache || this.__cache || new Map()
-		cache = cache || new Map()
+		context = context 
+			|| (A instanceof LogicType ? A.context().__context__ 
+				: B instanceof LogicType ? B.context().__context__ 
+				: {})
+		cache = context.cache = context.cache || new Map()
 		// cached diff...
 		var diff = cache.diff = cache.diff || function(a, b){
 			var l2 = cache.get(a) || new Map()
-			var d = l2.get(b) || that.diff(a, b, options, cache)
+			var d = l2.get(b) || that.diff(a, b, options, context)
 			cache.set(a, l2.set(b, d))
 			return d
 		}
@@ -1326,8 +1348,8 @@ module.Types = {
 	// 		are going to throw away anyway...
 	// 		...this would be possible with a live .walk(..) that would 
 	// 		report changes as it finds them...
-	cmp: function(A, B, options){
-		return this.diff(A, B, options) == null },
+	cmp: function(A, B, options, context){
+		return this.diff(A, B, options, context) == null },
 
 	// Patch (update) obj via diff...
 	//

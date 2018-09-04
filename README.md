@@ -486,6 +486,12 @@ This is the same as `VAR(..)` bud does a structural match (i.e. via `cmp(..)`).
 
 Note that `VAR(..)` and `LIKE(..)` use the same namespace and can be used interchangeably depending on the type of matching desired.
 
+`CONTEXT(pattern)`  
+A context constructor, matches if `pattern` matches.
+
+This is needed in case we need a way to access the pattern API from the root of the pattern when it's actually an object (see example below).
+
+
 Examples:
 ```javascript
 var P = [VAR('x', ANY), VAR('x'), LIKE('x')]
@@ -496,6 +502,12 @@ cmp(P, [{}, {}, {}]) // -> false
 var o = {}
 // this succeeds because o === o and cmp(o, {}) is true...
 cmp(P, [o, o, {}]) // -> true
+
+// and in case we need for P to explicitly be a pattern:
+P = CONTEXT(P)
+
+// now we can use the pattern API directly from P:
+P.cmp([o, o, {}])
 ```
 
 ### Miscellaneous patterns
