@@ -25,6 +25,7 @@
 		- [Number patterns](#number-patterns)
 		- [Array patterns](#array-patterns)
 		- [Pattern variables](#pattern-variables)
+		- [Miscellaneous patterns](#miscellaneous-patterns)
 	- [Patterns (EXPERIMENTAL)](#patterns-experimental)
 	- [JSON compatibility](#json-compatibility)
 	- [Extending Diff](#extending-diff)
@@ -497,6 +498,19 @@ var o = {}
 cmp(P, [o, o, {}]) // -> true
 ```
 
+### Miscellaneous patterns
+
+`TEST(function)`  
+Matches if `function` returns true.
+
+The `function` has the same signature as Pattern's `.__cmp__(obj, cmp, context)` and is run in the context of the `TEST` instance.
+
+Example:
+```javascript
+var P = [ANY, ANY, TEST(e => !console.log('ELEM #3:', e))]
+
+cmp(P, [1,2,3]) // prints: 'ELEM #3: 3'
+```
 
 ## Patterns (EXPERIMENTAL)
 
