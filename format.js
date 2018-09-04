@@ -16,6 +16,7 @@ var {
 	BOOL, NUMBER, STRING, ARRAY, FUNCTION,
 	OR, AND, NOT,
 	AT, OF, IN,
+	VAR, LIKE,
 
 	EMPTY, NONE,
 } = diff
@@ -35,8 +36,8 @@ var {
 var VALUE =
 module.VALUE = OR(
 	// XXX use these taken from .placeholders...
-	EMPTY,
-	NONE,
+	OR(EMPTY, LIKE('EMPTY')),
+	OR(NONE, LIKE('NONE')),
 	ANY)
 
 
@@ -154,8 +155,10 @@ module.DIFF_OBJECT = AND(
 	AT('placeholders', AND(
 		// XXX would be nice to store these and to use them to test 
 		// 		deeper stuff (i.e. VALUE)...
-		AT('NONE', ANY),
-		AT('EMPTY', ANY))),
+		AT('NONE', 
+			VAR('NONE', ANY)),
+		AT('EMPTY', 
+			VAR('EMPTY', ANY)))),
 	AT('timestamp', NUMBER),
 
 	// diff...

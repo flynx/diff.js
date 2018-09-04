@@ -24,6 +24,7 @@
 		- [String patterns](#string-patterns)
 		- [Number patterns](#number-patterns)
 		- [Array patterns](#array-patterns)
+		- [Pattern variables](#pattern-variables)
 	- [Patterns (EXPERIMENTAL)](#patterns-experimental)
 	- [JSON compatibility](#json-compatibility)
 	- [Extending Diff](#extending-diff)
@@ -458,16 +459,51 @@ Match if `pattern` matches each array item.
 A combination of the above where `x`, `y` and `..` may be any of *length*, *functions* or *patterns*.  
 This is a shorthand for: `AND(ARRAY(x), ARRAY(y), ..)`
 
-XXX examples...
+
+### Pattern variables
+
+Patterns support variables, the namespae/context is persistent per diff / compare call.
+
+`VAR(name, pattern)`  
+`VAR(name)`  
+A `VAR` is uniquely identified by name.
+This works in stages:
+1. Matches `pattern` until *first successful match*,
+2. On first successful match the matched object is *cached*,
+3. Matches the *cached* object on all subsequent matches.
+
+If no `pattern` is given `ANY` is assumed.
+
+Note that if the *cached* object is not a pattern it will not be matched structurally, i.e. first `===` and then `==` are used instead of `cmp(..)`.
+
+`LIKE(name, pattern)`  
+`LIKE(name)`  
+This is the same as `VAR(..)` bud does a structural match (i.e. via `cmp(..)`).
+
+Note that `VAR(..)` and `LIKE(..)` use the same namespace and can be used interchangeably depending on the type of matching desired.
+
+Examples:
+```javascript
+var P = [VAR('x', ANY), VAR('x'), LIKE('x')]
+
+// this will fail because {} !== {}
+cmp(P, [{}, {}, {}]) // -> false
+
+var o = {}
+// this cuccessds because o === o and cmp(o, {}) is true...
+cmp(P, [o, o, {}]) // -> true
+```
 
 
 ## Patterns (EXPERIMENTAL)
 
 `IN(A)`  
+Matches a *container* if it contains `A`.
 
-`AT(A, K)`  
+`AT(K, A)`  
+Matches a *container* if it contains `A` *at* index/key `K`
 
-`OF(A, N)`  
+~~`OF(A, N)`~~  
 
 
 ## JSON compatibility

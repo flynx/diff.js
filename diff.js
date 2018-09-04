@@ -58,7 +58,7 @@ var MIN_TEXT_LENGTH = 100
 //			NAMED(<name>[, pattern])
 //
 //			this would also require a means to pass the context to 
-//			nested patterns...
+//			nested patterns and to access it...
 //
 //
 //
@@ -286,18 +286,25 @@ var LogicTypeClassPrototype = {
 }
 
 var LogicTypePrototype = {
-	__cmp__: function(obj, cmp){
+	__context__: null,
+	context: function(){
+		return (this.__context__ = this.__context__ || {}) },
+
+	__cmp__: function(obj, cmp, context){
 		return false },
 	// XXX need to track loops...
-	cmp: function(obj, cmp, cache){
+	cmp: function(obj, cmp, context){
 		cmp = cmp || function(a, b){
 			return a === b 
 				|| a == b 
-				|| (a.__cmp__ && a.__cmp__(b, cmp, cache))
-				|| (b.__cmp__ && b.__cmp__(a, cmp, cache)) }
+				|| (a.__cmp__ && a.__cmp__(b, cmp, context))
+				|| (b.__cmp__ && b.__cmp__(a, cmp, context)) }
+
+		// create a pattern context...
+		var context = context || this.context()
 
 		// cache...
-		cache = cache || new Map()
+		var cache = context.cache = context.cache || new Map() 
 		var c = cache.get(this) || new Map()
 		cache.has(c) 
 			|| cache.set(this, c)
@@ -305,10 +312,10 @@ var LogicTypePrototype = {
 			return c.get(obj)
 		}
 
-		var res = this.__cmp__(obj, cmp, cache)
+		var res = this.__cmp__(obj, cmp, context)
 			|| (obj != null 
 				&& obj.__cmp__ 
-				&& obj.__cmp__(this, cmp, cache))
+				&& obj.__cmp__(this, cmp, context))
 		c.set(obj, !!res)
 
 		return !!res
@@ -460,7 +467,7 @@ module.NUMBER =
 var ARRAY = 
 module.ARRAY = 
 	makeCIPattern('ARRAY', 
-		function(obj, cmp){ 
+		function(obj, cmp, context){ 
 			return obj === ARRAY 
 				//|| (obj instanceof Array && this.value.length == 0)
 				|| (obj instanceof Array
@@ -485,8 +492,8 @@ module.ARRAY =
 var NOT = 
 module.NOT = 
 object.makeConstructor('NOT', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp, cache){
-		return !cmp(this.value, obj, cache) },
+	__cmp__: function(obj, cmp, context){
+		return !cmp(this.value, obj, context) },
 	__init__: function(value){
 		this.value = value
 	},
@@ -497,9 +504,9 @@ object.makeConstructor('NOT', Object.assign(new LogicType(), {
 var OR = 
 module.OR = 
 object.makeConstructor('OR', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp, cache){
+	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
-			if(cmp(m, obj, cache)){
+			if(cmp(m, obj, context)){
 				return true
 			}
 		}
@@ -515,9 +522,9 @@ object.makeConstructor('OR', Object.assign(new LogicType(), {
 var AND = 
 module.AND = 
 object.makeConstructor('AND', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp, cache){
+	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
-			if(!cmp(m, obj, cache)){
+			if(!cmp(m, obj, context)){
 				return false
 			}
 		}
@@ -538,16 +545,19 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 var IN = 
 module.IN = 
 object.makeConstructor('IN', Object.assign(new LogicType(), {
-	// XXX add support for other stuff like sets and maps...
-	__cmp__: function(obj, cmp, cache){
+	// XXX make this a break-on-match and not a go-through-the-whole-thing
+	// XXX should we check inherited stuff???
+	__cmp__: function(obj, cmp, context){
 		var p = this.value
-		// XXX make this a break-on-match and not a go-through-the-whole-thing
-		return typeof(obj) == typeof({}) 
-			&& (p in obj
-				|| obj.reduce(function(res, e){
+		return (obj instanceof Array ? obj 
+			: obj instanceof Map || obj instanceof Set ? [...obj.values()]
+			: [])
+				.concat(Object.values(obj))
+				.reduce(function(res, e){
 					return res === false ? 
-						cmp(p, e, cache) 
-						: res }), false) },
+						cmp(p, e, context) 
+						: res 
+				}, false) },
 	__init__: function(value){
 		this.value = value
 	},
@@ -567,8 +577,8 @@ object.makeConstructor('IN', Object.assign(new LogicType(), {
 var AT = 
 module.AT = 
 object.makeConstructor('AT', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp, cache){
-		if(cmp(obj != null ? obj[this.key] : null, this.value, cache)){
+	__cmp__: function(obj, cmp, context){
+		if(cmp(obj != null ? obj[this.key] : null, this.value, context)){
 			return true
 		}
 		return false
@@ -593,6 +603,49 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 		this.count = count
 		this.value = value
 	},
+}))
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+var VAR = 
+module.VAR = 
+object.makeConstructor('VAR', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp, context){
+		var context = context || this.context()
+		var ns = context.ns = context.ns || {}
+		var pattern = ns[this.name] = 
+			this.name in ns ?
+				ns[this.name] 
+				: this.pattern
+
+		if(cmp(pattern, obj)){
+			ns[this.name] = obj 
+			return true
+		}
+
+		return false
+	},
+	__init__: function(name, pattern){
+		this.name = name
+		this.pattern = arguments.length < 2 ? ANY : pattern
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// this is like VAR(..) but will do a structural compare...
+var LIKE = 
+module.LIKE = 
+object.makeConstructor('LIKE', Object.assign(new VAR(), {
+	// XXX reuse...
+	__cmp__: function(obj, cmp, context){
+		var context = context || this.context()
+
+		return VAR.prototype.__cmp__.call(this, obj, cmp, context)
+			|| Diff.cmp(
+				this.name in context.ns ?
+					context.ns[this.name] 
+					: this.pattern,
+				obj) },
 }))
 
 
