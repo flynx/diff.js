@@ -46,6 +46,20 @@ var MIN_TEXT_LENGTH = 100
 //			...should be simpler to enter, maybe example-oriented intro
 //		- diff visualization -- for example see:
 //			https://www.npmjs.com/package/jsondiffpatch
+//		- experiment with pattern contexts...
+//			a context is essentially a namespace for a pattern within a 
+//			specific use instance.
+//			this would enable us to create a settable/linkable named 
+//			pattern that would:
+//				- until first successful match use pattern to compare
+//				- set on first successful match
+//				- subsequent matches would compare to the set value
+//
+//			NAMED(<name>[, pattern])
+//
+//			this would also require a means to pass the context to 
+//			nested patterns...
+//
 //
 //
 //---------------------------------------------------------------------
