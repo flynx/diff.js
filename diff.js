@@ -297,20 +297,37 @@ var LogicTypePrototype = {
 
 	__cmp__: function(obj, cmp, context){
 		return false },
+	//
+	// 	Deep compare this to obj (use Diff.cmp(..))...
+	// 	.cmp(obj)
+	// 		-> bool
+	//
+	// 	Deep compare this to obj in context (use Diff.cmp(..))...
+	// 	.cmp(obj, context)
+	// 		-> bool
+	//
+	// 	Compare this to obj using comparator cmp and an optional context context...
+	// 	.cmp(obj, cmp)
+	// 	.cmp(obj, cmp, context)
+	// 		-> bool
+	//
 	// XXX need to track loops...
+	// XXX HACK???: this uses Diff.cmp(..) in simple cases...
 	cmp: function(obj, cmp, context){
 		// XXX HACK???
-		if(arguments.length < 3){
+		if(arguments.length < 3 || !(cmp instanceof Function)){
 			return Diff.cmp(
 				cmp instanceof Function ? this : this.context(cmp),
 				obj)
 		}
 
+		/*
 		cmp = cmp || function(a, b){
 			return a === b 
 				//|| a == b 
 				|| (a.__cmp__ && a.__cmp__(b, cmp, context))
 				|| (b.__cmp__ && b.__cmp__(a, cmp, context)) }
+		//*/
 		context = context || this.context().__context__
 
 		// cache...
@@ -363,6 +380,22 @@ var ANY =
 module.ANY = 
 	makeCIPattern('ANY', 
 		function(){ return true })()
+
+
+// Null type pattern...
+//
+// 	NULL
+// 		-> pattern
+//
+// This matches null and undefined.
+//
+// NOTE: this will not match NaN (XXX revise)
+var NULL = 
+module.NULL = 
+	makeCIPattern('NULL', 
+		function(obj){ 
+			return obj === null 
+				|| obj === undefined })()
 
 
 // Bool pattern...
@@ -547,6 +580,7 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 	},
 }))
 
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX BUG: 
 // 		CONTEXT([ANY, ANY, ANY]).cmp([1, 2, 3]) 
@@ -602,6 +636,7 @@ object.makeConstructor('LIKE', Object.assign(new VAR(), {
 				obj) },
 }))
 
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // TEST(func) == L iff func(L) is true.
 var TEST = 
@@ -613,6 +648,7 @@ object.makeConstructor('TEST', Object.assign(new VAR(), {
 		this.func = func
 	}
 }))
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // IN(A) == L iff A in L
@@ -1266,8 +1302,9 @@ module.Types = {
 		// basic compare...
 		// XXX do we need to differentiate things like: new Number(123) vs. 123???
 		var bcmp = function(a, b, cmp){
+			// NOTE: we can't use a == b directly because of things like
+			// 		[2] == 2 -> true...
 			return a === b 
-				//|| a == b 
 				// basic patters...
 				|| a === that.ANY 
 				|| b === that.ANY 
@@ -1677,7 +1714,7 @@ Types.set('Basic', {
 	no_attributes: true,
 
 	compatible: function(obj, options){
-		return typeof(obj) != 'object' },
+		return obj === null || typeof(obj) != 'object' },
 	handle: function(obj, diff, A, B, options){
 		;(!options.keep_none && A === NONE)
 			|| (obj.A = A)

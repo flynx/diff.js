@@ -13,7 +13,7 @@
 var diff = require('./diff')
 var {
 	ANY,
-	BOOL, NUMBER, STRING, ARRAY, FUNCTION,
+	NULL, BOOL, NUMBER, STRING, ARRAY, FUNCTION,
 	OR, AND, NOT,
 	AT, OF, IN,
 	VAR, LIKE, TEST,
@@ -144,14 +144,14 @@ module.DIFF_OBJECT = AND(
 
 	// instance metadata...
 	AT('options', AND(
- 		AT('tree_diff', OR(BOOL, null)),
- 		AT('keep_none', OR(BOOL, null)),
- 		AT('min_text_length', OR(NUMBER, null)),
-		AT('no_attributes', OR(BOOL, null)),
- 		AT('NONE', OR(ANY, null)),
- 		AT('EMPTY', OR(ANY, null)),
- 		AT('no_length', OR(BOOL, null)),
- 		AT('cmp', OR(FUNCTION, null)) )),
+ 		AT('tree_diff', OR(BOOL, NULL)),
+ 		AT('keep_none', OR(BOOL, NULL)),
+ 		AT('min_text_length', OR(NUMBER, NULL)),
+		AT('no_attributes', OR(BOOL, NULL)),
+ 		AT('NONE', OR(ANY, NULL)),
+ 		AT('EMPTY', OR(ANY, NULL)),
+ 		AT('no_length', OR(BOOL, NULL)),
+ 		AT('cmp', OR(FUNCTION, NULL)) )),
 	AT('placeholders', AND(
 		// XXX would be nice to store these and to use them to test 
 		// 		deeper stuff (i.e. VALUE)...
