@@ -16,7 +16,7 @@ var {
 	BOOL, NUMBER, STRING, ARRAY, FUNCTION,
 	OR, AND, NOT,
 	AT, OF, IN,
-	VAR, LIKE,
+	VAR, LIKE, TEST,
 
 	EMPTY, NONE,
 } = diff

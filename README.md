@@ -101,7 +101,7 @@ This tells us that we have four *changes*:
 - different `"name"`
 - different `"hair"`
 - in `"skills"` missing `"guitar"`
-- in `"skills"` different `"length"`
+- in `"skills"` different `"length"` or *different number of skills*.
 
 Some words on the format:
 - `A` and `B` indicate the states of the *change* in the input objects,
@@ -386,7 +386,10 @@ XXX General description...
 ### Logic patterns
 
 `ANY`  
-Matches anything
+Matches anything.
+
+Note that this will also match `undefined`, to match anything but `undefined` use `NOT(undefined)`.  
+XXX this may still change.
 
 
 `NOT(A)`  
@@ -464,8 +467,8 @@ This is a shorthand for: `AND(ARRAY(x), ARRAY(y), ..)`
 
 Patterns support variables, the namespae/context is persistent per diff / compare call.
 
-`VAR(name, pattern)`  
 `VAR(name)`  
+`VAR(name, pattern)`  
 A `VAR` is uniquely identified by name.
 This works in stages:
 1. Matches `pattern` until *first successful match*,
@@ -476,8 +479,8 @@ If no `pattern` is given `ANY` is assumed.
 
 Note that if the *cached* object is not a pattern it will not be matched structurally, i.e. first `===` and then `==` are used instead of `cmp(..)`.
 
-`LIKE(name, pattern)`  
 `LIKE(name)`  
+`LIKE(name, pattern)`  
 This is the same as `VAR(..)` bud does a structural match (i.e. via `cmp(..)`).
 
 Note that `VAR(..)` and `LIKE(..)` use the same namespace and can be used interchangeably depending on the type of matching desired.
@@ -490,7 +493,7 @@ var P = [VAR('x', ANY), VAR('x'), LIKE('x')]
 cmp(P, [{}, {}, {}]) // -> false
 
 var o = {}
-// this cuccessds because o === o and cmp(o, {}) is true...
+// this succeeds because o === o and cmp(o, {}) is true...
 cmp(P, [o, o, {}]) // -> true
 ```
 

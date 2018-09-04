@@ -296,7 +296,7 @@ var LogicTypePrototype = {
 	cmp: function(obj, cmp, context){
 		cmp = cmp || function(a, b){
 			return a === b 
-				|| a == b 
+				//|| a == b 
 				|| (a.__cmp__ && a.__cmp__(b, cmp, context))
 				|| (b.__cmp__ && b.__cmp__(a, cmp, context)) }
 
@@ -316,6 +316,8 @@ var LogicTypePrototype = {
 			|| (obj != null 
 				&& obj.__cmp__ 
 				&& obj.__cmp__(this, cmp, context))
+
+		// cache...
 		c.set(obj, !!res)
 
 		return !!res
@@ -501,6 +503,11 @@ object.makeConstructor('NOT', Object.assign(new LogicType(), {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Will compare as true if one of the .members compares as true...
+//
+// XXX BUG:
+// 		cmp(OR(1,[2],3), 2)
+// 			-> true
+// 		...this is likely due to [2] == 2 -> true
 var OR = 
 module.OR = 
 object.makeConstructor('OR', Object.assign(new LogicType(), {
@@ -536,12 +543,63 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+var VAR = 
+module.VAR = 
+object.makeConstructor('VAR', Object.assign(new LogicType(), {
+	__cmp__: function(obj, cmp, context){
+		var context = context || this.context()
+		var ns = context.ns = context.ns || {}
+		var pattern = ns[this.name] = 
+			this.name in ns ?
+				ns[this.name] 
+				: this.pattern
+
+		if(cmp(pattern, obj)){
+			ns[this.name] = obj 
+			return true
+		}
+
+		return false
+	},
+	__init__: function(name, pattern){
+		this.name = name
+		this.pattern = arguments.length < 2 ? ANY : pattern
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// this is like VAR(..) but will do a structural compare...
+var LIKE = 
+module.LIKE = 
+object.makeConstructor('LIKE', Object.assign(new VAR(), {
+	__cmp__: function(obj, cmp, context){
+		var context = context || this.context()
+
+		return VAR.prototype.__cmp__.call(this, obj, cmp, context)
+			|| Diff.cmp(
+				this.name in context.ns ?
+					context.ns[this.name] 
+					: this.pattern,
+				obj) },
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// TEST(func) == L iff func(L) is true.
+var TEST = 
+module.TEST = 
+object.makeConstructor('TEST', Object.assign(new VAR(), {
+	__cmp__: function(obj, cmp, context){
+		return this.func(obj, cmp, context) },
+	__init__: function(func){
+		this.func = func
+	}
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // IN(A) == L iff A in L
 //
 // NOTE: since this can do a search using cmp(..) thid will be slow on 
 // 		large containers...
-//
-// XXX add support for other containers...
 var IN = 
 module.IN = 
 object.makeConstructor('IN', Object.assign(new LogicType(), {
@@ -549,13 +607,13 @@ object.makeConstructor('IN', Object.assign(new LogicType(), {
 	// XXX should we check inherited stuff???
 	__cmp__: function(obj, cmp, context){
 		var p = this.value
-		return (obj instanceof Array ? obj 
-			: obj instanceof Map || obj instanceof Set ? [...obj.values()]
+		return (obj instanceof Map || obj instanceof Set ? 
+			[...obj.values()]
 			: [])
 				.concat(Object.values(obj))
 				.reduce(function(res, e){
 					return res === false ? 
-						cmp(p, e, context) 
+						!!cmp(p, e, context) 
 						: res 
 				}, false) },
 	__init__: function(value){
@@ -604,50 +662,6 @@ object.makeConstructor('OF', Object.assign(new LogicType(), {
 		this.value = value
 	},
 }))
-
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-var VAR = 
-module.VAR = 
-object.makeConstructor('VAR', Object.assign(new LogicType(), {
-	__cmp__: function(obj, cmp, context){
-		var context = context || this.context()
-		var ns = context.ns = context.ns || {}
-		var pattern = ns[this.name] = 
-			this.name in ns ?
-				ns[this.name] 
-				: this.pattern
-
-		if(cmp(pattern, obj)){
-			ns[this.name] = obj 
-			return true
-		}
-
-		return false
-	},
-	__init__: function(name, pattern){
-		this.name = name
-		this.pattern = arguments.length < 2 ? ANY : pattern
-	},
-}))
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// this is like VAR(..) but will do a structural compare...
-var LIKE = 
-module.LIKE = 
-object.makeConstructor('LIKE', Object.assign(new VAR(), {
-	// XXX reuse...
-	__cmp__: function(obj, cmp, context){
-		var context = context || this.context()
-
-		return VAR.prototype.__cmp__.call(this, obj, cmp, context)
-			|| Diff.cmp(
-				this.name in context.ns ?
-					context.ns[this.name] 
-					: this.pattern,
-				obj) },
-}))
-
 
 
 //---------------------------------------------------------------------
@@ -1234,7 +1248,7 @@ module.Types = {
 		// XXX do we need to differentiate things like: new Number(123) vs. 123???
 		var bcmp = function(a, b, cmp){
 			return a === b 
-				|| a == b 
+				//|| a == b 
 				// basic patters...
 				|| a === that.ANY 
 				|| b === that.ANY 
