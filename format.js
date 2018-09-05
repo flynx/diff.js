@@ -13,7 +13,7 @@
 var diff = require('./diff')
 var {
 	ANY,
-	NULL, BOOL, NUMBER, STRING, ARRAY, FUNCTION,
+	NULL, BOOL, B, NUMBER, N, STRING, S, ARRAY, L, FUNCTION, F,
 	OR, AND, NOT,
 	AT, OF, IN,
 	VAR, LIKE, TEST,
@@ -53,16 +53,16 @@ module.SIDE_VALUES = OR(
 
 var CHANGE =
 module.CHANGE = AND(
-	AT('path', ARRAY),
+	AT('path', L),
 	// XXX optional...
 	// 		...see DIFF_OBJECT's options for description...
-	AT('type', OR(STRING, undefined)),
+	AT('type', OR(S, undefined)),
 	SIDE_VALUES)
 
 
 var DIFF_FLAT =
 module.DIFF_FLAT = OR(
-	ARRAY(CHANGE), 
+	L(CHANGE), 
 	null)
 
 
@@ -78,13 +78,13 @@ module.BASIC_CHANGE = AND(
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var OBJECT_ITEM =
 module.OBJECT_ITEM = OR(
-	[STRING, DIFF_TREE],
-	[STRING, STRING, DIFF_TREE])
+	[S, DIFF_TREE],
+	[S, S, DIFF_TREE])
 
 var OBJECT_CHANGE =
 module.OBJECT_CHANGE = AND(
 	AT('type', 'Object'),
-	AT('items', ARRAY(OBJECT_ITEM)),
+	AT('items', L(OBJECT_ITEM)),
 	// XXX
 	AT('item_order', undefined))
 
@@ -93,14 +93,14 @@ module.OBJECT_CHANGE = AND(
 var ARRAY_ITEM =
 module.ARRAY_ITEM = OR(
 	[ANY, ANY, DIFF_TREE],
-	[[ANY, NUMBER], [ANY, NUMBER], DIFF_TREE])
+	[[ANY, N], [ANY, N], DIFF_TREE])
 
 var ARRAY_ITEMS =
 module.ARRAY_ITEMS = AND(
 	AT('length', OR(
-		[NUMBER, NUMBER], 
+		[N, N], 
 		undefined)),
-	AT('items', ARRAY(
+	AT('items', L(
 		OR(
 			ARRAY_ITEM,
 			OBJECT_ITEM))),
@@ -138,25 +138,25 @@ var DIFF_OBJECT =
 module.DIFF_OBJECT = AND(
 	// format metadata...
 	AT('format', diff.FORMAT_NAME),
-	//AT('version', STRING(/\d+\.\d+\.\d+/)),
+	//AT('version', S(/\d+\.\d+\.\d+/)),
 	AT('version', diff.FORMAT_VERSION),
 
 	// instance metadata...
 	AT('options', AND(
- 		AT('tree_diff', OR(BOOL, NULL)),
- 		AT('keep_none', OR(BOOL, NULL)),
- 		AT('min_text_length', OR(NUMBER, NULL)),
-		AT('no_attributes', OR(BOOL, NULL)),
+ 		AT('tree_diff', OR(B, NULL)),
+ 		AT('keep_none', OR(B, NULL)),
+ 		AT('min_text_length', OR(N, NULL)),
+		AT('no_attributes', OR(B, NULL)),
  		AT('NONE', OR(ANY, NULL)),
  		AT('EMPTY', OR(ANY, NULL)),
- 		AT('no_length', OR(BOOL, NULL)),
- 		AT('cmp', OR(FUNCTION, NULL)) )),
+ 		AT('no_length', OR(B, NULL)),
+ 		AT('cmp', OR(F, NULL)) )),
 	AT('placeholders', AND(
 		AT('NONE', 
 			VAR('NONE', ANY)),
 		AT('EMPTY', 
 			VAR('EMPTY', ANY)))),
-	AT('timestamp', NUMBER),
+	AT('timestamp', N),
 
 	// diff...
 	OR(

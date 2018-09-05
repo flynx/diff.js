@@ -408,6 +408,9 @@ module.BOOL =
 		function(obj){ 
 			return obj === true || obj === false })()
 
+// shorthand...
+var B = module.B = BOOL
+
 
 // Function pattern...
 //
@@ -420,6 +423,9 @@ module.FUNCTION =
 	makeCIPattern('FUNCTION', 
 		function(obj){ 
 			return obj instanceof Function })()
+
+// shorthand...
+var F = module.F = FUNCTION
 
 
 // String pattern...
@@ -449,6 +455,9 @@ module.STRING =
 							cmp(this.value, obj)
 				   		: true	)) },
 		function(value){ this.value = value }) 
+
+// shorthand...
+var S = module.S = STRING
 
 
 // Number pattern...
@@ -487,6 +496,9 @@ module.NUMBER =
 							cmp(this.value[0], obj)
 						: true )) },
 		function(...value){ this.value = value }) 
+
+// shorthand...
+var N = module.N = NUMBER
 
 
 // Array pattern...
@@ -529,6 +541,11 @@ module.ARRAY =
 									}).length == obj.length)
 						}).length == (this.value || []).length) }, 
 		function(...value){ this.value = value }) 
+
+// shorthand...
+// NOTE: yes, ARRAY does not even contain the letter "L" but this is 
+// 		tradition ;)
+var L = module.L = ARRAY
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
