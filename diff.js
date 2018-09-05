@@ -261,8 +261,9 @@ var proxy = function(path, func){
 //
 // XXX add use-case docs...
 // XXX need to avoid recursion...
-// XXX should we avoid backtracking when pattern matching???
-// 		...specifically when working with IN and OF...
+// XXX Q: should we avoid backtracking when pattern matching???
+// 			...specifically when working with IN and OF...
+// 		A: if possible yes...
 // XXX diffing a mismatching pattern should yield the exact position 
 // 		(sub-pattern/rule) that failed and not just the whole pattern...
 // 		...usually a pattern chain fails, i.e. the nested failing pattern
@@ -278,6 +279,9 @@ var LogicTypeClassPrototype = {
 
 var LogicTypePrototype = {
 	__context__: null,
+	// Create a context instance...
+	//
+	// This instance holds the context .cache and .ns
 	context: function(context){
 		var res = (this.__context__ == null || context != null) ? 
 			Object.create(this) 
@@ -289,18 +293,22 @@ var LogicTypePrototype = {
 	__cmp__: function(obj, cmp, context){
 		return false },
 	//
-	// 	Deep compare this to obj (use Diff.cmp(..))...
+	// 	Deep compare this to obj...
 	// 	.cmp(obj)
 	// 		-> bool
 	//
-	// 	Deep compare this to obj in context (use Diff.cmp(..))...
+	// 	Deep compare this to obj in context...
 	// 	.cmp(obj, context)
 	// 		-> bool
 	//
-	// 	Compare this to obj using comparator cmp and an optional context context...
+	// 	Compare this to obj using comparator cmp and an optional context...
 	// 	.cmp(obj, cmp)
 	// 	.cmp(obj, cmp, context)
 	// 		-> bool
+	//
+	//
+	// The cases where a cmp function is not provided this uses 
+	// Diff.cmp(..) as a basis...
 	//
 	// XXX need to track loops...
 	// XXX HACK???: this uses Diff.cmp(..) in simple cases...
@@ -527,7 +535,7 @@ module.ARRAY =
 // Will compare as true to anything but .value...
 var NOT = 
 module.NOT = 
-object.makeConstructor('NOT', Object.assign(new LogicType(), {
+object.makeConstructor('NOT', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return !cmp(this.value, obj, context) },
 	__init__: function(value){
@@ -539,7 +547,7 @@ object.makeConstructor('NOT', Object.assign(new LogicType(), {
 // Will compare as true if one of the .members compares as true...
 var OR = 
 module.OR = 
-object.makeConstructor('OR', Object.assign(new LogicType(), {
+object.makeConstructor('OR', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(cmp(m, obj, context)){
@@ -557,7 +565,7 @@ object.makeConstructor('OR', Object.assign(new LogicType(), {
 // Will compare as true if all of the .members compare as true...
 var AND = 
 module.AND = 
-object.makeConstructor('AND', Object.assign(new LogicType(), {
+object.makeConstructor('AND', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(!cmp(m, obj, context)){
@@ -578,7 +586,7 @@ object.makeConstructor('AND', Object.assign(new LogicType(), {
 // 			-> false
 var CONTEXT = 
 module.CONTEXT = 
-object.makeConstructor('CONTEX', Object.assign(new LogicType(), {
+object.makeConstructor('CONTEXT', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return cmp(this.pattern, obj) },
 	__init__: function(pattern){
@@ -589,7 +597,7 @@ object.makeConstructor('CONTEX', Object.assign(new LogicType(), {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var VAR = 
 module.VAR = 
-object.makeConstructor('VAR', Object.assign(new LogicType(), {
+object.makeConstructor('VAR', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var context = context || this.context().__context__
 		var ns = context.ns = context.ns || {}
@@ -615,7 +623,7 @@ object.makeConstructor('VAR', Object.assign(new LogicType(), {
 // this is like VAR(..) but will do a structural compare...
 var LIKE = 
 module.LIKE = 
-object.makeConstructor('LIKE', Object.assign(new VAR(), {
+object.makeConstructor('LIKE', Object.assign(Object.create(VAR.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var context = context || this.context().__context__
 
@@ -632,7 +640,7 @@ object.makeConstructor('LIKE', Object.assign(new VAR(), {
 // TEST(func) == L iff func(L) is true.
 var TEST = 
 module.TEST = 
-object.makeConstructor('TEST', Object.assign(new VAR(), {
+object.makeConstructor('TEST', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return this.func(obj, cmp, context) },
 	__init__: function(func){
@@ -648,7 +656,7 @@ object.makeConstructor('TEST', Object.assign(new VAR(), {
 // 		large containers...
 var IN = 
 module.IN = 
-object.makeConstructor('IN', Object.assign(new LogicType(), {
+object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
 	// XXX make this a break-on-match and not a go-through-the-whole-thing
 	// XXX should we check inherited stuff???
 	__cmp__: function(obj, cmp, context){
@@ -680,7 +688,7 @@ object.makeConstructor('IN', Object.assign(new LogicType(), {
 // 			a recursive pattern...
 var AT = 
 module.AT = 
-object.makeConstructor('AT', Object.assign(new LogicType(), {
+object.makeConstructor('AT', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		if(cmp(obj != null ? obj[this.key] : null, this.value, context)){
 			return true
@@ -699,7 +707,7 @@ object.makeConstructor('AT', Object.assign(new LogicType(), {
 // 		on matching...
 var OF = 
 module.OF = 
-object.makeConstructor('OF', Object.assign(new LogicType(), {
+object.makeConstructor('OF', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
