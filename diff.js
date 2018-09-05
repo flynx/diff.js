@@ -50,6 +50,7 @@ var MIN_TEXT_LENGTH = 100
 //			https://www.npmjs.com/package/jsondiffpatch
 //
 //		- diff compatibility checking...
+//			diff.check(A) -> bool
 //
 //
 //
