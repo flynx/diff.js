@@ -27,8 +27,7 @@ var {
 //
 // XXX need better mismatch checking -- ideally stating the exact spot
 // 		where we did not match and the path of fails it created...
-// XXX idea: would be nice to be able to use patterns to extract values
-// 		from structures (parsing)...
+//
 //
 //---------------------------------------------------------------------
 // Flat diff...
@@ -153,8 +152,6 @@ module.DIFF_OBJECT = AND(
  		AT('no_length', OR(BOOL, NULL)),
  		AT('cmp', OR(FUNCTION, NULL)) )),
 	AT('placeholders', AND(
-		// XXX would be nice to store these and to use them to test 
-		// 		deeper stuff (i.e. VALUE)...
 		AT('NONE', 
 			VAR('NONE', ANY)),
 		AT('EMPTY', 
