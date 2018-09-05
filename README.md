@@ -15,6 +15,7 @@
 	- [Diff](#diff)
 		- [Diff class API](#diff-class-api)
 		- [Diff object API](#diff-object-api)
+		- [Shorthands and functions](#shorthands-and-functions)
 		- [Supported JavaScript objects](#supported-javascript-objects)
 		- [Extended 'Text' object support](#extended-text-object-support)
 		- [Options](#options)
@@ -267,7 +268,10 @@ var diff = new Diff(A, B)
 `Diff.cmp(A, B) -> bool`  
 Deep compare `A` to `B`.
 
-`Diff.clone(<title>)`  
+`Diff.vars(pattern, A) -> obj`  
+Get variable values defined (via `VAR`/`LIKE`) in `pattern` matching corresponding values in `obj`.
+
+`Diff.clone(title)`  
 Clone the `Diff` constructor, useful for extending or tweaking the type handlers (see: [Extending](#extending-diff) below).
 
 `Diff.fromJSON(json) -> diff`  
@@ -311,6 +315,24 @@ Return the *parent diff* that was used to generate the current *child diff* or t
 
 `diff.json() -> JSON`  
 Serialize the *diff* to JSON. Note that the output may or may not be JSON compatible depending on the inputs.
+
+
+### Shorthands and functions
+
+`cmp(A, B) -> bool`  
+Deep compare `A` and `B`.
+
+This is a shorthand to: `Diff.cmp(A, B) -> bool`
+
+`patch(diff, A) -> A'`  
+Apply changes in `diff` to `A` (*patch*).
+
+This is a shorthand to: `diff.patch(A) -> A'`
+
+`vars(pattern, A) -> obj`  
+Get variable values defined (via `VAR`/`LIKE`) in `pattern` matching corresponding values in `obj`.
+
+This is a shorthand to: `Diff.vars(pattern, B) -> obj`
 
 
 ### Supported JavaScript objects

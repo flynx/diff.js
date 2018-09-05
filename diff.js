@@ -2347,6 +2347,11 @@ var DiffClassPrototype = {
 
 	// proxy generic stuff to .types...
 	cmp: proxy('types.cmp'),
+	vars: function(pattern, obj){
+		var o = {}
+		this.cmp(pattern, obj, null, o)
+		return o.ns || {}
+	},
 
 	// XXX do format/version conversion...
 	fromJSON: function(json){
@@ -2528,6 +2533,13 @@ function(diff, obj, options, types){
 			: Diff.fromJSON(diff))
 		.patch(obj, options) }
 
+
+// Extract pattern VAR/LIKE matching values from obj...
+//
+var vars =
+module.vars =
+function(pattern, obj){
+	return Diff.vars(pattern, obj) }
 
 
 
