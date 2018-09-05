@@ -34,9 +34,8 @@ var {
 
 var VALUE =
 module.VALUE = OR(
-	// XXX use these taken from .placeholders...
-	OR(EMPTY, LIKE('EMPTY')),
-	OR(NONE, LIKE('NONE')),
+	OR(LIKE('EMPTY'), EMPTY),
+	OR(LIKE('NONE'), NONE),
 	ANY)
 
 
@@ -54,8 +53,6 @@ module.SIDE_VALUES = OR(
 var CHANGE =
 module.CHANGE = AND(
 	AT('path', L),
-	// XXX optional...
-	// 		...see DIFF_OBJECT's options for description...
 	AT('type', OR(S, undefined)),
 	SIDE_VALUES)
 
@@ -69,6 +66,7 @@ module.DIFF_FLAT = OR(
 //---------------------------------------------------------------------
 // Tree diff...
 
+// Basic...
 var BASIC_CHANGE =
 module.BASIC_CHANGE = AND(
 	AT('type', 'Basic'),
@@ -76,6 +74,7 @@ module.BASIC_CHANGE = AND(
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Object...
 var OBJECT_ITEM =
 module.OBJECT_ITEM = OR(
 	[S, DIFF_TREE],
@@ -90,6 +89,7 @@ module.OBJECT_CHANGE = AND(
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Array...
 var ARRAY_ITEM =
 module.ARRAY_ITEM = OR(
 	[ANY, ANY, DIFF_TREE],
@@ -100,8 +100,8 @@ module.ARRAY_ITEMS = AND(
 	AT('length', OR(
 		[N, N], 
 		undefined)),
-	AT('items', L(
-		OR(
+	AT('items', 
+		L(OR(
 			ARRAY_ITEM,
 			OBJECT_ITEM))),
 	// XXX
@@ -109,18 +109,20 @@ module.ARRAY_ITEMS = AND(
 
 var ARRAY_CHANGE =
 module.ARRAY_CHANGE = AND(
-		AT('type', 'Array'),
-		ARRAY_ITEMS)
+	AT('type', 'Array'),
+	ARRAY_ITEMS)
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Text...
 var TEXT_CHANGE =
 module.TEXT_CHANGE = AND(
-		AT('type', 'Text'),
-		ARRAY_ITEMS)
+	AT('type', 'Text'),
+	ARRAY_ITEMS)
 
-// XXX it makes sense to make this a recursive pattern...
-// 		...need to check if we stop on a recursive pattern...
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX need to check if we stop on a recursive pattern...
 // XXX TEST!!!
 var DIFF_TREE =
 module.DIFF_TREE = OR(
@@ -142,20 +144,22 @@ module.DIFF_OBJECT = AND(
 	AT('version', diff.FORMAT_VERSION),
 
 	// instance metadata...
-	AT('options', AND(
- 		AT('tree_diff', OR(B, NULL)),
- 		AT('keep_none', OR(B, NULL)),
- 		AT('min_text_length', OR(N, NULL)),
-		AT('no_attributes', OR(B, NULL)),
- 		AT('NONE', OR(ANY, NULL)),
- 		AT('EMPTY', OR(ANY, NULL)),
- 		AT('no_length', OR(B, NULL)),
- 		AT('cmp', OR(F, NULL)) )),
-	AT('placeholders', AND(
-		AT('NONE', 
-			VAR('NONE', ANY)),
-		AT('EMPTY', 
-			VAR('EMPTY', ANY)))),
+	AT('options', 
+		AND(
+			AT('tree_diff', OR(B, NULL)),
+			AT('keep_none', OR(B, NULL)),
+			AT('min_text_length', OR(N, NULL)),
+			AT('no_attributes', OR(B, NULL)),
+			AT('NONE', OR(ANY, NULL)),
+			AT('EMPTY', OR(ANY, NULL)),
+			AT('no_length', OR(B, NULL)),
+			AT('cmp', OR(F, NULL)) )),
+	AT('placeholders', 
+		AND(
+			AT('NONE', 
+				VAR('NONE', ANY)),
+			AT('EMPTY', 
+				VAR('EMPTY', ANY)))),
 	AT('timestamp', N),
 
 	// diff...

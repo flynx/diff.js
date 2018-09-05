@@ -694,20 +694,36 @@ object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // AT(A, K) == L iff A in L and L[K] == A
+//
+// NOTE: this also supports path keys -- i.e. array of path elements that
+// 		will be traversed and the last one checked...
+// NOTE: to include an array as an explicit key (Map/...) wrap it in 
+// 		an array:
+// 			AT([[123]], ...)
+//
 // XXX .key can't be a pattern at this point...
-// XXX this is a potential problem as with a pattern key we would need to
-// 		look ahead to pick the correct candidate...
+// 		...to implement this we would need to do:
+// 			1) a search for a matching pattern...
+// 			2) handle multiple matches in some manner (first, all?)...
 // XXX this falls into recursion on:
 // 		X = AT('moo')
 // 		X.value = OR(123, X)
 // 		cmp(X, {'moo', 333})
 // 			...this would also break on checking a recursive structure against 
 // 			a recursive pattern...
+// XXX support Maps, ...
 var AT = 
 module.AT = 
 object.makeConstructor('AT', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
-		if(cmp(obj != null ? obj[this.key] : null, this.value, context)){
+		var key = this.key instanceof Array ? this.key : [this.key]
+		var no_result = {}
+		obj = key
+			.reduce(function(o, k){
+				return (o == null || o === no_result) ? 
+					no_result 
+					: o[k] }, obj)
+		if(obj !== no_result && cmp(obj, this.value, context)){
 			return true
 		}
 		return false
