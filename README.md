@@ -554,6 +554,22 @@ Matches a *container* if it contains `A`.
 `AT(K, A)`  
 Matches a *container* if it contains `A` *at* index/key `K`
 
+If `K` is a pattern or a path containing a pattern then matching is done as follows:
+1. select all keys/paths that match `K`
+2. get all values at the selected keys/paths
+3. match iff *all* of the selected values match `A`
+
+Note that to use an explicit array for `K`, wrap it in an array, e.g. to use `[item, ..]` as key write: `AT([[item, ..]], ..)`.
+
+`AT(K)`  
+Matches if a *container* has an index/key `K`.
+
+This is equivalent to `AT(K, ANY)`.
+
+~~`ORDERED(A, B)`~~  
+
+~~`ADJACENT(A, B, ...)`~~  
+
 ~~`OF(A, N)`~~  
 
 

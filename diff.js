@@ -667,10 +667,11 @@ object.makeConstructor('TEST', Object.assign(Object.create(LogicType.prototype),
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// IN(A) == L iff A in L
+// IN(A) == L iff A contained in L
 //
 // NOTE: since this can do a search using cmp(..) thid will be slow on 
 // 		large containers...
+// NOTE: to test if a key exists use AT(key)
 var IN = 
 module.IN = 
 object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
@@ -678,7 +679,7 @@ object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
 	// XXX should we check inherited stuff???
 	__cmp__: function(obj, cmp, context){
 		var p = this.value
-		return (obj instanceof Map || obj instanceof Set ? 
+		return ((obj instanceof Map || obj instanceof Set) ? 
 			[...obj.values()]
 			: [])
 				.concat(Object.values(obj))
@@ -693,7 +694,13 @@ object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// AT(A, K) == L iff A in L and L[K] == A
+// AT(K, A) == L iff A in L and L[K] == A
+//
+// If K is a pattern or a path containing a pattern this works in the 
+// following stages:
+// 	1) select all the keys/paths that match K
+// 	2) get all the values at the matching paths
+// 	3) return true if ALL the values match A
 //
 // NOTE: this also supports path keys -- i.e. array of path elements that
 // 		will be traversed and the last one checked...
@@ -701,10 +708,10 @@ object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
 // 		an array:
 // 			AT([[123]], ...)
 //
-// XXX .key can't be a pattern at this point...
-// 		...to implement this we would need to do:
-// 			1) a search for a matching pattern...
-// 			2) handle multiple matches in some manner (first, all?)...
+// XXX pattern keys are still experimental, and the exact matching rules 
+// 		may still change...
+// 		...not yet sure if on step #3 we should require ALL or at least 
+// 		one match, though I'm leaning towards ALL...
 // XXX this falls into recursion on:
 // 		X = AT('moo')
 // 		X.value = OR(123, X)
@@ -717,22 +724,78 @@ module.AT =
 object.makeConstructor('AT', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var key = this.key instanceof Array ? this.key : [this.key]
-		var no_result = {}
-		obj = key
+		var value = this.value
+		//return key
+		var res = key
 			.reduce(function(o, k){
-				return (o == null || o === no_result) ? 
-					no_result 
-					: o[k] }, obj)
-		if(obj !== no_result && cmp(obj, this.value, context)){
-			return true
-		}
-		return false
+				return o
+					.map(function(o){
+						return o == null ? 
+								[]
+							// pattern key,,,
+							: k instanceof LogicType ?
+								Object.entries(o)
+									.filter(function(e){
+										return cmp(k, e[0], context) })
+									.map(function(e){ 
+										return e[1] })
+							// normal key...
+							// NOTE: we are not using 'k in o' here because 
+							// 		only objects are supported by the in 
+							// 		operator and we can get any value...
+							: Object.keys(o).indexOf(k) >= 0 ?
+								[o[k]] 
+							// key not in container...
+							: [] })
+					// flatten the list of candidates...
+					.reduce(function(o, e){ 
+						return o.concat(e) }, []) }, [obj])
+			/*
+			.filter(function(e){
+				return cmp(e, value, context)})
+			// at least one must match...
+			.length > 0
+			//*/
+		return obj != null
+	   		&& res.length > 0	
+			&& res
+				.filter(function(e){
+					return cmp(e, value, context)})
+				// all must match...
+				.length == res.length
 	},
 	__init__: function(key, value){
 		this.key = key
-		this.value = value
+		this.value = arguments.length < 2 ? ANY : value
 	},
 }))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX ORDERED(A, B, ..) == L iff A is before B, B is before C, ... etc.
+var ORDERED = 
+module.ORDERED = 
+object.makeConstructor('ORDERED', Object.assign(Object.create(LogicType.prototype), {
+	__cmp__: function(obj, cmp){
+		// XXX
+	},
+	__init__: function(...items){
+		this.items = items
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX ADJACENT(A, B, ..) == L iff A directly before B, B directly before C, ...
+var ADJACENT = 
+module.ADJACENT = 
+object.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototype), {
+	__cmp__: function(obj, cmp){
+		// XXX
+	},
+	__init__: function(...items){
+		this.items = items
+	},
+}))
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX OF(A, N) == L iff L contains N occurrences of A
