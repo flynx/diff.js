@@ -36,7 +36,7 @@ var MIN_TEXT_LENGTH = 100
 //			open candidates:
 //				ig-diff
 //				cdiff
-//				pattern diff
+//				pattern-diff
 //		  we need the name to be short and descriptive, possible 
 //		  candidates:
 //		  	- objdiff / object-diff
@@ -787,7 +787,7 @@ object.makeConstructor('ORDERED', Object.assign(Object.create(LogicType.prototyp
 // XXX ADJACENT(A, B, ..) == L iff A directly before B, B directly before C, ...
 var ADJACENT = 
 module.ADJACENT = 
-object.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototype), {
+Dbject.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
@@ -795,7 +795,6 @@ object.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototy
 		this.items = items
 	},
 }))
-
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX OF(A, N) == L iff L contains N occurrences of A
