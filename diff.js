@@ -36,12 +36,14 @@ var MIN_TEXT_LENGTH = 100
 //			open candidates:
 //				ig-diff
 //				cdiff
-//				pattern-diff
 //		  we need the name to be short and descriptive, possible 
 //		  candidates:
 //		  	- objdiff / object-diff
 //		  	- diffcmp / diff-cmp
 //		  	- compare
+//		  available names:
+//		  	diffcmp / diff-cmp
+//			pattern-diff
 //
 //		- revise docs...
 //			...should be simpler to enter, maybe example-oriented intro
