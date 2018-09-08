@@ -42,7 +42,7 @@ var MIN_TEXT_LENGTH = 100
 //		  	- diffcmp / diff-cmp
 //		  	- compare
 //		  available names:
-//		  	diffcmp / diff-cmp
+//		  	diffcmp / diff-cmp / cmpdiff / cmp-diff:
 //			pattern-diff
 //
 //		- revise docs...
