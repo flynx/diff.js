@@ -33,16 +33,16 @@ var MIN_TEXT_LENGTH = 100
 //		- revise name -- this contains two parts:
 //			1. diff / patch and friends
 //			2. cmp and patterns
-//			open candidates:
-//				ig-diff
-//				cdiff
 //		  we need the name to be short and descriptive, possible 
 //		  candidates:
-//		  	- objdiff / object-diff
-//		  	- diffcmp / diff-cmp
-//		  	- compare
+//		  	objdiff / object-diff
+//		  	diffcmp / diff-cmp
+//		  	compare
 //		  available names:
+//			ig-diff
+//			cdiff
 //		  	diffcmp / diff-cmp / cmpdiff / cmp-diff:
+//		  	diff-tools
 //			pattern-diff
 //
 //		- revise docs...
