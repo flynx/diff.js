@@ -99,7 +99,7 @@ Here's how different `Bill` and `Ted` really are (this is how the *diff* looks l
 	}
 ]
 ```
-This tells us that we have four *changes*:
+This tells us that we have four *differences* or *changes*:
 - different `"name"`
 - different `"hair"`
 - in `"skills"` missing `"guitar"`
