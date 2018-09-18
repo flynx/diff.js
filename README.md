@@ -212,9 +212,7 @@ var BILL_or_TED = Object.assign(
 var BILL_or_TED_L = AND(
 	PERSON, 
 	AT('name', 
-		OR(
-			'Bill', 
-			'Ted')))
+		OR('Bill', 'Ted')))
 
 // testing is the same...
 cmp(Bill, BILL_or_TED) // -> true
