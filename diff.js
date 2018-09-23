@@ -27,8 +27,7 @@ var MIN_TEXT_LENGTH = 100
 //
 // XXX General ToDo:
 //		- revise architecture...
-//			- merge Types and Diff
-//			- cmp(..) / diff(..) / patch(..) to use Diff(..)
+//			- merge Types and Diff (???)
 //
 //		- revise name -- this contains two parts:
 //			1. diff / patch and friends
