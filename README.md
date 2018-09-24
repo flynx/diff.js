@@ -226,11 +226,11 @@ cmp(Bill, BILL_or_TED_L) // -> true
 Originally this module was designed/written as a way to locate and store only the changed parts of rather big JSON objects/trees, but the specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
 
 ### Goals / Features
-- Full JSON *diff* support
-- Support for JavaScript objects without restrictions
+- JSON *diff* support
+- JavaScript object support including objects/types not supported in JSON
 - ~~Optional attribute order support~~ (not done yet)
 - ~~Support extended Javascript types: Map, Set, ...etc.~~ (feasibility testing)
-- *Text diff* support
+- *Text diff* (multi-line strings) support
 - Object patterns as a means to simplify structural comparison/testing
 - Configurable and extensible implementation
 - As simple as possible
