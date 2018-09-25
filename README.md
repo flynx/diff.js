@@ -1,8 +1,8 @@
 # Object diff
 
-*Object diff* is a not-so-basic diff/patch/pattern/compare implementation for JavaScript objects / object trees.
+Object diff is a *not-so-basic* diff/patch/pattern/compare implementation for JavaScript objects / object trees.
 
-For a walkthrough by example see the [introduction](#introduction), for the general docs start at [motivation](#motivation) section or look through the index below.
+For a walkthrough by example see the [introduction](#introduction), for general documentation start at the [motivation](#motivation) section or look through the index below.
 
 - [Object diff](#object-diff)
 	- [Introduction](#introduction)
@@ -71,16 +71,19 @@ var Diff = require('object-diff').Diff
 var diff = Diff(Bill, Ted)
 ```
 
-Here's how different `Bill` and `Ted` really are (the *diff* format):
+Here's how different `Bill` and `Ted` really are (in *diff* format):
 ```javascript
 // log out the relevant part...
 //JSON.stringify(diff.diff, null, '\t')
 [
-	// each element of the array is a change...
+	// each element of the diff array is a change...
 	{
-		// the path tells us how to reach the change location...
+		// the path tells us how to reach the change's location 
+		// in the source object...
 		"path": ["name"],
-		// A and B are the states before/after the change...
+
+		// A and B are the different states in the two input 
+		// objects respectively...
 		"A": "Bill",
 		"B": "Ted"
 	},
@@ -92,6 +95,7 @@ Here's how different `Bill` and `Ted` really are (the *diff* format):
 	{
 		// note this path, we'll explain it a bit later...
 		"path": ["skills", [[2, 0], [2, 1]]],
+		
 		// also note that either A or B can be omited...
 		"B": [
 			"guitar"
@@ -148,7 +152,7 @@ Since we applied *all* the changes to `Bill2`, now he is just another `Ted` (or 
 
 ### Partial patching
 
-Sometimes we need to apply only a subset of the changes. So lets just *patch* `Bill`'s skillset...
+Sometimes we need to apply only a subset of the changes. Here we will *patch* only `Bill`'s skillset...
 
 ```javascript
 diff
@@ -229,15 +233,15 @@ cmp(Bill, BILL_or_TED_L) // -> true
 
 ## Motivation
 
-Originally this module was designed/written as a way to locate and store only the changed parts of rather big JSON objects/trees. 
+Originally this module was designed/written as a means to locate and store only the changed parts of rather big JSON objects/trees. 
 The specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
 
 ### Features
-- [Well defined *diff* format](#the-diff-format)
-- JSON *diff* support
-- JavaScript object support including objects/types not supported in JSON
-- ~~Optional attribute order support~~ (not done yet)
+- Well defined and human readable [*diff* format](#the-diff-format)
+- [JSON](https://www.json.org/) *diff* support
+- JavaScript object *diff* support including objects/types not supported in JSON
 - ~~Support *new* Javascript containers: Map, Set, ...etc.~~ (feasibility testing)
+- ~~Optional attribute order support~~ (not done yet)
 - [Text diff](#extended-text-object-support) (multi-line strings) support
 - [Patterns](#patterns) as a means to simplify structural comparison/testing
 - [Configurable and extensible](#) implementation
