@@ -31,7 +31,8 @@ var {
 //
 //---------------------------------------------------------------------
 // Flat diff...
-
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Basic value...
 var VALUE =
 module.VALUE = OR(
 	OR(LIKE('EMPTY'), EMPTY),
@@ -39,6 +40,8 @@ module.VALUE = OR(
 	ANY)
 
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Change A/B side values...
 var SIDE_VALUES =
 module.SIDE_VALUES = OR(
 	// A and B...
@@ -50,6 +53,7 @@ module.SIDE_VALUES = OR(
 	// only B...
 	AT('B', VALUE))
 
+// Basic change...
 var CHANGE =
 module.CHANGE = AND(
 	AT('path', L),
@@ -57,16 +61,19 @@ module.CHANGE = AND(
 	SIDE_VALUES)
 
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// flat diff root (Array)...
 var DIFF_FLAT =
 module.DIFF_FLAT = OR(
 	L(CHANGE), 
 	null)
 
 
+
 //---------------------------------------------------------------------
 // Tree diff...
-
-// Basic...
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Basic change...
 var BASIC_CHANGE =
 module.BASIC_CHANGE = AND(
 	AT('type', 'Basic'),
@@ -74,7 +81,7 @@ module.BASIC_CHANGE = AND(
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Object...
+// Object change...
 var OBJECT_ITEM =
 module.OBJECT_ITEM = OR(
 	[S, DIFF_TREE],
@@ -89,7 +96,7 @@ module.OBJECT_CHANGE = AND(
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Array...
+// Array change...
 var ARRAY_ITEM =
 module.ARRAY_ITEM = OR(
 	[ANY, ANY, DIFF_TREE],
@@ -114,7 +121,7 @@ module.ARRAY_CHANGE = AND(
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Text...
+// Text change...
 var TEXT_CHANGE =
 module.TEXT_CHANGE = AND(
 	AT('type', 'Text'),
@@ -122,6 +129,7 @@ module.TEXT_CHANGE = AND(
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Tree - the tree node...
 // XXX need to check if we stop on a recursive pattern...
 // XXX TEST!!!
 var DIFF_TREE =
@@ -133,8 +141,9 @@ module.DIFF_TREE = OR(
 	null)
 
 
+
 //---------------------------------------------------------------------
-// Diff...
+// Diff -- the root data structure...
 
 var DIFF_OBJECT =
 module.DIFF_OBJECT = AND(
