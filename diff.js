@@ -719,6 +719,7 @@ object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
 // 		cmp(X, {'moo', 333})
 // 			...this would also break on checking a recursive structure against 
 // 			a recursive pattern...
+// XXX should this also check inherited keys???
 // XXX support Maps, ...
 var AT = 
 module.AT = 

@@ -22,6 +22,16 @@ var {
 } = diff
 
 
+/*********************************************************************/
+// helpers...
+
+// OPT(key, value) -> true if key matches value or does not exist...
+var OPT = function(key, value){
+	return OR(
+		NOT(AT(key)),
+		AT(key, value)) }
+
+
 
 /*********************************************************************/
 //
@@ -41,24 +51,14 @@ module.VALUE = OR(
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Change A/B side values...
-var SIDE_VALUES =
-module.SIDE_VALUES = OR(
-	// A and B...
-	AND(
-		AT('A', VALUE),
-		AT('B', VALUE)),
-	// only A...
-	AT('A', VALUE),
-	// only B...
-	AT('B', VALUE))
-
 // Basic change...
 var CHANGE =
 module.CHANGE = AND(
 	AT('path', L),
-	AT('type', OR(S, undefined)),
-	SIDE_VALUES)
+	OPT('type', S),
+	// NOTE: this matches if one or both of A and B exist and if they 
+	// 		do the match VALUE...
+	AT(OR('A', 'B'), VALUE))
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -77,7 +77,7 @@ module.DIFF_FLAT = OR(
 var BASIC_CHANGE =
 module.BASIC_CHANGE = AND(
 	AT('type', 'Basic'),
-	SIDE_VALUES)
+	AT(OR('A', 'B'), VALUE))
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -144,7 +144,20 @@ module.DIFF_TREE = OR(
 
 //---------------------------------------------------------------------
 // Diff -- the root data structure...
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Options...
+var OPTIONS = 
+module.OPTIONS = AND(
+	OPT('tree_diff', B),
+	OPT('keep_none', B),
+	OPT('min_text_length', N),
+	OPT('no_attributes', B),
+	OPT('NONE', ANY),
+	OPT('EMPTY', ANY),
+	OPT('no_length', B),
+	OPT('cmp', F) )
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var DIFF_OBJECT =
 module.DIFF_OBJECT = AND(
 	// format metadata...
@@ -153,16 +166,7 @@ module.DIFF_OBJECT = AND(
 	AT('version', diff.FORMAT_VERSION),
 
 	// instance metadata...
-	AT('options', 
-		AND(
-			AT('tree_diff', OR(B, NULL)),
-			AT('keep_none', OR(B, NULL)),
-			AT('min_text_length', OR(N, NULL)),
-			AT('no_attributes', OR(B, NULL)),
-			AT('NONE', OR(ANY, NULL)),
-			AT('EMPTY', OR(ANY, NULL)),
-			AT('no_length', OR(B, NULL)),
-			AT('cmp', OR(F, NULL)) )),
+	AT('options', OPTIONS),
 	AT('placeholders', 
 		AND(
 			AT('NONE', 
