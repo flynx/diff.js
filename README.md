@@ -2,17 +2,36 @@
 
 Object diff is a *not-so-basic* diff/patch/pattern/compare implementation for JavaScript objects / object trees.
 
+## Motivation
+
+This module is a re-imagining of *UN\*X `diff`* to support JavaScript object trees in addition to flat text, outputing the result in native JSON. This was intended as a means to locate changes to rather big JSON objects/trees and store them efficiently. 
+The specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
+
+
+## Features
+- Well defined and human readable [*diff* format](#the-diff-format)
+- [JSON](https://www.json.org/) *diff* support
+- JavaScript object *diff* support including objects/types not supported in JSON
+- ~~Support *new* Javascript containers: Map, Set, ...etc.~~ (feasibility testing)
+- ~~Optional attribute order support~~ (not done yet)
+- [Text diff](#extended-text-object-support) (multi-line strings) support
+- [Patterns](#patterns) as a means to simplify structural comparison/testing
+- [Configurable and extensible](#extending-diff) implementation
+
+
 For a walkthrough by example see the [introduction](#introduction), for general documentation start at the [motivation](#motivation) section or look through the index below.
 
+
+--- 
 - [Object diff](#object-diff)
+	- [Motivation](#motivation)
+	- [Features](#features)
 	- [Introduction](#introduction)
 		- [Seeing the difference (*diff*)](#seeing-the-difference-diff)
 		- [Applying changes (*patch*)](#applying-changes-patch)
 		- [Partial patching](#partial-patching)
 		- [Checking](#checking)
 		- [Generic ways to compare objects (*patterns*)](#generic-ways-to-compare-objects-patterns)
-	- [Motivation](#motivation)
-		- [Features](#features)
 	- [Installation and loading](#installation-and-loading)
 	- [Diff](#diff)
 		- [Diff class API](#diff-class-api)
@@ -230,23 +249,6 @@ cmp(Bill, BILL_or_TED_L) // -> true
 ```
 
 *Now for the serious stuff...*
-
-## Motivation
-
-Originally this module was designed/written as a means to locate and store only the changed parts of rather big JSON objects/trees. 
-The specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
-
-### Features
-- Well defined and human readable [*diff* format](#the-diff-format)
-- [JSON](https://www.json.org/) *diff* support
-- JavaScript object *diff* support including objects/types not supported in JSON
-- ~~Support *new* Javascript containers: Map, Set, ...etc.~~ (feasibility testing)
-- ~~Optional attribute order support~~ (not done yet)
-- [Text diff](#extended-text-object-support) (multi-line strings) support
-- [Patterns](#patterns) as a means to simplify structural comparison/testing
-- [Configurable and extensible](#) implementation
-
-XXX alternatives
 
 
 ## Installation and loading
