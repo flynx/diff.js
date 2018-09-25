@@ -239,8 +239,7 @@ The specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pW
 - JSON *diff* support
 - JavaScript object support including objects/types not supported in JSON
 - ~~Optional attribute order support~~ (not done yet)
-- ~~Support *new
-- * Javascript containers: Map, Set, ...etc.~~ (feasibility testing)
+- ~~Support *new* Javascript containers: Map, Set, ...etc.~~ (feasibility testing)
 - *Text diff* (multi-line strings) support
 - Object patterns as a means to simplify structural comparison/testing
 - Configurable and extensible implementation
