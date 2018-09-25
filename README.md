@@ -4,8 +4,7 @@ Object diff is a *not-so-basic* diff/patch/pattern/compare implementation for Ja
 
 ## Motivation
 
-This module is a re-imagining of *UN\*X `diff`* to support JavaScript object trees in addition to flat text, outputing the result in native JSON. This was intended as a means to locate changes to rather big JSON objects/trees and store them efficiently. 
-The specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
+This module was designed and written as a means to locate changes to rather big JSON objects/trees and store them efficiently. Essentially this is a re-imagining of UN\*X [`diff`](https://en.wikipedia.org/wiki/Diff) and [`patch`](https://en.wikipedia.org/wiki/Patch_(Unix)) utilities to support JavaScript object trees in addition to flat text, storing the diff/patch data natively in JSON. The specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
 
 
 ## Features
@@ -416,6 +415,9 @@ XXX
 
 XXX General description...
 
+Currently *patterns* are designed to not use backtracking when matching.
+
+
 ### Logic patterns
 
 `ANY`  
@@ -565,9 +567,15 @@ Matches a *container* if it contains `A`.
 Matches a *container* if it contains `A` *at* index/key `K`
 
 If `K` is a pattern or a path containing a pattern then matching is done as follows:
-1. select all keys/paths that match `K`
-2. get all values at the selected keys/paths
-3. match iff *all* of the selected values match `A`
+1. select all values at keys/paths that match `K`
+2. match iff *all* of the selected values match `A`
+
+This may be counter intuitive in some cases, for example consider the following two patterns:
+- `AT(OR('x', 'y'), 1)`   
+- `OR(AT('x', 1), AT('y', 1))`  
+
+At first glance they seam to be equivalent but in reality they are quite different as in the first pattern `OR(..)` matches *both* `'x'` and `'y'` keys and thus `AT(..)` will match iff *both* of them are equal to `1`, while the second pattern will match if at least one of `'x'` or `'y'` is `1`.  
+The first pattern is actually equivalent to `AND(AT('x', 1), AT('y', 1))`.
 
 Note that to use an explicit array for `K`, wrap it in an array, e.g. to use `[item, ..]` as key write: `AT([[item, ..]], ..)`.
 
@@ -757,11 +765,12 @@ For an example see: `Object` handler's `.walk(..)` in [diff.js](./diff.js#L1178)
 
 ## The Diff format
 
-For the format structure pattern see [format.js](./format.js).
 
 There are two general format types:
 - *Flat* - main and default format used to store diff information.
 - *Tree* - used internally but may be useful for introspection.
+
+For the format structure pattern/deffinition see [format.js](./format.js).
 
 
 ## Contacts, feedback and contributions

@@ -788,7 +788,7 @@ object.makeConstructor('ORDERED', Object.assign(Object.create(LogicType.prototyp
 // XXX ADJACENT(A, B, ..) == L iff A directly before B, B directly before C, ...
 var ADJACENT = 
 module.ADJACENT = 
-Dbject.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
