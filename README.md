@@ -33,8 +33,6 @@ For a walkthrough by example see the [introduction](#introduction), for the gene
 	- [JSON compatibility](#json-compatibility)
 	- [Extending Diff](#extending-diff)
 	- [The Diff format](#the-diff-format)
-		- [Flat](#flat)
-		- [Tree](#tree)
 	- [Contacts, feedback and contributions](#contacts-feedback-and-contributions)
 	- [License](#license)
 
@@ -753,21 +751,12 @@ For an example see: `Object` handler's `.walk(..)` in [diff.js](./diff.js#L1178)
 
 ## The Diff format
 
-### Flat
+For the format structure pattern see [format.js](./format.js).
 
-This is the main and default format used to store diff information.
+There are two general format types:
+- *Flat* - main and default format used to store diff information.
+- *Tree* - used internally but may be useful for introspection.
 
-```javascript
-[]
-```
-
-
-### Tree
-
-This format is used internally but may be useful for introspection.
-
-```javascript
-```
 
 ## Contacts, feedback and contributions
 
