@@ -579,7 +579,7 @@ At first glance they may seem to be equivalent but in reality they are quite dif
 Also note that the first pattern not equivalent to `AND(AT('x', 1), AT('y', 1))` as `AND(..)` requires that *both* `'x'` and `'y'` exist and contain `1` and first pattern will match if at least one of the keys exists and all the existing keys contain `1`.
 
 | Match							| `{}`	| `{x:1}`| `{x:1, y:2}` | `{x:1, y:1}`
-|-------------------------------|-------|--------|--------------|------------|
+|:------------------------------|:-----:|:------:|:------------:|:----------:|
 | `AT(OR('x', 'y'), 1)`			|`false`| `true` | `false`		| `true`		|
 | `OR(AT('x', 1), AT('y', 1))`  |`false`| `true` | `true`		| `true`		|
 | `AND(AT('x', 1), AT('y', 1))` |`false`| `false`| `false`		| `true`		|
