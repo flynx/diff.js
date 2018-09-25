@@ -567,15 +567,22 @@ Matches a *container* if it contains `A`.
 Matches a *container* if it contains `A` *at* index/key `K`
 
 If `K` is a pattern or a path containing a pattern then matching is done as follows:
-1. select all values at keys/paths that match `K`
+1. select *all* values at keys/paths that match `K`
 2. match iff *all* of the selected values match `A`
 
-This may be counter intuitive in some cases, for example consider the following two patterns:
+This may not be intuitive in some cases, for example consider the following two patterns:
+
 - `AT(OR('x', 'y'), 1)`   
 - `OR(AT('x', 1), AT('y', 1))`  
 
-At first glance they seam to be equivalent but in reality they are quite different as in the first pattern `OR(..)` matches *both* `'x'` and `'y'` keys and thus `AT(..)` will match iff *both* of them are equal to `1`, while the second pattern will match if at least one of `'x'` or `'y'` is `1`.  
-The first pattern is actually equivalent to `AND(AT('x', 1), AT('y', 1))`.
+At first glance they may seem to be equivalent but in reality they are quite different as in the first pattern `OR(..)` matches the `'x'` key *and* also matches the `'y'` key and thus `AT(..)` will match iff *all* of the matched keys (existing) contain `1`, while the second pattern will match if at least one of `'x'` or `'y'` is `1`.  
+Also note that the first pattern not equivalent to `AND(AT('x', 1), AT('y', 1))` as `AND(..)` requires that *both* `'x'` and `'y'` exist and contain `1` and first pattern will match if at least one of the keys exists and all the existing keys contain `1`.
+
+| Match							| `{}`	| `{x:1}`| `{x:1, y:2}` | `{x:1, y:1}`
+|-------------------------------|-------|--------|--------------|------------|
+| `AT(OR('x', 'y'), 1)`			|`false`| `true` | `false`		| `true`		|
+| `OR(AT('x', 1), AT('y', 1))`  |`false`| `true` | `true`		| `true`		|
+| `AND(AT('x', 1), AT('y', 1))` |`false`| `false`| `false`		| `true`		|
 
 Note that to use an explicit array for `K`, wrap it in an array, e.g. to use `[item, ..]` as key write: `AT([[item, ..]], ..)`.
 
@@ -589,6 +596,7 @@ This is equivalent to `AT(K, ANY)`.
 ~~`ADJACENT(A, B, ...)`~~  
 
 ~~`OF(A, N)`~~  
+XXX this seems to be the only pattern to require backtracking to match (if `N` is a pattern)...
 
 
 ## JSON compatibility
