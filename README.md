@@ -2,6 +2,8 @@
 
 *Object diff* is a not-so-basic diff/patch/pattern/compare implementation for JavaScript objects / object trees.
 
+For a walkthrough by example see the [introduction](#introduction), for the general docs start at [motivation](#motivation) section or look through the index below.
+
 - [Object diff](#object-diff)
 	- [Introduction](#introduction)
 		- [Seeing the difference (*diff*)](#seeing-the-difference-diff)
@@ -10,7 +12,7 @@
 		- [Checking](#checking)
 		- [Generic ways to compare objects (*patterns*)](#generic-ways-to-compare-objects-patterns)
 	- [Motivation](#motivation)
-		- [Goals / Features](#goals--features)
+		- [Features](#features)
 	- [Installation and loading](#installation-and-loading)
 	- [Diff](#diff)
 		- [Diff class API](#diff-class-api)
@@ -71,13 +73,16 @@ var Diff = require('object-diff').Diff
 var diff = Diff(Bill, Ted)
 ```
 
-Here's how different `Bill` and `Ted` really are (this is how the *diff* looks like):
+Here's how different `Bill` and `Ted` really are (the *diff* format):
 ```javascript
 // log out the relevant part...
 //JSON.stringify(diff.diff, null, '\t')
 [
+	// each element of the array is a change...
 	{
+		// the path tells us how to reach the change location...
 		"path": ["name"],
+		// A and B are the states before/after the change...
 		"A": "Bill",
 		"B": "Ted"
 	},
@@ -87,11 +92,14 @@ Here's how different `Bill` and `Ted` really are (this is how the *diff* looks l
 		"B": "blond"
 	},
 	{
+		// note this path, we'll explain it a bit later...
 		"path": ["skills", [[2, 0], [2, 1]]],
+		// also note that either A or B can be omited...
 		"B": [
 			"guitar"
 		]
 	},
+	// this change might look redundant but it is not...
 	{
 		"path": ["skills", "length"],
 		"A": 2,
@@ -108,7 +116,7 @@ This tells us that we have four *differences* or *changes*:
 Some words on the format:
 - `A` and `B` indicate the states of the *change* in the input objects,
 - `path` tells us how to reach the *change* in the inputs,
-- The odd thing in `"path"` of the third change is the *index* of the change in the input `"skills"` arrays where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one),
+- The array in `"path"` of the third change is the *index* of the change in the input `"skills"` arrays where each element (`[2, 0]` and `[2, 1]`) describes the spot in the array that changed in the corresponding input object. Each element consists of two items, the first is the actual *index* or position of the change (in both cases `2`) and the second is the length of the change (`0` and `1` respectively, meaning that in `A` we have zero or no items and in `B` one),
 - `"A"` or `"B"` may not be present in the change (change #3) if the change describes simple item addition or removal,
 - The format is redundant in places by design, for example here you can both infer `"skills"` *length* from the *changes* applied to it and we have an explicit `["path", "length"]` *change*. This is mainly to support cases where inferring array length from changes to it may not be possible, like for sparse arrays.
 
@@ -223,9 +231,10 @@ cmp(Bill, BILL_or_TED_L) // -> true
 
 ## Motivation
 
-Originally this module was designed/written as a way to locate and store only the changed parts of rather big JSON objects/trees, but the specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
+Originally this module was designed/written as a way to locate and store only the changed parts of rather big JSON objects/trees. 
+The specific use cases (*[ImageGrid](https://github.com/flynx/ImageGrid) and [pWiki](https://github.com/flynx/pWiki)*) required additional features not provided by the available at the time alternative implementations (listing in next section).
 
-### Goals / Features
+### Features
 - JSON *diff* support
 - JavaScript object support including objects/types not supported in JSON
 - ~~Optional attribute order support~~ (not done yet)
@@ -233,8 +242,6 @@ Originally this module was designed/written as a way to locate and store only th
 - *Text diff* (multi-line strings) support
 - Object patterns as a means to simplify structural comparison/testing
 - Configurable and extensible implementation
-- As simple as possible
-- *Fun*
 
 XXX alternatives
 
@@ -349,7 +356,7 @@ Additionally attribute changes are supported for all non basic objects (i.e. any
 
 ### Extended 'Text' object support
 
-A *text* is JavaScript string that is long (>1000 chars, configurable in [Oprions](#options)) and multiline string.
+A *text* is JavaScript string that is long (>100 chars, configurable in [Oprions](#options)) and/or a multiline string.
 
 A *text* is treated as an `Array` containing the string split into lines (split by `'\n'`).
 
