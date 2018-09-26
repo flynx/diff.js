@@ -17,7 +17,7 @@ var {
 	OR, AND, NOT,
 	AT, OF, IN,
 	VAR, LIKE, TEST,
-
+	// non-pattern values...
 	EMPTY, NONE,
 } = diff
 
@@ -25,7 +25,8 @@ var {
 /*********************************************************************/
 // helpers...
 
-// OPT(key, value) -> true if key matches value or does not exist...
+//	OPT(key, value) 
+// 		-> true if key matches value or does not exist...
 var OPT = function(key, value){
 	return OR(
 		NOT(AT(key)),
@@ -34,6 +35,9 @@ var OPT = function(key, value){
 
 
 /*********************************************************************/
+//
+// NOTE: this file is organized bottoms-up, with the most general 
+// 		(top-level) patterns at the bottom.
 //
 // XXX need better mismatch checking -- ideally stating the exact spot
 // 		where we did not match and the path of fails it created...
@@ -157,13 +161,17 @@ module.OPTIONS = AND(
 	OPT('no_length', B),
 	OPT('cmp', F) )
 
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var DIFF_OBJECT =
 module.DIFF_OBJECT = AND(
 	// format metadata...
 	AT('format', diff.FORMAT_NAME),
-	//AT('version', S(/\d+\.\d+\.\d+/)),
-	AT('version', diff.FORMAT_VERSION),
+	AT('version', AND(
+		// version format...
+		S(/\d+\.\d+\.\d+[ab]?/),
+		// explicit version value...
+		diff.FORMAT_VERSION)),
 
 	// instance metadata...
 	AT('options', OPTIONS),
