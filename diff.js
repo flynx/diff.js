@@ -736,16 +736,16 @@ object.makeConstructor('AT', Object.assign(Object.create(LogicType.prototype), {
 								[]
 							// pattern key,,,
 							: k instanceof LogicType ?
-								Object.entries(o)
-									.filter(function(e){
-										return cmp(k, e[0], context) })
-									.map(function(e){ 
-										return e[1] })
+								[...getAllKeys(o)]
+									.filter(function(n){
+										return cmp(k, n, context) })
+									.map(function(n){ 
+										return o[n] })
 							// normal key...
 							// NOTE: we are not using 'k in o' here because 
 							// 		only objects are supported by the in 
 							// 		operator and we can get any value...
-							: Object.keys(o).indexOf(k) >= 0 ?
+							: getAllKeys(o).has(k) ?
 								[o[k]] 
 							// key not in container...
 							: [] })
