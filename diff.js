@@ -62,7 +62,7 @@ var MIN_TEXT_LENGTH = 100
 //		-> Set([key, ..])
 //
 // This is different to Object.keys(..) in that it gets both enumerable 
-// and non-enumerable keys as well as keys defined in prototypes...
+// and non-enumerable keys in the whole prototype chain...
 var getAllKeys = function(obj){
 	var res = new Set()
 	while(obj.__proto__ || obj === obj.__proto__){

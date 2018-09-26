@@ -96,7 +96,7 @@ module.OBJECT_CHANGE = AND(
 	AT('type', 'Object'),
 	AT('items', L(OBJECT_ITEM)),
 	// XXX
-	AT('item_order', undefined))
+	OPT('item_order'))
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -108,15 +108,13 @@ module.ARRAY_ITEM = OR(
 
 var ARRAY_ITEMS =
 module.ARRAY_ITEMS = AND(
-	AT('length', OR(
-		[N, N], 
-		undefined)),
 	AT('items', 
 		L(OR(
 			ARRAY_ITEM,
 			OBJECT_ITEM))),
+	OPT('length', [N, N]), 
 	// XXX
-	AT('item_order', undefined))
+	OPT('item_order'))
 
 var ARRAY_CHANGE =
 module.ARRAY_CHANGE = AND(
