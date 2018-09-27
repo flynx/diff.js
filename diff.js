@@ -263,6 +263,129 @@ var proxy = function(path, func){
 }
 
 
+//
+//	Construct a reusable walker function...
+//	walk(get(..))
+//		-> func(start, ...nodes)
+//
+//	Walk the nodes...
+//	walk(get(..), start, ...nodes)
+//		-> res
+//
+// The get(..) that walk(..) expects has the following signature:
+//		get(res, node, next(..), down(..))
+//			-> res
+//
+//		Queue next nodes to walk...
+//		next(...nodes)
+//			-> undefined
+//			NOTE: this will just queue the nodes and return immediately.
+//			NOTE: the state is passed to the nodes implicitly, the get(..)
+//				handling first node from this list will get the last result
+//				returned by the last get(..) call on this level as it's 
+//				state.
+//
+//		Walk the next set of nodes...
+//		down(start, ...nodes)
+//			-> res
+//			NOTE: this will process all the nodes and then return the 
+//				result.
+//
+//
+// Example:
+//		// sum all the values of a nested array...
+//		var sum = walk(function(res, node, next){
+//			// go into arrays...
+//			if(node instanceof Array){
+//				next(...node)
+//
+//			// sum the values...
+//			} else {
+//				console.log(node)
+//				res += node
+//			}
+//			return res
+//		})
+//
+//		// depth first walker...
+//		var sumd = walk(function(res, node, next, down){
+//			if(node instanceof Array){
+//				res = down(res, ...node)
+//
+//			} else {
+//				console.log(node)
+//				res += node
+//			}
+//			return res
+//		})
+//
+//		sum([1, [2], 3, [[4, 5]]]) // -> 15 and log 1, 3, 2, 4, 5
+//		sumd([1, [2], 3, [[4, 5]]]) // -> 15 and log 1, 2, 3, 4, 5
+//
+//
+// NOTE: a walker is returned iff walk(..) is passed a single argument.
+// NOTE: the following two are equivalent:
+// 		walk(get, start, ...nodes) 
+// 		walk(get)(start, ...nodes)
+// NOTE: walk goes breadth first...
+//
+var walk = function(get, state, ...args){
+	var _step = function(args, res){
+		// construct a comfortable env for the user and handle the 
+		// results...
+		var _get = function(node){
+			var next = []
+			res = get(res, node, 
+				// breadth first step...
+				// 	next(...nodes)
+				// 		-> undefined
+				// NOTE: this is different to down(..) in that this will 
+				// 		return immediately and no result is known at time 
+				// 		of call thus undefined is returned...
+				// NOTE: this is different to down(..) in that the user 
+				// 		indirectly gives this the state by returning it
+				// 		from the last get(..) called per level.
+				function(...nodes){ next = nodes },
+				// depth first step...
+				// 	down(state, ..nodes)
+				// 		-> res
+				// NOTE: this is different to next as the user has control
+				// 		over what value to start with and will get the 
+				// 		result they can handle...
+				function(res, ...nodes){ 
+					return _step(nodes, res) })
+			return next
+		}
+		return args.length == 0 ?
+			// no new nodes to walk...
+			res
+			// do the next level...
+			// NOTE: see note below... ( ;) )
+			: _step(args
+				.map(_get)
+				.reduce(function(next, e){
+					return e instanceof Array ? 
+						next.concat(e) 
+						: next.push(e) }, []), res) } 
+
+	return arguments.length == 1 ?
+		// return a reusable walker...
+		// NOTE: this wrapper is here so as to isolate and re-order res 
+		// 		construction and passing it to the next level...
+		// 		this is needed as when we do:
+		// 			step(res, ...args.map(_get).reduce(...))
+		// 		res (if immutable) will first get passed by value and 
+		// 		then will get re-assigned in _get(..), thus step(..) will 
+		// 		not see the updated version...
+		// 		This approach simply pushes the pass-by-value of res till 
+		// 		after it gets updated by _get(..).
+		function(res, ...args){
+			return _step(args, res) }
+		// walk...
+		: _step(args, res)
+}
+
+
 
 //---------------------------------------------------------------------
 // Logic patterns...
