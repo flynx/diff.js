@@ -565,7 +565,7 @@ module.ARRAY =
 
 // shorthand...
 // NOTE: yes, ARRAY does not even contain the letter "L" but this is 
-// 		tradition ;)
+// 		tradition ...and it starts off the work [L]ist ;)
 var L = module.L = ARRAY
 
 
@@ -1494,6 +1494,86 @@ module.Types = {
 			: res
 	},
 
+	// XXX can we split out the diff walker and simply reuse it for: 
+	// 		.diff(..), .cmp(..), ...
+	// XXX this will produce a flat result out of the box...
+	// XXX this eliminates the need for .flatten(..)
+	// XXX do we need context???
+	_diff: function(A, B, options, context){
+		options = options || {}
+		var that = this
+
+		// basic compare...
+		// XXX do we need to differentiate things like: new Number(123) vs. 123???
+		// XXX do we need to maintain context here???
+		var cmp = function(a, b){
+			// NOTE: we can't use a == b directly because of things like
+			// 		[2] == 2 -> true...
+			return a === b 
+				// basic patters...
+				|| a === that.ANY 
+				|| b === that.ANY 
+				// logic patterns...
+				|| (a instanceof LogicType 
+					&& a.cmp(b))
+				|| (b instanceof LogicType 
+					&& b.cmp(a)) }
+
+		options.cmp = cmp
+
+		return walk(
+			function(diff, node, next, stop){
+				var path = node[0]
+				var A = node[1]
+				var B = node[2]
+
+				var cache = this.cache = this.cache || new Map()
+				var cache_l2 = cache.get(A) || new Map()
+
+				// uncached compare...
+				// NOTE: if we already matched A and B they are already 
+				// 		in cache and we do not need to push anything...
+				if(!cache_l2.has(B)){
+					// we have a match -> no changes, just cache...
+				   	if(cmp(A, B)){
+						cache.set(A, cache_l2.set(B, false))
+						return
+					}
+
+					// get the handler...
+					var handler = that.get(
+						(that.DIFF_TYPES.has(A) || that.DIFF_TYPES.has(B)) ?
+							'Basic' 
+							: that.detect(A, B, options))
+					// normalize...
+					handler = handler instanceof Function ?
+							handler
+						: handler && handler._handle ?
+							// NOTE: we do not care about the original 
+							// 		context here as we are going to 
+							// 		.call(..) anyway...
+							handler._handle
+						: false
+					// unhandled type...
+					if(!handler){
+						throw new TypeError('Diff: can\'t handle: ' + type)
+					}
+
+					cache.set(A, cache_l2.set(B, true))
+
+					// call the handler...
+					handler.call(that, diff, path, A, B, next, options)
+
+					return diff
+				}
+			}, 
+			// diff...
+			[],
+			// node format: 
+			// 	[ <path>, <A>, <B> ]
+			[[], A, B])
+	},
+
 	// Deep-compare A and B...
 	//
 	// XXX would be nice to do a fast fail version of this, i.e. fail on 
@@ -1575,75 +1655,6 @@ module.Types = {
 		return path
 			.reduce(function(res, e){
 				return res[e] }, obj) },
-
-	// XXX make this an extensible walker...
-	//		...ideally passed a func(A, B, obj, ...) where:
-	//			A				- change.A
-	//			B				- change.B
-	//			obj				- object at change.path
-	//		func(..) should be able to:
-	//			- replace obj with B/A (patch/unpatch)
-	//				...current implementation of .patch(..)
-	//			- check obj against B/A (check)
-	//			- swap A and B (reverse) ???
-	//			- ...
-	//		one way to do this is to pass func(..) a handler that it 
-	//		would call to control the outcome...
-	//		...still needs thought, but this feels right...
-	_walk: function(diff, obj, func, options){
-		var that = this
-		var NONE = diff.placeholders.NONE
-		var EMPTY = diff.placeholders.EMPTY
-		var options = diff.options
-
-		// NOTE: in .walk(..) we always return the root object bing 
-		// 		patched, this way the handlers have control over the 
-		// 		patching process and it's results on all levels...
-		// 		...and this is why we can just pop the last item and 
-		// 		return it...
-		// NOTE: this will do odd things for conflicting patches...
-		// 		a conflict can be for example patching both a.b and 
-		// 		a.b.c etc.
-		return this.postPatch(this
-			// XXX do we need to merge .walk(..) into this??
-			.walk(diff.diff, function(change){
-				// replace the object itself...
-				if(change.path.length == 0){
-					return change.B
-				}
-
-				var parent
-				var parent_key
-				var target = change.path
-					.slice(0, -1)
-					.reduce(function(res, e){
-							parent = res
-							parent_key = e
-							return res[e]
-						}, obj)
-				var key = change.path[change.path.length-1]
-
-				var type = change.type || Object
-
-				// call the actual patch...
-				// XXX the key can be contextual so we either need to pass
-				// 		down the context (change and what side we are 
-				// 		looking from, A or B) or make the keys context-free
-				// 		and handle them here...
-				var res = that.typeCall(type, 'get', target, key)
-
-				// replace the parent value...
-				if(parent){
-					parent[parent_key] = res
-
-				} else {
-					obj = res
-				}
-
-				return obj
-			})
-			.pop())
-	},
 
 
 	// Check if diff is applicable to obj...
@@ -1858,6 +1869,19 @@ Types.set('Basic', {
 
 		return change
 	},
+
+	_handle: function(diff, path, A, B, next, options){
+		var obj = {
+			path: path,
+		}
+
+		;(!options.keep_none && A === NONE)
+			|| (obj.A = A)
+		;(!options.keep_none && B === NONE)
+			|| (obj.B = B)
+
+		diff.push(obj)
+	},
 })
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -1964,6 +1988,69 @@ Types.set(Object, {
 				// cleanup...
 				.filter(function(e){
 					return e[1] !== null })
+		return items
+	},
+
+
+	// XXX EXPERIMENTAL: used by Types._diff(..)
+	//_walk: function(){},
+	// XXX add attribute order support...
+	_handle: function(diff, path, A, B, next, options){
+		this.get(Object)._attributes.call(this, 
+			A, B, 
+			function(attr){
+				return next('do', diff, 
+					[path.concat(attr[0])].concat(attr.slice(1))) },
+			diff, 
+			path, 
+			options) 
+		// XXX add attribute order support...
+		// XXX
+	},
+	_attributes: function(A, B, next, diff, path, options){
+		next = next || function(e){ return e }
+
+		// get the attributes...
+		// special case: we omit array indexes from the attribute list...
+		var kA = Object.keys(A)
+		kA = A instanceof Array ? 
+			kA.slice(A.filter(function(){ return true }).length)
+			: kA
+		var kB = Object.keys(B)
+		kB = B instanceof Array ? 
+			kB.slice(B.filter(function(){ return true }).length)
+			: kB
+
+		var B_index = kB.reduce(function(res, k){
+			res[k] = null 
+			return res
+		}, {})
+
+		// XXX use zip(..)...
+		var items = kA
+				// A keys...
+				.map(function(ka){
+					var res = [
+						ka, 
+						A[ka], 
+						ka in B_index ? B[ka] : EMPTY,
+					] 
+					// remove seen keys...
+					delete B_index[ka]
+					return res
+				})
+				// keys present only in B...
+				.concat(Object.keys(B_index)
+					.map(function(kb){
+						return [
+							kb, 
+							EMPTY, 
+							B[kb],
+						]}))
+				.map(next)
+				// cleanup...
+				.filter(function(e){
+					return e != null })
 		return items
 	},
 })
@@ -2222,6 +2309,126 @@ Types.set(Array, {
 	// XXX
 	order: function(diff, A, B, options){
 		// XXX
+	},
+
+
+	// XXX EXPERIMENTAL: used by Types._diff(..)
+	// XXX BUG: with this the results will not match...
+	// 			a = [1,{}]
+	//			b = [{}]
+	//			diff.Diff(
+	//				da = diff.Types._diff(a, b),
+	//				db = diff.Types.flatten(diff.Types.diff(a, b)) ).diff.length == 0 // -> false
+	//		...this looks to be a difference in cmp(..) not using diff(..)
+	_handle: function(diff, path, A, B, next, options){
+		// items...
+		this.get(Array)._items.call(this, 
+			A, B, 
+			function(item){
+				return next('do', diff, 
+					[path.concat(item[0] == item[1] ? 
+							item[0] 
+							: item.slice(0, 2))]
+						.concat(item.slice(2))) },
+			diff, 
+			path,
+			options)
+		// length...
+		if(A.length != B.length){
+			diff.push({
+				path: path.concat(['length']),
+				A: A.length,
+				B: B.length,
+			})
+		}
+	},
+	_items: function(A, B, next, diff, path, options){
+		next = next || function(e){ return e }
+		diff = diff || []
+		path = path || []
+
+		var NONE = this.NONE
+		var EMPTY = this.EMPTY
+
+		var sections = getDiffSections(A, B, options.cmp)
+
+		// special case: last section set consists of sparse/empty arrays...
+		var last = sections[sections.length-1]
+		last 
+			&& last[0][1]
+				.concat(last[1][1])
+				.filter(function(e){ return e }).length == 0
+			&& sections.pop()
+
+		return sections
+			.map(function(gap){
+				var i = gap[0][0]
+				var j = gap[1][0]
+				var a = gap[0][1]
+				var b = gap[1][1]
+
+				// split into two: a common-length section and tails of 
+				// 0 and l lengths...
+				var l = Math.min(a.length, b.length)
+				var ta = a.slice(l)
+				var tb = b.slice(l)
+				// tail sections...
+				var tail = {}
+				ta.filter(() => true).length > 0 
+					&& (tail.A = ta)
+				tb.filter(() => true).length > 0 
+					&& (tail.B = tb)
+
+				a = a.slice(0, l)
+				b = b.slice(0, l)
+
+				return zip(
+						function(n, elems){
+							return next([
+								// indexes...
+								// if a slot exists it gets an index, 
+								// otherwise null...
+								(0 in elems || n < a.length) ? 
+									i+n 
+									: null,
+								(1 in elems || n < b.length) ? 
+									j+n 
+									: null,
+								// A...
+								// use value, EMPTY or NONE...
+								0 in elems ? 
+										elems[0] 
+									: n < a.length ?
+										EMPTY
+									: NONE, 
+								// B...
+								1 in elems ? 
+										elems[1] 
+									: n < b.length ?
+										EMPTY
+									: NONE,
+							]) }, 
+						a, b)
+					// clear matching stuff...
+					.filter(function(e){ 
+						return e != null })
+					// splice array sub-sections...
+					.concat((ta.length + tb.length > 0 ?
+							[Object.assign({}, 
+								{ 
+									path: path.concat([[
+										[i+l, ta.length],
+										[j+l, tb.length],
+									]]),
+								},
+								tail)]
+							: [])
+						.map(function(e){ 
+							return (diff.push(e), e) }))
+			})
+			// XXX do we need this???
+			.reduce(function(res, e){ 
+				return res.concat(e) }, [])
 	},
 })
 
