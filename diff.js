@@ -371,9 +371,9 @@ var LogicTypePrototype = {
 	},
 }
 
-var LogicType = 
-module.LogicType = 
-object.makeConstructor('LogicType', 
+var Pattern = 
+module.Pattern = 
+object.makeConstructor('Pattern', 
 		LogicTypeClassPrototype, 
 		LogicTypePrototype)
 
@@ -573,7 +573,7 @@ var L = module.L = ARRAY
 // Will compare as true to anything but .value...
 var NOT = 
 module.NOT = 
-object.makeConstructor('NOT', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('NOT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return !cmp(this.value, obj, context) },
 	__init__: function(value){
@@ -585,7 +585,7 @@ object.makeConstructor('NOT', Object.assign(Object.create(LogicType.prototype), 
 // Will compare as true if one of the .members compares as true...
 var OR = 
 module.OR = 
-object.makeConstructor('OR', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('OR', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(cmp(m, obj, context)){
@@ -603,7 +603,7 @@ object.makeConstructor('OR', Object.assign(Object.create(LogicType.prototype), {
 // Will compare as true if all of the .members compare as true...
 var AND = 
 module.AND = 
-object.makeConstructor('AND', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('AND', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(!cmp(m, obj, context)){
@@ -624,7 +624,7 @@ object.makeConstructor('AND', Object.assign(Object.create(LogicType.prototype), 
 // 			-> false
 var CONTEXT = 
 module.CONTEXT = 
-object.makeConstructor('CONTEXT', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('CONTEXT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return cmp(this.pattern, obj) },
 	__init__: function(pattern){
@@ -635,7 +635,7 @@ object.makeConstructor('CONTEXT', Object.assign(Object.create(LogicType.prototyp
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var VAR = 
 module.VAR = 
-object.makeConstructor('VAR', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('VAR', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var context = context || this.context().__context__
 		var ns = context.ns = context.ns || {}
@@ -678,7 +678,7 @@ object.makeConstructor('LIKE', Object.assign(Object.create(VAR.prototype), {
 // TEST(func) == L iff func(L) is true.
 var TEST = 
 module.TEST = 
-object.makeConstructor('TEST', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('TEST', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return this.func(obj, cmp, context) },
 	__init__: function(func){
@@ -695,7 +695,7 @@ object.makeConstructor('TEST', Object.assign(Object.create(LogicType.prototype),
 // NOTE: to test if a key exists use AT(key)
 var IN = 
 module.IN = 
-object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('IN', Object.assign(Object.create(Pattern.prototype), {
 	// XXX make this a break-on-match and not a go-through-the-whole-thing
 	// XXX should we check inherited stuff???
 	__cmp__: function(obj, cmp, context){
@@ -743,7 +743,7 @@ object.makeConstructor('IN', Object.assign(Object.create(LogicType.prototype), {
 // XXX support Maps, ...
 var AT = 
 module.AT = 
-object.makeConstructor('AT', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('AT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var key = this.key instanceof Array ? this.key : [this.key]
 		var value = this.value
@@ -755,7 +755,7 @@ object.makeConstructor('AT', Object.assign(Object.create(LogicType.prototype), {
 						return o == null ? 
 								[]
 							// pattern key,,,
-							: k instanceof LogicType ?
+							: k instanceof Pattern ?
 								[...getAllKeys(o)]
 									.filter(function(n){
 										return cmp(k, n, context) })
@@ -796,7 +796,7 @@ object.makeConstructor('AT', Object.assign(Object.create(LogicType.prototype), {
 // XXX ORDERED(A, B, ..) == L iff A is before B, B is before C, ... etc.
 var ORDERED = 
 module.ORDERED = 
-object.makeConstructor('ORDERED', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('ORDERED', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
@@ -809,7 +809,7 @@ object.makeConstructor('ORDERED', Object.assign(Object.create(LogicType.prototyp
 // XXX ADJACENT(A, B, ..) == L iff A directly before B, B directly before C, ...
 var ADJACENT = 
 module.ADJACENT = 
-object.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('ADJACENT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
@@ -824,7 +824,7 @@ object.makeConstructor('ADJACENT', Object.assign(Object.create(LogicType.prototy
 // 		on matching...
 var OF = 
 module.OF = 
-object.makeConstructor('OF', Object.assign(Object.create(LogicType.prototype), {
+object.makeConstructor('OF', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
@@ -1425,9 +1425,9 @@ module.Types = {
 				|| a === that.ANY 
 				|| b === that.ANY 
 				// logic patterns...
-				|| (a instanceof LogicType 
+				|| (a instanceof Pattern 
 					&& a.cmp(b, cmp, context))
-				|| (b instanceof LogicType 
+				|| (b instanceof Pattern 
 					&& b.cmp(a, cmp, context)) }
 		// deep compare...
 		var cmp = options.cmp = options.cmp 
@@ -1440,8 +1440,8 @@ module.Types = {
 					|| (diff(a, b) == null) }
 		// cache...
 		context = context 
-			|| (A instanceof LogicType ? A.context().__context__ 
-				: B instanceof LogicType ? B.context().__context__ 
+			|| (A instanceof Pattern ? A.context().__context__ 
+				: B instanceof Pattern ? B.context().__context__ 
 				: {})
 		cache = context.cache = context.cache || new Map()
 		// cached diff...
@@ -1514,9 +1514,9 @@ module.Types = {
 				|| a === that.ANY 
 				|| b === that.ANY 
 				// logic patterns...
-				|| (a instanceof LogicType 
+				|| (a instanceof Pattern 
 					&& a.cmp(b))
-				|| (b instanceof LogicType 
+				|| (b instanceof Pattern 
 					&& b.cmp(a)) }
 
 		options.cmp = cmp
@@ -2433,6 +2433,24 @@ Types.set(Array, {
 })
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+/*/ Pattern...
+// XXX need to accompany this with a walk pattern protocol....
+// XXX show the actual part of the pattern we got a mismatch...
+Types.set(Pattern, {
+	handle: function(obj, diff, A, B, options){
+		// XXX
+	}
+	walk: function(diff, func, path){
+		// XXX
+	},
+	reverse: function(change){
+		// XXX
+	},
+})
+//*/
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX add JS types like Map, Set, ...
 // XXX Q: can Map/Set be supported???
 // 		- there is not uniform item access 
@@ -2538,22 +2556,6 @@ Types.set('Text', {
 		return res
 	},
 })
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// LogicType...
-/*/ XXX show the actual part of the pattern we got a mismatch...
-Types.set(LogicType, {
-	handle: function(obj, diff, A, B, options){
-		// XXX
-	}
-	walk: function(diff, func, path){
-		// XXX
-	},
-	reverse: function(change){
-		// XXX
-	},
-})
-//*/
 
 
 
