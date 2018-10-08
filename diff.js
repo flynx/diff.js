@@ -1401,6 +1401,13 @@ module.Types = {
 	// NOTE: this will include direct links to items.
 	// NOTE: for format info see doc for Types...
 	//
+	// XXX BUG:
+	// 		.diff([], {})
+	// 			-> {
+	// 					B: {},
+	// 					path: [],
+	// 				}
+	// 			should also contain 'A: [],' !!!
 	// XXX might be a good idea to make a .walk(..) version of this...
 	// 		...i.e. pass a function a nd call it with each change...
 	// XXX special case: empty sections do not need to be inserted...
@@ -1562,9 +1569,13 @@ module.Types = {
 					cache.set(A, cache_l2.set(B, true))
 
 					// call the handler...
-					handler.call(that, diff, path, A, B, next, options)
-
 					return diff
+						.concat(handler.call(that, A, B, next, options))
+						// update paths...
+						.map(function(e){
+							e.path = path.concat(e.path)
+							return e
+						})
 				}
 			}, 
 			// diff...
@@ -1870,9 +1881,9 @@ Types.set('Basic', {
 		return change
 	},
 
-	_handle: function(diff, path, A, B, next, options){
+	_handle: function(A, B, next, options){
 		var obj = {
-			path: path,
+			path: [],
 		}
 
 		;(!options.keep_none && A === NONE)
@@ -1880,7 +1891,7 @@ Types.set('Basic', {
 		;(!options.keep_none && B === NONE)
 			|| (obj.B = B)
 
-		diff.push(obj)
+		return [obj]
 	},
 })
 
@@ -1995,21 +2006,27 @@ Types.set(Object, {
 	// XXX EXPERIMENTAL: used by Types._diff(..)
 	//_walk: function(){},
 	// XXX add attribute order support...
-	_handle: function(diff, path, A, B, next, options){
-		this.get(Object)._attributes.call(this, 
-			A, B, 
-			function(attr){
-				return next('do', diff, 
-					[path.concat(attr[0])].concat(attr.slice(1))) },
-			diff, 
-			path, 
-			options) 
+	_handle: function(A, B, next, options){
+		var diff = this.get(Object)._attributes.call(this, A, B, options) 
+			// merge node differences...
+			.reduce(function(res, attr){
+				return res.concat(next('do', [], attr)) }, [])
+			// clean out matches...
+			.filter(function(e){
+				return e != null })
 		// XXX add attribute order support...
 		// XXX
+		return diff
 	},
-	_attributes: function(A, B, next, diff, path, options){
-		next = next || function(e){ return e }
-
+	// return aligned attr sets...
+	// 	format:
+	// 		[
+	// 			[[<key>], <A> | EMPTY, <B>],
+	// 			// or:
+	// 			[[<key>], <A>, <B> | EMPTY],
+	// 			...
+	// 		]
+	_attributes: function(A, B, options){
 		// get the attributes...
 		// special case: we omit array indexes from the attribute list...
 		var kA = Object.keys(A)
@@ -2026,12 +2043,11 @@ Types.set(Object, {
 			return res
 		}, {})
 
-		// XXX use zip(..)...
 		var items = kA
 				// A keys...
 				.map(function(ka){
 					var res = [
-						ka, 
+						[ka], 
 						A[ka], 
 						ka in B_index ? B[ka] : EMPTY,
 					] 
@@ -2043,14 +2059,10 @@ Types.set(Object, {
 				.concat(Object.keys(B_index)
 					.map(function(kb){
 						return [
-							kb, 
+							[kb], 
 							EMPTY, 
 							B[kb],
 						]}))
-				.map(next)
-				// cleanup...
-				.filter(function(e){
-					return e != null })
 		return items
 	},
 })
@@ -2319,37 +2331,12 @@ Types.set(Array, {
 	//			diff.Diff(
 	//				da = diff.Types._diff(a, b),
 	//				db = diff.Types.flatten(diff.Types.diff(a, b)) ).diff.length == 0 // -> false
-	//		...this looks to be a difference in cmp(..) not using diff(..)
-	_handle: function(diff, path, A, B, next, options){
-		// items...
-		this.get(Array)._items.call(this, 
-			A, B, 
-			function(item){
-				return next('do', diff, 
-					[path.concat(item[0] == item[1] ? 
-							item[0] 
-							: item.slice(0, 2))]
-						.concat(item.slice(2))) },
-			diff, 
-			path,
-			options)
-		// length...
-		if(A.length != B.length){
-			diff.push({
-				path: path.concat(['length']),
-				A: A.length,
-				B: B.length,
-			})
-		}
-	},
-	_items: function(A, B, next, diff, path, options){
-		next = next || function(e){ return e }
-		diff = diff || []
-		path = path || []
-
+	//		...options.cmp(..) must use diff to compare items to match...
+	_handle: function(A, B, next, options){
 		var NONE = this.NONE
 		var EMPTY = this.EMPTY
 
+		// XXX cmp must be diff-aware!!!
 		var sections = getDiffSections(A, B, options.cmp)
 
 		// special case: last section set consists of sparse/empty arrays...
@@ -2360,7 +2347,7 @@ Types.set(Array, {
 				.filter(function(e){ return e }).length == 0
 			&& sections.pop()
 
-		return sections
+		var diff = sections
 			.map(function(gap){
 				var i = gap[0][0]
 				var j = gap[1][0]
@@ -2384,7 +2371,7 @@ Types.set(Array, {
 
 				return zip(
 						function(n, elems){
-							return next([
+							return [
 								// indexes...
 								// if a slot exists it gets an index, 
 								// otherwise null...
@@ -2407,28 +2394,43 @@ Types.set(Array, {
 									: n < b.length ?
 										EMPTY
 									: NONE,
-							]) }, 
+							] }, 
 						a, b)
+					// normalize path and call next...
+					.reduce(function(res, attr){
+						var path = attr.splice(0, 2)
+						path = path[0] == path[1] ? 
+							[path[0]] 
+							: path
+						return res.concat(
+							next('do', [], [path].concat(attr))) }, [])
 					// clear matching stuff...
 					.filter(function(e){ 
 						return e != null })
 					// splice array sub-sections...
-					.concat((ta.length + tb.length > 0 ?
+					.concat(ta.length + tb.length > 0 ?
 							[Object.assign({}, 
 								{ 
-									path: path.concat([[
+									path: [[
 										[i+l, ta.length],
 										[j+l, tb.length],
-									]]),
+									]],
 								},
 								tail)]
-							: [])
-						.map(function(e){ 
-							return (diff.push(e), e) }))
-			})
-			// XXX do we need this???
+							: []) })
 			.reduce(function(res, e){ 
 				return res.concat(e) }, [])
+
+		// length...
+		if(A.length != B.length){
+			diff.push({
+				path: ['length'],
+				A: A.length,
+				B: B.length,
+			})
+		}
+
+		return diff
 	},
 })
 
