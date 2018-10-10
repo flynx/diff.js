@@ -1506,6 +1506,9 @@ module.Types = {
 	// XXX this will produce a flat result out of the box...
 	// XXX this eliminates the need for .flatten(..)
 	// XXX do we need context???
+	// XXX Q: will this blow up on recursive objects???
+	// 		I think no... (needs testing)
+	// 		...do we need a tree/recursive format to support object recursion???
 	_diff: function(A, B, options, context){
 		options = options || {}
 		var that = this
@@ -1528,13 +1531,42 @@ module.Types = {
 
 		options.cmp = cmp
 
+		// make change path updater...
+		//
+		// 	returns a function: 
+		// 	- create a copy of the change
+		// 	- concatenate change.path to base
+		var updatePath = function(base){
+			return function(e){
+				return Object.assign({}, 
+					e, 
+					{ path: base.concat(e.path) }) } }
+
 		return walk(
 			function(diff, node, next, stop){
 				var path = node[0]
 				var A = node[1]
 				var B = node[2]
 
-				var cache = this.cache = this.cache || new Map()
+				// cache format:
+				// 	Map([
+				// 		[<obj_a>, Map([
+				//			// <obj_a> and <obj_b0> match... 
+				// 			[<obj_b0>, true],
+				//			// <obj_a> and <obj_b1> do not match...
+				// 			[<obj_b1>, [
+				// 				// relative changes...
+				// 				// NOTE: change.path is relative to obj_a 
+				// 				//		and may need to be updated to 
+				// 				//		reflect the actual change in A/B...
+				// 				<change>,
+				// 				...
+				// 			]],
+				// 			...
+				// 		])],
+				// 		...
+				// 	])
+				var cache = this.cache = this.cache || context.cache || new Map()
 				var cache_l2 = cache.get(A) || new Map()
 
 				// uncached compare...
@@ -1543,11 +1575,11 @@ module.Types = {
 				if(!cache_l2.has(B)){
 					// we have a match -> no changes, just cache...
 				   	if(cmp(A, B)){
-						cache.set(A, cache_l2.set(B, false))
+						cache.set(A, cache_l2.set(B, undefined))
 						return
 					}
 
-					// get the handler...
+					// handler...
 					var handler = that.get(
 						(that.DIFF_TYPES.has(A) || that.DIFF_TYPES.has(B)) ?
 							'Basic' 
@@ -1566,16 +1598,21 @@ module.Types = {
 						throw new TypeError('Diff: can\'t handle: ' + type)
 					}
 
-					cache.set(A, cache_l2.set(B, true))
-
 					// call the handler...
-					return diff
-						.concat(handler.call(that, A, B, next, options))
-						// update paths...
-						.map(function(e){
-							e.path = path.concat(e.path)
-							return e
-						})
+					var res = handler.call(that, A, B, next, options)
+
+					cache.set(A, cache_l2.set(B, res))
+
+					return diff.concat(res
+						.map(updatePath(path)))
+
+				// return the cached values...
+				} else {
+					var res = cache_l2.get(B)
+					return res == null ? 
+						res 
+						: diff.concat(res
+							.map(updatePath(path)))
 				}
 			}, 
 			// diff...
