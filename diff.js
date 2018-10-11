@@ -1509,6 +1509,9 @@ module.Types = {
 	// XXX Q: will this blow up on recursive objects???
 	// 		I think no... (needs testing)
 	// 		...do we need a tree/recursive format to support object recursion???
+	// 		might be  good idea to add an option to do two diff outputs:
+	// 		- recursive
+	// 		- flat
 	_diff: function(A, B, options, context){
 		options = options || {}
 		var that = this
