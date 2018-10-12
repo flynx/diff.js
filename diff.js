@@ -1516,6 +1516,14 @@ module.Types = {
 		options = options || {}
 		var that = this
 
+		// XXX revise...
+		// XXX can there be a nested pattern that needs a context???
+		// 		...should this be done in walk(..)???
+		context = context 
+			|| (A instanceof Pattern ? A.context().__context__ 
+				: B instanceof Pattern ? B.context().__context__ 
+				: {})
+
 		// basic compare...
 		// XXX do we need to differentiate things like: new Number(123) vs. 123???
 		// XXX we need to maintain the context here...
@@ -1530,9 +1538,18 @@ module.Types = {
 				|| b === that.ANY 
 				// logic patterns...
 				|| (a instanceof Pattern 
-					&& a.cmp(b))
+					&& a.cmp(b, cmp, context))
 				|| (b instanceof Pattern 
-					&& b.cmp(a)) }
+					&& b.cmp(a, cmp, context)) }
+
+		// cached diff...
+		// XXX this needs cache...
+		var diff = function(a, b){
+			var l2 = cache.get(a) || new Map()
+			var d = l2.get(b) || that.diff(a, b, options, context)
+			cache.set(a, l2.set(b, d))
+			return d
+		}
 
 		options.cmp = cmp
 
@@ -1552,6 +1569,10 @@ module.Types = {
 				var path = node[0]
 				var A = node[1]
 				var B = node[2]
+
+				// XXX this both in closure and in 'this' only one should
+				// 		be left...
+				//context = this.context = this.context || context
 
 				// cache format:
 				// 	Map([
