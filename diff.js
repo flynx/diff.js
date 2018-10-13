@@ -1524,6 +1524,26 @@ module.Types = {
 				: B instanceof Pattern ? B.context().__context__ 
 				: {})
 
+		// cache format:
+		// 	Map([
+		// 		[<obj_a>, Map([
+		//			// <obj_a> and <obj_b0> match... 
+		// 			[<obj_b0>, true],
+		//			// <obj_a> and <obj_b1> do not match...
+		// 			[<obj_b1>, [
+		// 				// relative changes...
+		// 				// NOTE: change.path is relative to obj_a 
+		// 				//		and may need to be updated to 
+		// 				//		reflect the actual change in A/B...
+		// 				<change>,
+		// 				...
+		// 			]],
+		// 			...
+		// 		])],
+		// 		...
+		// 	])
+		var cache = context.cache = context.cache || new Map()
+
 		// basic compare...
 		// XXX do we need to differentiate things like: new Number(123) vs. 123???
 		// XXX we need to maintain the context here...
@@ -1546,7 +1566,7 @@ module.Types = {
 		// XXX this needs cache...
 		var diff = function(a, b){
 			var l2 = cache.get(a) || new Map()
-			var d = l2.get(b) || that.diff(a, b, options, context)
+			var d = l2.get(b) || that._diff(a, b, options, context)
 			cache.set(a, l2.set(b, d))
 			return d
 		}
@@ -1570,29 +1590,6 @@ module.Types = {
 				var A = node[1]
 				var B = node[2]
 
-				// XXX this both in closure and in 'this' only one should
-				// 		be left...
-				//context = this.context = this.context || context
-
-				// cache format:
-				// 	Map([
-				// 		[<obj_a>, Map([
-				//			// <obj_a> and <obj_b0> match... 
-				// 			[<obj_b0>, true],
-				//			// <obj_a> and <obj_b1> do not match...
-				// 			[<obj_b1>, [
-				// 				// relative changes...
-				// 				// NOTE: change.path is relative to obj_a 
-				// 				//		and may need to be updated to 
-				// 				//		reflect the actual change in A/B...
-				// 				<change>,
-				// 				...
-				// 			]],
-				// 			...
-				// 		])],
-				// 		...
-				// 	])
-				var cache = this.cache = this.cache || context.cache || new Map()
 				var cache_l2 = cache.get(A) || new Map()
 
 				// uncached compare...
