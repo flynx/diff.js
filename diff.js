@@ -1571,6 +1571,7 @@ module.Types = {
 			return d
 		}
 
+		// XXX ???
 		options.cmp = cmp
 
 		// make change path updater...
