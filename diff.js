@@ -373,7 +373,7 @@ var LogicTypePrototype = {
 
 var Pattern = 
 module.Pattern = 
-object.makeConstructor('Pattern', 
+object.Constructor('Pattern', 
 		LogicTypeClassPrototype, 
 		LogicTypePrototype)
 
@@ -386,7 +386,7 @@ var makeCIPattern = function(name, check, init){
 	})
 	init
 		&& (o.__init__ = init)
-	return object.makeConstructor(name, o, o) 
+	return object.Constructor(name, o, o) 
 }
 
 
@@ -573,7 +573,7 @@ var L = module.L = ARRAY
 // Will compare as true to anything but .value...
 var NOT = 
 module.NOT = 
-object.makeConstructor('NOT', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('NOT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return !cmp(this.value, obj, context) },
 	__init__: function(value){
@@ -585,7 +585,7 @@ object.makeConstructor('NOT', Object.assign(Object.create(Pattern.prototype), {
 // Will compare as true if one of the .members compares as true...
 var OR = 
 module.OR = 
-object.makeConstructor('OR', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('OR', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(cmp(m, obj, context)){
@@ -603,7 +603,7 @@ object.makeConstructor('OR', Object.assign(Object.create(Pattern.prototype), {
 // Will compare as true if all of the .members compare as true...
 var AND = 
 module.AND = 
-object.makeConstructor('AND', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('AND', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(!cmp(m, obj, context)){
@@ -624,7 +624,7 @@ object.makeConstructor('AND', Object.assign(Object.create(Pattern.prototype), {
 // 			-> false
 var CONTEXT = 
 module.CONTEXT = 
-object.makeConstructor('CONTEXT', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('CONTEXT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return cmp(this.pattern, obj) },
 	__init__: function(pattern){
@@ -635,7 +635,7 @@ object.makeConstructor('CONTEXT', Object.assign(Object.create(Pattern.prototype)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 var VAR = 
 module.VAR = 
-object.makeConstructor('VAR', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('VAR', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var context = context || this.context().__context__
 		var ns = context.ns = context.ns || {}
@@ -661,7 +661,7 @@ object.makeConstructor('VAR', Object.assign(Object.create(Pattern.prototype), {
 // this is like VAR(..) but will do a structural compare...
 var LIKE = 
 module.LIKE = 
-object.makeConstructor('LIKE', Object.assign(Object.create(VAR.prototype), {
+object.Constructor('LIKE', Object.assign(Object.create(VAR.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var context = context || this.context().__context__
 
@@ -678,7 +678,7 @@ object.makeConstructor('LIKE', Object.assign(Object.create(VAR.prototype), {
 // TEST(func) == L iff func(L) is true.
 var TEST = 
 module.TEST = 
-object.makeConstructor('TEST', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('TEST', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return this.func(obj, cmp, context) },
 	__init__: function(func){
@@ -695,7 +695,7 @@ object.makeConstructor('TEST', Object.assign(Object.create(Pattern.prototype), {
 // NOTE: to test if a key exists use AT(key)
 var IN = 
 module.IN = 
-object.makeConstructor('IN', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('IN', Object.assign(Object.create(Pattern.prototype), {
 	// XXX make this a break-on-match and not a go-through-the-whole-thing
 	// XXX should we check inherited stuff???
 	__cmp__: function(obj, cmp, context){
@@ -743,7 +743,7 @@ object.makeConstructor('IN', Object.assign(Object.create(Pattern.prototype), {
 // XXX support Maps, ...
 var AT = 
 module.AT = 
-object.makeConstructor('AT', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('AT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var key = this.key instanceof Array ? this.key : [this.key]
 		var value = this.value
@@ -796,7 +796,7 @@ object.makeConstructor('AT', Object.assign(Object.create(Pattern.prototype), {
 // XXX ORDERED(A, B, ..) == L iff A is before B, B is before C, ... etc.
 var ORDERED = 
 module.ORDERED = 
-object.makeConstructor('ORDERED', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('ORDERED', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
@@ -809,7 +809,7 @@ object.makeConstructor('ORDERED', Object.assign(Object.create(Pattern.prototype)
 // XXX ADJACENT(A, B, ..) == L iff A directly before B, B directly before C, ...
 var ADJACENT = 
 module.ADJACENT = 
-object.makeConstructor('ADJACENT', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('ADJACENT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
@@ -824,7 +824,7 @@ object.makeConstructor('ADJACENT', Object.assign(Object.create(Pattern.prototype
 // 		on matching...
 var OF = 
 module.OF = 
-object.makeConstructor('OF', Object.assign(Object.create(Pattern.prototype), {
+object.Constructor('OF', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp){
 		// XXX
 	},
@@ -1503,6 +1503,7 @@ module.Types = {
 
 	// XXX can we split out the diff walker and simply reuse it for: 
 	// 		.diff(..), .cmp(..), ...
+	// 		...use ImageGrid's browser2.js .walk(..) as a basis...
 	// XXX this will produce a flat result out of the box...
 	// XXX this eliminates the need for .flatten(..)
 	// XXX do we need context???
@@ -2729,7 +2730,7 @@ var DiffClassPrototype = {
 	clone: function(name){
 		var cls = Object.create(this.__proto__)
 		cls.types = this.types.clone()
-		return object.makeConstructor(name || 'EDiff', cls, this())
+		return object.Constructor(name || 'EDiff', cls, this())
 	},
 
 	// proxy generic stuff to .types...
@@ -2892,7 +2893,7 @@ var DiffPrototype = {
 
 var Diff = 
 module.Diff = 
-object.makeConstructor('Diff', 
+object.Constructor('Diff', 
 	DiffClassPrototype, 
 	DiffPrototype)
 		
