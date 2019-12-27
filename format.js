@@ -14,7 +14,7 @@ var diff = require('./diff')
 var {
 	ANY,
 	NULL, BOOL, B, NUMBER, N, STRING, S, ARRAY, L, FUNCTION, F,
-	OR, AND, NOT,
+	OR, XOR, AND, NOT,
 	AT, OF, IN,
 	VAR, LIKE, TEST,
 	// non-pattern values...

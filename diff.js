@@ -600,6 +600,26 @@ object.Constructor('OR', Object.assign(Object.create(Pattern.prototype), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// XXX XOR
+var XOR =
+module.XOR = 
+object.Constructor('XOR', Object.assign(Object.create(Pattern.prototype), {
+	__cmp__: function(obj, cmp, context){
+		/* XXX
+		for(var m of this.members){
+			if(cmp(m, obj, context)){
+				return true
+			}
+		}
+		return false
+		//*/
+	},
+	__init__: function(...members){
+		this.members = members
+	},
+}))
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Will compare as true if all of the .members compare as true...
 var AND = 
 module.AND = 
