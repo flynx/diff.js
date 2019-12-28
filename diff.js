@@ -582,7 +582,7 @@ object.Constructor('NOT', Object.assign(Object.create(Pattern.prototype), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Will compare as true if one of the .members compares as true...
+// Will compare as true if one of the .members compares true...
 var OR = 
 module.OR = 
 object.Constructor('OR', Object.assign(Object.create(Pattern.prototype), {
@@ -600,19 +600,22 @@ object.Constructor('OR', Object.assign(Object.create(Pattern.prototype), {
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// XXX XOR
+// Will compare as true if one and only one of .members compares true... 
+// XXX TEST...
 var XOR =
 module.XOR = 
 object.Constructor('XOR', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
-		/* XXX
+		var state = false
+		var cur
 		for(var m of this.members){
-			if(cmp(m, obj, context)){
-				return true
+			cur = cmp(m, obj, context)
+			if(state == cur && state){
+				return false
 			}
+			state = cur
 		}
-		return false
-		//*/
+		return state
 	},
 	__init__: function(...members){
 		this.members = members
@@ -1121,8 +1124,7 @@ module.Types = {
 		var that = this
 		return this.typeKeys
 			.map(function(e){ 
-				return that.get(e) })
-	},
+				return that.get(e) }) },
 
 	// helper...
 	typeCall: function(type, func, ...args){
