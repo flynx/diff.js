@@ -73,8 +73,7 @@ var getAllKeys = function(obj){
 			})
 		obj = obj.__proto__
 	}
-	return res
-}
+	return res }
 
 
 // 	zip(array, array, ...)
@@ -254,14 +253,11 @@ var proxy = function(path, func){
 		path.slice() 
 		: path.split(/\./)
 	var method = path.pop()
-
 	return function(...args){
 		var res = path.reduce(function(res, e){ return res[e] }, this)[method](...args) 
 		return func ? 
 			func.call(this, res, ...args) 
-			: res
-	}
-}
+			: res } }
 
 
 
@@ -308,8 +304,7 @@ var LogicTypePrototype = {
 			Object.create(this) 
 			: this
 		res.__context__ = res.__context__ || context || {} 
-		return res
-	},
+		return res },
 
 	__cmp__: function(obj, cmp, context){
 		return false },
@@ -577,8 +572,7 @@ object.Constructor('NOT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return !cmp(this.value, obj, context) },
 	__init__: function(value){
-		this.value = value
-	},
+		this.value = value },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -592,11 +586,9 @@ object.Constructor('OR', Object.assign(Object.create(Pattern.prototype), {
 				return true
 			}
 		}
-		return false
-	},
+		return false },
 	__init__: function(...members){
-		this.members = members
-	},
+		this.members = members },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -615,11 +607,9 @@ object.Constructor('XOR', Object.assign(Object.create(Pattern.prototype), {
 			}
 			state = cur
 		}
-		return state
-	},
+		return state },
 	__init__: function(...members){
-		this.members = members
-	},
+		this.members = members },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -633,11 +623,9 @@ object.Constructor('AND', Object.assign(Object.create(Pattern.prototype), {
 				return false
 			}
 		}
-		return true
-	},
+		return true },
 	__init__: function(...members){
-		this.members = members
-	},
+		this.members = members },
 }))
 
 
@@ -651,8 +639,9 @@ object.Constructor('CONTEXT', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return cmp(this.pattern, obj) },
 	__init__: function(pattern){
-		this.pattern = arguments.length == 0 ? ANY : pattern
-	},
+		this.pattern = arguments.length == 0 ? 
+			ANY 
+			: pattern },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -666,18 +655,16 @@ object.Constructor('VAR', Object.assign(Object.create(Pattern.prototype), {
 			this.name in ns ?
 				ns[this.name] 
 				: this.pattern
-
 		if(cmp(pattern, obj)){
 			ns[this.name] = obj 
 			return true
 		}
-
-		return false
-	},
+		return false },
 	__init__: function(name, pattern){
 		this.name = name
-		this.pattern = arguments.length < 2 ? ANY : pattern
-	},
+		this.pattern = arguments.length < 2 ? 
+			ANY 
+			: pattern },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -687,7 +674,6 @@ module.LIKE =
 object.Constructor('LIKE', Object.assign(Object.create(VAR.prototype), {
 	__cmp__: function(obj, cmp, context){
 		var context = context || this.context().__context__
-
 		return VAR.prototype.__cmp__.call(this, obj, cmp, context)
 			|| Diff.cmp(
 				this.name in context.ns ?
@@ -705,8 +691,7 @@ object.Constructor('TEST', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		return this.func(obj, cmp, context) },
 	__init__: function(func){
-		this.func = func
-	}
+		this.func = func }
 }))
 
 
@@ -733,8 +718,7 @@ object.Constructor('IN', Object.assign(Object.create(Pattern.prototype), {
 						: res 
 				}, false) },
 	__init__: function(value){
-		this.value = value
-	},
+		this.value = value },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -807,12 +791,12 @@ object.Constructor('AT', Object.assign(Object.create(Pattern.prototype), {
 				.filter(function(e){
 					return cmp(e, value, context)})
 				// all must match...
-				.length == res.length
-	},
+				.length == res.length },
 	__init__: function(key, value){
 		this.key = key
-		this.value = arguments.length < 2 ? ANY : value
-	},
+		this.value = arguments.length < 2 ? 
+			ANY 
+			: value },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -824,8 +808,7 @@ object.Constructor('ORDERED', Object.assign(Object.create(Pattern.prototype), {
 		// XXX
 	},
 	__init__: function(...items){
-		this.items = items
-	},
+		this.items = items },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -837,8 +820,7 @@ object.Constructor('ADJACENT', Object.assign(Object.create(Pattern.prototype), {
 		// XXX
 	},
 	__init__: function(...items){
-		this.items = items
-	},
+		this.items = items },
 }))
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -853,8 +835,7 @@ object.Constructor('OF', Object.assign(Object.create(Pattern.prototype), {
 	},
 	__init__: function(value, count){
 		this.count = count
-		this.value = value
-	},
+		this.value = value },
 }))
 
 
@@ -1242,7 +1223,6 @@ module.Types = {
 		if(diff == null){
 			return null
 		}
-
 		// flat diff...
 		if(diff instanceof Array){
 			return diff.map(func)
@@ -1253,9 +1233,7 @@ module.Types = {
 			if(handler == null || !handler.walk){
 				throw new TypeError('Can\'t walk type: '+ diff.type)
 			}
-			return handler.walk.call(this, diff, func, path || [])
-		}
-	},
+			return handler.walk.call(this, diff, func, path || []) } },
 
 	// Flatten the tree diff format...
 	//
@@ -1431,7 +1409,7 @@ module.Types = {
 	// 				}
 	// 			should also contain 'A: [],' !!!
 	// XXX might be a good idea to make a .walk(..) version of this...
-	// 		...i.e. pass a function a nd call it with each change...
+	// 		...i.e. pass a function and call it with each change...
 	// XXX special case: empty sections do not need to be inserted...
 	// 		...splice in a sparse array and store an Array diff with only 
 	// 		length changed...
@@ -1941,15 +1919,13 @@ Types.set('Basic', {
 		;(!options.keep_none && A === NONE)
 			|| (obj.A = A)
 		;(!options.keep_none && B === NONE)
-			|| (obj.B = B)
-	},
+			|| (obj.B = B) },
 	walk: function(diff, func, path){
 		var change = Object.assign({
 			path: path,
 		}, diff)
 		delete change.type
-		return func(change)
-	},
+		return func(change) },
 	reverse: function(change){
 		var b = 'B' in change
 		var a = 'A' in change 
@@ -1962,8 +1938,7 @@ Types.set('Basic', {
 			(change.A = t)
 			: (delete change.A)
 
-		return change
-	},
+		return change },
 
 	_handle: function(A, B, next, options){
 		var obj = {
@@ -2006,8 +1981,7 @@ Types.set(Object, {
 				var v = e[1]
 
 				return that.walk(v, func, p)
-			})
-	},
+			}) },
 	// XXX add object compatibility checks...
 	patch: function(obj, key, change, ...rest){
 		var EMPTY = this.EMPTY
@@ -2578,14 +2552,12 @@ Types.set('Text', {
 		return typeof(obj) == typeof('str')
 			&& min > 0 
 			&& (obj.length > min 
-				&& /\n/.test(obj))
-	},
+				&& /\n/.test(obj)) },
 	handle: function(obj, diff, A, B, options){
 		options = Object.create(options || {})
 		// do not treat substrings as text...
 		options.min_text_length = -1
-		return this.handle(Array, obj, diff, A.split(/\n/), B.split(/\n/), options) 
-	},
+		return this.handle(Array, obj, diff, A.split(/\n/), B.split(/\n/), options) },
 	walk: function(diff, func, path){
 		// use the array walk but add 'Text' type to each change...
 		// NOTE: we need to abide by the protocol and call Array's 
@@ -2597,8 +2569,7 @@ Types.set('Text', {
 			}
 			c.type = 'Text'
 			return func(c)
-		}, path)
-	},
+		}, path) },
 
 	// NOTE: we return here arrays, joining is done in .postPatch(..) 
 	// XXX add object compatibility checks...
