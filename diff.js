@@ -1910,6 +1910,7 @@ Types.set('Basic', {
 		return [obj] },
 })
 
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Object...
 // XXX add attr order support...
@@ -2072,6 +2073,7 @@ Types.set(Object, {
 						]}))
 		return items },
 })
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Array...
@@ -2423,6 +2425,39 @@ Types.set(Array, {
 
 		return diff },
 })
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+/*/ XXX Set...
+Types.set(Set, {
+	handle: function(obj, diff, A, B, options){
+		// XXX
+	}
+	walk: function(diff, func, path){
+		// XXX
+	},
+	reverse: function(change){
+		// XXX
+	},
+})
+//*/
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+/*/ XXX Map...
+Types.set(Map, {
+	handle: function(obj, diff, A, B, options){
+		// XXX
+	}
+	walk: function(diff, func, path){
+		// XXX
+	},
+	reverse: function(change){
+		// XXX
+	},
+})
+//*/
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 /*/ Pattern...
@@ -2813,6 +2848,9 @@ object.Constructor('Diff',
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Short hands...
+
+module.diff = Diff
+
 
 // Deep-compare objects...
 //
