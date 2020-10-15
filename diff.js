@@ -396,14 +396,14 @@ module.ANY =
 // 		-> pattern
 //
 // This matches null and undefined.
-//
-// NOTE: this will not match NaN (XXX revise)
 var NULL = 
 module.NULL = 
 	makeCIPattern('NULL', 
 		function(obj){ 
 			return obj === null 
-				|| obj === undefined })()
+				|| obj === undefined 
+				// XXX is this the right way to go?
+				|| isNaN(obj) })()
 
 
 // Bool pattern...
@@ -1356,6 +1356,11 @@ module.Types = {
 	// XXX there are two approaches to this:
 	// 		1) naive: simply concatenate all the changes in order...
 	// 		2) filter and merge changes based on path...
+	// XXX ...another way to go might be to apply the diffs in sequence 
+	// 		to an empty object and then reconstruct a single diff from 
+	// 		the result...
+	// 		...this would require us to do this on both A and B sides,
+	// 		i.e. build-then-change...
 	// XXX do we need a conflict resolution policy???
 	merge: function(diff, other){
 		// XXX
