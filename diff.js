@@ -64,15 +64,15 @@ var MIN_TEXT_LENGTH = 100
 //
 // This is different to Object.keys(..) in that it gets both enumerable 
 // and non-enumerable keys in the whole prototype chain...
+//
+// XXX should this be in object.js???
 var getAllKeys = function(obj){
 	var res = new Set()
 	while(obj.__proto__ || obj === obj.__proto__){
 		Object.getOwnPropertyNames(obj)
 			.forEach(function(n){
-				res.add(n)
-			})
-		obj = obj.__proto__
-	}
+				res.add(n) })
+		obj = obj.__proto__ }
 	return res }
 
 
@@ -82,12 +82,12 @@ var getAllKeys = function(obj){
 // 	zip(func, array, array, ...)
 // 		-> [func(i, [item, item, ...]), ...]
 //
+// XXX move this to ig-types
 var zip = function(func, ...arrays){
 	var i = arrays[0] instanceof Array ? 0 : arrays.shift()
 	if(func instanceof Array){
 		arrays.splice(0, 0, func)
-		func = null
-	}
+		func = null }
 	// build the zip item...
 	// NOTE: this is done this way to preserve array sparseness...
 	var s = arrays
@@ -149,8 +149,7 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 					&& ((a+l in A && b+l in B) ?
 						cmp(A[a+l], B[b+l])
 						: (!(a+l in A) && !(b+l in B)))){
-			l = chunk.length += 1
-		}
+			l = chunk.length += 1 }
 		// ignore small chunks...
 		l = chunk.length >= min_chunk ? 
 			chunk.length
@@ -186,11 +185,9 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 		cache[a] = cache[a] || []
 		cache[a][b] = res
 
-		return res
-	} 
+		return res } 
 
-	return _getCommonSections(0, 0)
-}
+	return _getCommonSections(0, 0) }
 
 
 // Get diff sections...
@@ -233,11 +230,9 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 				])
 			// go to next gap...
 			a = e.A + e.length
-			b = e.B + e.length
-		})
+			b = e.B + e.length })
 
-	return gaps
-}
+	return gaps }
 
 
 // Make a proxy method...
@@ -362,8 +357,7 @@ var LogicTypePrototype = {
 		// cache...
 		c.set(obj, !!res)
 
-		return !!res
-	},
+		return !!res },
 }
 
 var Pattern = 
@@ -381,8 +375,7 @@ var makeCIPattern = function(name, check, init){
 	})
 	init
 		&& (o.__init__ = init)
-	return object.Constructor(name, o, o) 
-}
+	return object.Constructor(name, o, o) }
 
 
 // Singleton ANY...
@@ -470,7 +463,8 @@ module.STRING =
 						: this.value != null ?
 							cmp(this.value, obj)
 				   		: true	)) },
-		function(value){ this.value = value }) 
+		function(value){ 
+			this.value = value }) 
 
 // shorthand...
 var S = module.S = STRING
@@ -511,7 +505,8 @@ module.NUMBER =
 						: this.value[0] != null ?
 							cmp(this.value[0], obj)
 						: true )) },
-		function(...value){ this.value = value }) 
+		function(...value){ 
+			this.value = value }) 
 
 // shorthand...
 var N = module.N = NUMBER
@@ -556,7 +551,8 @@ module.ARRAY =
 										return cmp(value, e)
 									}).length == obj.length)
 						}).length == (this.value || []).length) }, 
-		function(...value){ this.value = value }) 
+		function(...value){ 
+			this.value = value }) 
 
 // shorthand...
 // NOTE: yes, ARRAY does not even contain the letter "L" but this is 
@@ -583,9 +579,7 @@ object.Constructor('OR', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(cmp(m, obj, context)){
-				return true
-			}
-		}
+				return true } }
 		return false },
 	__init__: function(...members){
 		this.members = members },
@@ -603,10 +597,8 @@ object.Constructor('XOR', Object.assign(Object.create(Pattern.prototype), {
 		for(var m of this.members){
 			cur = cmp(m, obj, context)
 			if(state == cur && state){
-				return false
-			}
-			state = cur
-		}
+				return false }
+			state = cur }
 		return state },
 	__init__: function(...members){
 		this.members = members },
@@ -620,9 +612,7 @@ object.Constructor('AND', Object.assign(Object.create(Pattern.prototype), {
 	__cmp__: function(obj, cmp, context){
 		for(var m of this.members){
 			if(!cmp(m, obj, context)){
-				return false
-			}
-		}
+				return false } }
 		return true },
 	__init__: function(...members){
 		this.members = members },
@@ -657,8 +647,7 @@ object.Constructor('VAR', Object.assign(Object.create(Pattern.prototype), {
 				: this.pattern
 		if(cmp(pattern, obj)){
 			ns[this.name] = obj 
-			return true
-		}
+			return true }
 		return false },
 	__init__: function(name, pattern){
 		this.name = name
@@ -1011,14 +1000,12 @@ module.Types = {
 						Object.create(e[1]) 
 						: e[1]
 				] }))
-		return res
-	},
+		return res },
 	clear: function(){
 		// XXX should we instead this.handlers.clear() ???
 		//this.handlers = new Map()
 		this.handlers.clear()
-		return this
-	},
+		return this },
 
 
 	// Placeholder objects...
@@ -1060,15 +1047,13 @@ module.Types = {
 			o = h.get(o)
 		} while(o != null && h.has(o))
 
-		return o
-	},
+		return o },
 	set: proxy('handlers.set', 
 		function(res, key, handler){
 			// auto-alias...
 			key.name
 				&& this.set(key.name, key)
-			return res
-		}),
+			return res }),
 	delete: proxy('handlers.delete'),
 
 	// sorted list of types...
@@ -1083,8 +1068,7 @@ module.Types = {
 				k = h.get(k)
 				return k != null 
 					&& !h.has(k) 
-					&& order.set(k, i++)
-			})
+					&& order.set(k, i++) })
 			.sort(function(a, b){
 				a = h.get(a)
 				b = h.get(b) 
@@ -1096,11 +1080,11 @@ module.Types = {
 						a.priority > 0 ? -1 : 1
 					: b.priority ?
 						b.priority > 0 ? 1 : -1
-					: order.get(a) - order.get(b)
-			})
-	},
+					: order.get(a) - order.get(b) }) },
 	get typeNames(){
-		return this.typeKeys.map(function(e){ return e.name || e }) },
+		return this.typeKeys
+			.map(function(e){ 
+				return e.name || e }) },
 	get types(){
 		var that = this
 		return this.typeKeys
@@ -1149,9 +1133,7 @@ module.Types = {
 			if(h.compatible
 					&& h.compatible(A, options)){
 				type = t
-				break
-			}
-		}
+				break } }
 
 		// search instances...
 		if(!type){
@@ -1162,16 +1144,12 @@ module.Types = {
 				if(t === Object 
 						// skip non-conctructor stuff...
 						|| !(t instanceof Function)){
-					continue
-				}
+					continue }
 
 				// full hit -- type match...
 				if(A instanceof t){
 					type = t
-					break
-				}
-			}
-		}
+					break } } }
 
 		// combinational types...
 		if(B !== undefined){
@@ -1183,12 +1161,9 @@ module.Types = {
 
 			// partial hit -- type mismatch...
 			} else {
-				return 'Basic'
-			}
-		}
+				return 'Basic' } }
 
-		return type
-	},
+		return type },
 
 	// Handle the difference between A and B...
 	//
@@ -1205,24 +1180,21 @@ module.Types = {
 		if(handler == null 
 				|| !(handler instanceof Function 
 					|| handler.handle)){
-			throw new TypeError('Diff: can\'t handle: ' + type)
-		}
+			throw new TypeError('Diff: can\'t handle: ' + type) }
 
 		// call the handler...
 		handler.handle ?
 			handler.handle.call(this, obj, diff, A, B, options)
 			: handler.call(this, obj, diff, A, B, options)
 
-		return obj
-	},
+		return obj },
 
 	// Diff format walker...
 	//
 	walk: function(diff, func, path){
 		// no changes...
 		if(diff == null){
-			return null
-		}
+			return null }
 		// flat diff...
 		if(diff instanceof Array){
 			return diff.map(func)
@@ -1231,8 +1203,7 @@ module.Types = {
 		} else {
 			var handler = this.get(diff.type)
 			if(handler == null || !handler.walk){
-				throw new TypeError('Can\'t walk type: '+ diff.type)
-			}
+				throw new TypeError('Can\'t walk type: '+ diff.type) }
 			return handler.walk.call(this, diff, func, path || []) } },
 
 	// Flatten the tree diff format...
@@ -1252,8 +1223,7 @@ module.Types = {
 		options = options || {}
 		var res = []
 		this.walk(diff, function(change){ res.push(change) })
-		return res
-	},
+		return res },
 
 
 	// User API...
@@ -1275,9 +1245,7 @@ module.Types = {
 				type.reverse 
 					&& (c = type.reverse.call(that, c)) })
 
-			return c
-		})
-	},
+			return c }) },
 
 	// Filter diff changes and return a new diff...
 	//
@@ -1320,8 +1288,9 @@ module.Types = {
 							return e == '*' ? ANY 
 								: e[0] == '!' ? NOT(e.slice(1))
 								: e })
-					return e.length == 1 ? e[0] : OR(...e)
-				})
+					return e.length == 1 ? 
+						e[0] 
+						: OR(...e) })
 			: filter
 
 		// path filter (non-function)...
@@ -1345,8 +1314,7 @@ module.Types = {
 					: (res.length == 0 || res[n] == '**') ? 
 						res.push([e])
 					: res[n].push(e)
-					return res
-				}, [])
+					return res }, [])
 
 			// min length...
 			var min = pattern
@@ -1381,11 +1349,9 @@ module.Types = {
 
 			// XXX Q: should we ignore the last element of the path???
 			filter = function(change, i, lst){
-				return test(change.path, pattern) }
-		}
+				return test(change.path, pattern) } }
 
-		return diff.filter(filter.bind(this))
-	},
+		return diff.filter(filter.bind(this)) },
 
 	// XXX there are two approaches to this:
 	// 		1) naive: simply concatenate all the changes in order...
@@ -1393,8 +1359,7 @@ module.Types = {
 	// XXX do we need a conflict resolution policy???
 	merge: function(diff, other){
 		// XXX
-		return this.flatten(diff).concat(this.flatten(other))
-	},
+		return this.flatten(diff).concat(this.flatten(other)) },
 
 	// Build a diff between A and B...
 	//
@@ -1452,12 +1417,12 @@ module.Types = {
 				: {})
 		cache = context.cache = context.cache || new Map()
 		// cached diff...
-		var diff = cache.diff = cache.diff || function(a, b){
-			var l2 = cache.get(a) || new Map()
-			var d = l2.get(b) || that.diff(a, b, options, context)
-			cache.set(a, l2.set(b, d))
-			return d
-		}
+		var diff = cache.diff = cache.diff 
+			|| function(a, b){
+				var l2 = cache.get(a) || new Map()
+				var d = l2.get(b) || that.diff(a, b, options, context)
+				cache.set(a, l2.set(b, d))
+				return d }
 
 
 		// check: if same/matching object...
@@ -1469,13 +1434,11 @@ module.Types = {
 		// 		check with everything but the root cached/diffed...
 		// 		XXX not sure if this is efficient...
 		if(bcmp(A, B, cmp)){
-			return null
-		}
+			return null }
 
 		// check: builtin types...
 		if(this.DIFF_TYPES.has(A) || this.DIFF_TYPES.has(B)){
-			return this.handle('Basic', {}, diff, A, B, options)
-		}
+			return this.handle('Basic', {}, diff, A, B, options) }
 
 		// find the matching type...
 		var type = this.detect(A, B, options)
@@ -1485,8 +1448,7 @@ module.Types = {
 		if(!options.no_attributes 
 				&& !this.get(type).no_attributes){
 			// XXX need to strip array items from this...
-			this.handle(Object, res, diff, A, B, options)
-		}
+			this.handle(Object, res, diff, A, B, options) }
 
 		// cleanup -- remove items containing empty arrays...
 		Object.keys(res)
@@ -1498,8 +1460,7 @@ module.Types = {
 		// return only non-empty diff states...
 		return Object.keys(res).length == 1 ? 
 			null 
-			: res
-	},
+			: res },
 
 	// XXX can we split out the diff walker and simply reuse it for: 
 	// 		.diff(..), .cmp(..), ...
@@ -1569,8 +1530,7 @@ module.Types = {
 			var l2 = cache.get(a) || new Map()
 			var d = l2.get(b) || that._diff(a, b, options, context)
 			cache.set(a, l2.set(b, d))
-			return d
-		}
+			return d }
 
 		// XXX ???
 		options.cmp = cmp
@@ -1601,8 +1561,7 @@ module.Types = {
 					// we have a match -> no changes, just cache...
 				   	if(cmp(A, B)){
 						cache.set(A, cache_l2.set(B, undefined))
-						return
-					}
+						return }
 
 					// handler...
 					var handler = that.get(
@@ -1620,8 +1579,7 @@ module.Types = {
 						: false
 					// unhandled type...
 					if(!handler){
-						throw new TypeError('Diff: can\'t handle: ' + type)
-					}
+						throw new TypeError('Diff: can\'t handle: ' + type) }
 
 					// call the handler...
 					var res = handler.call(that, A, B, next, options)
@@ -1637,15 +1595,12 @@ module.Types = {
 					return res == null ? 
 						res 
 						: diff.concat(res
-							.map(updatePath(path)))
-				}
-			}, 
+							.map(updatePath(path))) } }, 
 			// diff...
 			[],
 			// node format: 
 			// 	[ <path>, <A>, <B> ]
-			[[], A, B])
-	},
+			[[], A, B]) },
 
 	// Deep-compare A and B...
 	//
@@ -1680,8 +1635,7 @@ module.Types = {
 			.walk(diff.diff, function(change){
 				// replace the object itself...
 				if(change.path.length == 0){
-					return change.B
-				}
+					return change.B }
 
 				var parent
 				var parent_key
@@ -1704,13 +1658,10 @@ module.Types = {
 					parent[parent_key] = res
 
 				} else {
-					obj = res
-				}
+					obj = res }
 
-				return obj
-			})
-			.pop())
-	},
+				return obj })
+			.pop()) },
 	// Call the post-patch method of the handlers...
 	//
 	postPatch: function(res){
@@ -1755,8 +1706,7 @@ module.Types = {
 
 				// check root...
 				if(key == null){
-					return !that.cmp(change.A, target)
-				}
+					return !that.cmp(change.A, target) }
 
 				// keep only the mismatching changes...
 				return change.type && that.get(change.type).check ?
@@ -1771,9 +1721,7 @@ module.Types = {
 							!that.cmp(change.A, 
 								target.slice(key[0][0], key[0][0] + target.length[0]))
 						: !that.cmp(change.A, target[key[0]]))
-					: !that.cmp(change.A, target[key])
-			})
-	},
+					: !that.cmp(change.A, target[key]) }) },
 }
 
 
@@ -1950,8 +1898,7 @@ Types.set('Basic', {
 		;(!options.keep_none && B === NONE)
 			|| (obj.B = B)
 
-		return [obj]
-	},
+		return [obj] },
 })
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -1991,16 +1938,13 @@ Types.set(Object, {
 				delete obj[key]
 
 			} else {
-				obj[key] = change.B
-			}
+				obj[key] = change.B }
 
 		// array item...
 		// XXX should this make this decision???
 		} else {
-			this.typeCall(Array, 'patch', obj, key, change, ...rest)
-		}
-		return obj
-	},
+			this.typeCall(Array, 'patch', obj, key, change, ...rest) }
+		return obj },
 
 	// XXX EXPERIMENTAL...
 	get: function(obj, key){
@@ -2044,8 +1988,7 @@ Types.set(Object, {
 							options)] 
 					// remove seen keys...
 					delete B_index[ka]
-					return res
-				})
+					return res })
 				// keys present only in B...
 				.concat(Object.keys(B_index)
 					.map(function(kb){
@@ -2057,8 +2000,7 @@ Types.set(Object, {
 				// cleanup...
 				.filter(function(e){
 					return e[1] !== null })
-		return items
-	},
+		return items },
 
 
 	// XXX EXPERIMENTAL: used by Types._diff(..)
@@ -2074,8 +2016,7 @@ Types.set(Object, {
 				return e != null })
 		// XXX add attribute order support...
 		// XXX
-		return diff
-	},
+		return diff },
 	// return aligned attr sets...
 	// 	format:
 	// 		[
@@ -2111,8 +2052,7 @@ Types.set(Object, {
 					] 
 					// remove seen keys...
 					delete B_index[ka]
-					return res
-				})
+					return res })
 				// keys present only in B...
 				.concat(Object.keys(B_index)
 					.map(function(kb){
@@ -2121,8 +2061,7 @@ Types.set(Object, {
 							EMPTY, 
 							B[kb],
 						]}))
-		return items
-	},
+		return items },
 })
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -2143,8 +2082,7 @@ Types.set(Array, {
 			.filter(function(e){ 
 				return e.length == 2 ? 
 					attrs.push(e) && false 
-					: true
-			})
+					: true })
 			.map(function(e){
 				var v = e[2]
 
@@ -2154,8 +2092,7 @@ Types.set(Array, {
 					: [e[0], e[1]]
 				var p = path.concat([i])
 
-				return that.walk(v, func, p)
-			})
+				return that.walk(v, func, p) })
 			// length...
 			// NOTE: we keep this last as the length should be the last 
 			// 		thing to get patched...
@@ -2167,8 +2104,7 @@ Types.set(Array, {
 				})
 				: [])
 			// attributes...
-			.concat(this.typeCall(Object, 'walk', {items: attrs}, func, path))
-	},
+			.concat(this.typeCall(Object, 'walk', {items: attrs}, func, path)) },
 	// XXX add object compatibility checks...
 	// XXX revise...
 	patch: function(obj, key, change){
@@ -2203,9 +2139,7 @@ Types.set(Array, {
 			// XXX test...
 			if(!('B' in change)){
 				for(var n=j; n <= lj + j - li; n++){
-					delete obj[n]
-				}
-			}
+					delete obj[n] } }
 
 		// item manipulation...
 		} else {
@@ -2242,23 +2176,17 @@ Types.set(Array, {
 					delete obj[j]
 
 				} else {
-					obj[j] = change.B
-				}
+					obj[j] = change.B }
 
 			// XXX this is essentially the same as the above case, do we need both??
 			} else {
-				obj[j] = change.B
-			}
-		}
+				obj[j] = change.B } }
 		
-		return obj
-	},
+		return obj },
 	reverse: function(change){
 		if('length' in change){
-			change.length = change.length.slice().reverse()
-		}
-		return change
-	},
+			change.length = change.length.slice().reverse() }
+		return change },
 
 	// XXX EXPERIMENTAL...
 	get: function(obj, key){
@@ -2280,10 +2208,8 @@ Types.set(Array, {
 
 		// item...
 		} else {
-			obj[key] = value
-		}
-		return this
-	},
+			obj[key] = value }
+		return this },
 
 	// part handlers...
 	items: function(diff, A, B, options){
@@ -2374,8 +2300,7 @@ Types.set(Array, {
 						: [])
 			})
 			.reduce(function(res, e){ 
-				return res.concat(e) }, [])
-	},
+				return res.concat(e) }, []) },
 	// XXX
 	order: function(diff, A, B, options){
 		// XXX
@@ -2485,11 +2410,9 @@ Types.set(Array, {
 				path: ['length'],
 				A: A.length,
 				B: B.length,
-			})
-		}
+			}) }
 
-		return diff
-	},
+		return diff },
 })
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -2580,8 +2503,7 @@ Types.set('Text', {
 
 		var res = cache[path] = this.typeCall(Array, 'patch', lines, key, change)
 
-		return res
-	},
+		return res },
 
 	// XXX EXPERIMENTAL...
 	get: function(obj, key){
@@ -2605,12 +2527,9 @@ Types.set('Text', {
 				} else {
 					path.slice(0, -1)
 						.reduce(function(res, k){
-							return res[k] }, res)[path.pop()] = text
-				}
-			})
+							return res[k] }, res)[path.pop()] = text } })
 
-		return res
-	},
+		return res },
 })
 
 
@@ -2723,16 +2642,14 @@ var DiffClassPrototype = {
 	clone: function(name){
 		var cls = Object.create(this.__proto__)
 		cls.types = this.types.clone()
-		return object.Constructor(name || 'EDiff', cls, this())
-	},
+		return object.Constructor(name || 'EDiff', cls, this()) },
 
 	// proxy generic stuff to .types...
 	cmp: proxy('types.cmp'),
 	vars: function(pattern, obj){
 		var o = {}
 		this.cmp(pattern, obj, null, o)
-		return o.ns || {}
-	},
+		return o.ns || {} },
 
 	// XXX do format/version conversion...
 	fromJSON: function(json){
@@ -2809,8 +2726,7 @@ var DiffPrototype = {
 				diff.diff(A, B, options) 
 			: diff.flatten(diff.diff(A, B, options), options)
 
-		this.timestamp = Date.now()
-	},
+		this.timestamp = Date.now() },
 
 	// XXX should this be a deep copy???
 	clone: function(){
@@ -2825,8 +2741,7 @@ var DiffPrototype = {
 			: this.diff ?
 				Object.assign({}, this.diff)
 			: null
-		return res
-	},
+		return res },
 
 	check: function(obj){
 		return Object.assign(
@@ -2848,22 +2763,19 @@ var DiffPrototype = {
 		var res = this.clone()
 		res.diff = Object.create(this.constructor.types).reverse(this.diff)
 		res.parent = this
-		return res
-	}, 
+		return res }, 
 	filter: function(filter){
 		var res = this.clone()
 		res.diff = this.constructor.types.filter.call(this, this.diff, filter)
 		res.parent = this
-		return res
-	},
+		return res },
 
 	// XXX should this set .parent ????
 	merge: function(diff){
 		var res = this.clone()
 		res.diff = this.constructor.types.merge.call(this, this.diff, diff.diff)
 		res.parent = this
-		return res
-	},
+		return res },
 
 	// XXX EXPERIMENTAL...
 	end: function(){
@@ -2880,8 +2792,7 @@ var DiffPrototype = {
 			// XXX these need to be prepared for JSON compatibility...
 			options: this.options,
 			diff: this.diff,
-		}
-	},
+		} },
 }
 
 var Diff = 
