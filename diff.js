@@ -2444,39 +2444,6 @@ Types.set(Set, {
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-/*/ XXX Map...
-Types.set(Map, {
-	handle: function(obj, diff, A, B, options){
-		// XXX
-	}
-	walk: function(diff, func, path){
-		// XXX
-	},
-	reverse: function(change){
-		// XXX
-	},
-})
-//*/
-
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-/*/ Pattern...
-// XXX need to accompany this with a walk pattern protocol....
-Types.set(Pattern, {
-	handle: function(obj, diff, A, B, options){
-		// XXX
-	}
-	walk: function(diff, func, path){
-		// XXX
-	},
-	reverse: function(change){
-		// XXX
-	},
-})
-//*/
-
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // XXX add JS types like Map, Set, ...
 // XXX Q: can Map/Set be supported???
 // 		- there is not uniform item access 
@@ -2501,6 +2468,23 @@ Types.set(Pattern, {
 Types.set(Map, {
 	handle: function(obj, diff, A, B, options){
 		throw new TypeError('Map handling not implemented.')
+	},
+})
+//*/
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+/*/ Pattern...
+// XXX need to accompany this with a walk pattern protocol....
+Types.set(Pattern, {
+	handle: function(obj, diff, A, B, options){
+		// XXX
+	}
+	walk: function(diff, func, path){
+		// XXX
+	},
+	reverse: function(change){
+		// XXX
 	},
 })
 //*/
