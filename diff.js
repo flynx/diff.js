@@ -2428,23 +2428,6 @@ Types.set(Array, {
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-/*/ XXX Set...
-Types.set(Set, {
-	handle: function(obj, diff, A, B, options){
-		// XXX
-	}
-	walk: function(diff, func, path){
-		// XXX
-	},
-	reverse: function(change){
-		// XXX
-	},
-})
-//*/
-
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// XXX add JS types like Map, Set, ...
 // XXX Q: can Map/Set be supported???
 // 		- there is not uniform item access 
 // 			-> need to type path elements
@@ -2464,10 +2447,30 @@ Types.set(Set, {
 // 			- use a best overall match as indication...
 // 			- serialize...
 // 				...will need a way to sort the items in a stable way...
+// 			- might be possible to use "links" within a diff to represent 
+// 			  recursion and identical items, but this will not resolve
+// 			  Map key patches outside the diff...
+// 			  ...api to link in items -- i.e. "replace that in diff with this"???
 /*/ XXX for now unsupported types will be treated as object...
 Types.set(Map, {
 	handle: function(obj, diff, A, B, options){
 		throw new TypeError('Map handling not implemented.')
+	},
+})
+//*/
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+/*/ XXX Set...
+Types.set(Set, {
+	handle: function(obj, diff, A, B, options){
+		// XXX
+	}
+	walk: function(diff, func, path){
+		// XXX
+	},
+	reverse: function(change){
+		// XXX
 	},
 })
 //*/
