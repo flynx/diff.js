@@ -328,8 +328,7 @@ var LogicTypePrototype = {
 		if(arguments.length < 3 || !(cmp instanceof Function)){
 			return Diff.cmp(
 				cmp instanceof Function ? this : this.context(cmp),
-				obj)
-		}
+				obj) }
 
 		/*
 		cmp = cmp || function(a, b){

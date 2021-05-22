@@ -69,10 +69,31 @@ test.Tests({
 test.Cases({
 	'basics': function(assert){
 		// XXX move reference objects + expected diffs to setups
-		a = {}
-		b = {}
+		var a = {}
+		var b = {}
 
 		assert(diff.Diff(a, b), 'Diff(..)')
+	},
+	recursion: function(assert){
+		var a = {}
+		a.x = a
+		var b = {}
+		b.x = b
+
+		assert(diff.cmp(a, b), 'recursive cmp(..)')
+
+		a = {}
+		a.x = a
+		b = {}
+		b.y = b
+		assert(!diff.cmp(a, b), 'recursive !cmp(..)')
+
+
+		a = {}
+		a.x = a
+		b = {x: {}}
+
+		assert(!diff.cmp(a, b), 'recursive cmp(..)')
 	},
 })
 
