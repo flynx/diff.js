@@ -73,8 +73,15 @@ module.HANDLERS = {
 					return [[k], v] }), ] },
 	},
 
-	// XXX do we need to treat array keys as a special case???
 	// XXX need to optionally treat special attributes...
+	specialKeys: {
+		match: function(obj){
+			return false },
+		handle: function(obj){
+			// XXX
+		},
+	},
+	// XXX do we need to treat array keys as a special case???
 	keys: {
 		match: function(obj){
 			return typeof(obj) == 'object' },
