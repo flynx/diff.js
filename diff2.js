@@ -87,6 +87,7 @@ module.HANDLERS = {
 		handle: function(obj){
 			// XXX for some reason the .entries() iterator does not have 
 			// 		the generaator methods -- we can't call obj.entries().map(..)...
+			// XXX for sets k is the same a v... not sure how to handle this...
 			return [ [...obj.entries()]
 				.map(function([k, v]){ 
 					return [[k], v] }), ] },
@@ -140,7 +141,7 @@ function*(obj, path=[], options={}){
 	   options.seen || new Map()	
 	if(seen.has(obj)){
 		// XXX revise format...
-		yield ['LINK', seen.get(obj)]
+		yield [path, ['LINK', seen.get(obj)]]
 		return }
 	typeof(obj) == 'object'
 		&& seen.set(obj, path)
@@ -185,6 +186,13 @@ function*(obj, path=[], options={}){
 				: subtree(handler.handle(obj, path, options)) }) }
 
 
+var _serializePath = function(p){
+	return typeof(p) == 'object' ?
+		JSON.stringify(p)
+		: p }
+var serializePath = function(p){
+	return '/'+ p.map(_serializePath).join('/') }
+
 // XXX need a better way to serialize the path...
 var shandle = 
 module.shandle =
@@ -192,9 +200,10 @@ handle
 	.map(function([p, v]){
 		return (
 			// XXX revise...
-			p == 'LINK' ?
-				['LINK', '/'+ v.join('/')]
-			: ['/'+ p.join('/'), v] ) })
+			v instanceof Array && v[0] == 'LINK' ?
+				[serializePath(p), 
+					'LINK', serializePath(v[1])]
+			: [serializePath(p), v] ) })
 
 
 
@@ -214,7 +223,7 @@ var o = {
 	empty_array: [],
 	array: [1, 2, 3],
 
-	// XXX set keys are a bit odd -- the key is the object itself...
+	// XXX set key is the object itself, is this what we want???
 	set: new Set([1, [], {a:1}]),
 	map: new Map([[[], 123], [321, {}]]),
 
@@ -226,6 +235,8 @@ var o = {
 o.object.y = o.object
 
 console.log([...shandle(o)])
+
+
 
 
 
