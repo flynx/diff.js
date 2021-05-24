@@ -16,6 +16,7 @@ var types = require('ig-types')
 var HANDLERS =
 module.HANDLERS = {
 	/*/ XXX
+	// XXX need option threading...
 	// XXX need to be able to stop processing handlers...
 	// 		for example when handling 'text' we do not need to also call 
 	// 		'value' too...
@@ -31,6 +32,14 @@ module.HANDLERS = {
 			return [key, value, next] },
 	},
 	//*/
+	
+	null: {
+		final: true,
+		match: function(obj){
+			return obj === null },
+		handle: function(obj){
+			return [[], obj] },
+	},
 	
 	value: {
 		match: function(obj){
@@ -48,6 +57,16 @@ module.HANDLERS = {
 				type: obj.constructor.name,
 				// XXX
 			}] },
+	},
+
+	// XXX need to optionally treat special attributes...
+	// 		.__proto__
+	specialKeys: {
+		//match: function(obj){
+		//	return typeof(obj) == 'object' },
+		handle: function(obj){
+			// XXX
+		},
 	},
 
 	// XXX do we need to also traverse/index the keys???
@@ -73,15 +92,8 @@ module.HANDLERS = {
 					return [[k], v] }), ] },
 	},
 
-	// XXX need to optionally treat special attributes...
-	specialKeys: {
-		match: function(obj){
-			return false },
-		handle: function(obj){
-			// XXX
-		},
-	},
 	// XXX do we need to treat array keys as a special case???
+	// XXX need to optionally handle props...
 	keys: {
 		match: function(obj){
 			return typeof(obj) == 'object' },
@@ -103,9 +115,15 @@ function*(obj){
 var getHandlers = 
 module.getHandlers = 
 function(obj, handlers=module.HANDLERS){
+	var stop = false
 	return Object.entries(handlers)
 			.filter(function([k, v]){
-				return v.match(obj) })
+				return stop ?
+					false
+					// XXX this is a bit ugly...
+					: (v.match 
+						&& v.match(obj) 
+						&& (stop = v.final, true)) })
 			.map(function([k, v]){
 				return v }) }
 
@@ -179,6 +197,35 @@ handle
 			: ['/'+ p.join('/'), v] ) })
 
 
+
+
+//---------------------------------------------------------------------
+// XXX move to test...
+
+var o = {
+	number: 123,
+	string: 'abc',
+
+	// XXX add a mode to unify these...
+	'null': null,
+	'undefined': undefined,
+	
+
+	empty_array: [],
+	array: [1, 2, 3],
+
+	// XXX set keys are a bit odd -- the key is the object itself...
+	set: new Set([1, [], {a:1}]),
+	map: new Map([[[], 123], [321, {}]]),
+
+	object: {
+		x: {},
+	},
+}
+// loop...
+o.object.y = o.object
+
+console.log([...shandle(o)])
 
 
 
