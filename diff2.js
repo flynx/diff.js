@@ -113,20 +113,21 @@ function*(obj){
 }
 
 
+// XXX use STOP...
 var getHandlers = 
 module.getHandlers = 
 function(obj, handlers=module.HANDLERS){
-	var stop = false
-	return Object.entries(handlers)
+	return [...Object.entries(handlers)
+			.iter()
 			.filter(function([k, v]){
-				return stop ?
-					false
-					// XXX this is a bit ugly...
-					: (v.match 
-						&& v.match(obj) 
-						&& (stop = v.final, true)) })
+				if(v.final 
+						&& v.match 
+						&& v.match(obj)){
+					throw types.STOP(true) }
+				return v.match 
+					&& v.match(obj) })
 			.map(function([k, v]){
-				return v }) }
+				return v })] }
 
 
 
@@ -186,17 +187,17 @@ function*(obj, path=[], options={}){
 				: subtree(handler.handle(obj, path, options)) }) }
 
 
-var _serializePath = function(p){
+
+// XXX need a better way to serialize the path...
+var serializePathElem = function(p){
 	return typeof(p) == 'object' ?
 		JSON.stringify(p)
 		: p }
 var serializePath = function(p){
-	return '/'+ p.map(_serializePath).join('/') }
-
-// XXX need a better way to serialize the path...
-var shandle = 
-module.shandle =
-handle
+	return '/'+ p.map(serializePathElem).join('/') }
+var serializePaths = 
+module.serializePaths =
+types.generator.iter
 	.map(function([p, v]){
 		return (
 			// XXX revise...
@@ -234,7 +235,11 @@ var o = {
 // loop...
 o.object.y = o.object
 
-console.log([...shandle(o)])
+
+
+console.log([
+	...handle(o)
+		.chain(serializePaths)])
 
 
 
