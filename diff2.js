@@ -94,6 +94,10 @@ module.HANDLERS = {
 	},
 
 	// XXX do we need to treat array keys as a special case???
+	// 		...the best approach could be to simply:
+	// 			- prioretize handlers -- already done
+	// 			- skip repeating keys
+	// 				...this could be done on the root handler level...
 	// XXX need to optionally handle props...
 	keys: {
 		match: function(obj){
@@ -133,6 +137,7 @@ function(obj, handlers=module.HANDLERS){
 
 // XXX need a way to index the path...
 // 		...and to filter paths by pattern...
+// XXX need to generate object UIDs for use in paths etc...
 var handle = 
 module.handle = 
 function*(obj, path=[], options={}){
@@ -231,6 +236,15 @@ var o = {
 	object: {
 		x: {},
 	},
+
+	array_with_attrs: Object.assign(
+		// XXX should empty slots be marked in arrays???
+		[1, 2, 3, , 5, 6],
+		{
+			a: "some value",
+			// will overwrite 2...
+			1: 333,
+		})
 }
 // loop...
 o.object.y = o.object
