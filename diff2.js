@@ -136,6 +136,7 @@ function(obj, handlers=module.HANDLERS){
 
 // XXX need a way to index the path...
 // 		...and to filter paths by pattern...
+// XXX need to generate object UIDs for use in paths etc...
 var handle = 
 module.handle = 
 function*(obj, path=[], options={}){
@@ -236,7 +237,8 @@ var o = {
 	},
 
 	array_with_attrs: Object.assign(
-		[1, 2, 3],
+		// XXX should empty slots be marked in arrays???
+		[1, 2, 3, , 5, 6],
 		{
 			a: "some value",
 			// will overwrite 2...
