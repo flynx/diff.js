@@ -234,6 +234,14 @@ var o = {
 	object: {
 		x: {},
 	},
+
+	array_with_attrs: Object.assign(
+		[1, 2, 3],
+		{
+			a: "some value",
+			// will overwrite 2...
+			1: 333,
+		})
 }
 // loop...
 o.object.y = o.object
