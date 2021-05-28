@@ -94,6 +94,10 @@ module.HANDLERS = {
 	},
 
 	// XXX do we need to treat array keys as a special case???
+	// 		...the best approach could be to simply:
+	// 			- prioretize handlers -- already done
+	// 			- skip repeating keys
+	// 				...this could be done on the root handler level...
 	// XXX need to optionally handle props...
 	keys: {
 		match: function(obj){
