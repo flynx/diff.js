@@ -26,7 +26,7 @@
   "dependencies": {
     "generic-walk": "^1.4.0",
     "ig-object": "^2.2.0",
-    "ig-types": "^6.1.0"
+    "ig-types": "*"
   },
   "devDependencies": {
     "ig-test": "*"

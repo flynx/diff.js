@@ -13,6 +13,7 @@ var types = require('ig-types')
 
 /*********************************************************************/
 
+// XXX need to deal with functions...
 var HANDLERS =
 module.HANDLERS = {
 	/*/ XXX
@@ -69,28 +70,37 @@ module.HANDLERS = {
 		},
 	},
 
-	// XXX do we need to also traverse/index the keys???
-	// 		...if yes then we'll need to somehow indicate a path to a key...
-	// 		one way to do this is to add virtual paths and link to them...
-	// 		...i.e. a virtual path is any path starting from a virtual root
-	// 		that can be linked from within the tree...
-	containerEntries: {
-		containers: [
-			Set,
-			Map,
-		],
+	// XXX these still intersect with attrs...
+	// 		...need a destinct way to encapsulate these to destinguish
+	// 		the data from attrs...
+	// 		this is simple when nesting, i.e. just add the entries to 
+	// 		.entries, attributes to .attrs and done, but in a flat format 
+	// 		this is not obvious -- i.e. how do we destinguish attr 'x' 
+	// 		from map key 'x'???
+	setEntries: {
+		match: function(obj){
+			return obj instanceof Set },
+		// NOTE: we are indexing sets...
+		handle: function(obj){
+			return [ obj.values()
+				.map(function(v, i){ 
+					return [[i], v] })
+	   			.toArray() ] },
+	},
+	mapEntries: {
 		// XXX should this be more generic and just check for .entries(..) ???
 		match: function(obj){
-			for(var type of this.containers){
-				if(obj instanceof type){
-					return true } } },
+			return obj instanceof Map },
 		handle: function(obj){
-			// XXX for some reason the .entries() iterator does not have 
-			// 		the generaator methods -- we can't call obj.entries().map(..)...
-			// XXX for sets k is the same a v... not sure how to handle this...
-			return [ [...obj.entries()]
-				.map(function([k, v]){ 
-					return [[k], v] }), ] },
+			return [ obj.entries()
+				.map(function([k, v], i){ 
+					return [
+						// XXX not sure how to format these...
+						[[i +':key'], k], 
+						[[i], v], 
+					] })
+				.flat()
+		   		.toArray() ] },
 	},
 
 	// XXX do we need to treat array keys as a special case???
@@ -135,9 +145,20 @@ function(obj, handlers=module.HANDLERS){
 
 
 
+// Format:
+// 	[
+//		[<path>, {type: <name>}],
+//
+//		[<path>, ['LINK', <path>]],
+//
+//		[<path>, <value>], 
+// 	]
+//
 // XXX need a way to index the path...
 // 		...and to filter paths by pattern...
 // XXX need to generate object UIDs for use in paths etc...
+// XXX might be a good idea to include obj in the output to negate the 
+// 		need to get it via the path in client code...
 var handle = 
 module.handle = 
 function*(obj, path=[], options={}){
@@ -199,6 +220,7 @@ var serializePathElem = function(p){
 		JSON.stringify(p)
 		: p }
 var serializePath = function(p){
+	//return '/'+ p.map(JSON.stringify).join('/') }
 	return '/'+ p.map(serializePathElem).join('/') }
 var serializePaths = 
 module.serializePaths =
@@ -211,6 +233,36 @@ types.generator.iter
 					'LINK', serializePath(v[1])]
 			: [serializePath(p), v] ) })
 
+
+
+// XXX make this more generic...
+// 		...or move these to the HANDLERS as .build(..)...
+var construct = function(spec){
+	return typeof(spec) != 'object' ?
+			spec
+		: spec.type == 'Object' ?
+			{}
+		: spec.type == 'Array' ?
+			[]
+		: spec.type == 'Set' ?
+			new Set()
+		: spec.type == 'Map' ?
+			new Map()
+		: undefined }
+var has = function(root, path){
+}
+var get = function(root, path){
+}
+var set = function(root, path, value){
+}
+
+var build = 
+types.generator.iter
+	.reduce(function(root, [path, spec]){
+		return path.length == 0 ?
+			construct(spec)
+			: set(root, path, value)
+	}, undefined)
 
 
 
@@ -227,26 +279,43 @@ var o = {
 	
 
 	empty_array: [],
-	array: [1, 2, 3],
+	array: [1, 2, 3,,,,'N'],
 
 	// XXX set key is the object itself, is this what we want???
-	set: new Set([1, [], {a:1}]),
-	map: new Map([[[], 123], [321, {}]]),
+	set: new Set([
+		1, 
+		[], 
+		{a:1},
+	]),
+	map: new Map([
+		[[9,8,7], 123], 
+		[321, {x: 123}],
+	]),
 
 	object: {
 		x: {},
 	},
 
 	array_with_attrs: Object.assign(
-		// XXX should empty slots be marked in arrays???
-		[1, 2, 3, , 5, 6],
+		[1, 2, 3],
 		{
-			a: "some value",
+			a: 'some value',
+			b: 'some other value',
 			// will overwrite 2...
 			1: 333,
 		})
 }
+
+// clone...
+// NOTE: JSON does not support:
+// 		- sparse arrays
+// 		= sets/maps
+// 		- loops
+oo = JSON.parse(JSON.stringify(o))
+
 // loop...
+// NOTE: we are creating the loop before we pass it to JSON because JSON
+// 		does not support loops in objects...
 o.object.y = o.object
 
 
@@ -255,6 +324,7 @@ console.log([
 	...handle(o)
 		.chain(serializePaths)])
 
+//console.log([...handle(o)])
 
 
 
