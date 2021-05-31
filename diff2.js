@@ -13,6 +13,10 @@ var types = require('ig-types')
 
 /*********************************************************************/
 
+var CONTENT_ATTR =
+module.CONTENT_ATTR = '[CONTENT$]'
+
+
 // XXX need to deal with functions...
 var HANDLERS =
 module.HANDLERS = {
@@ -91,13 +95,25 @@ module.HANDLERS = {
 		// XXX should this be more generic and just check for .entries(..) ???
 		match: function(obj){
 			return obj instanceof Map },
-		handle: function(obj){
+		handle: function(obj, path, options){
+			// NOTE: we store content in a special attribute...
+			var pattern = options.contentAttr || module.CONTENT_ATTR
+			var i = 0
+			do{
+				var attr = pattern
+					.replace('$', i == 0 ?  '' : i)
+				i++
+			} while(attr in obj)
+			// XXX store the attr in parent spec...
+			// 		...how can we get the parent spec???
+			// XXX
+
 			return [ obj.entries()
 				.map(function([k, v], i){ 
 					return [
 						// XXX not sure how to format these...
-						[[i +':key'], k], 
-						[[i], v], 
+						[[attr, i +':key'], k], 
+						[[attr, i], v], 
 					] })
 				.flat()
 		   		.toArray() ] },
