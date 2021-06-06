@@ -12,9 +12,27 @@ var types = require('ig-types')
 
 
 /*********************************************************************/
+//
+// XXX thinks this needs to do:
+// 		- walk object tree			- DONE
+// 		- generate a spec			- DONE
+// 			- serializable
+// 		- support props
+// 		- build object via spec
+// 		- update object via spec
+// 		- subtract specs (diff)
+// 			- full
+// 			- relaxed -- ignore item order
+//
+//
+/*********************************************************************/
 
-var CONTENT_ATTR =
-module.CONTENT_ATTR = '[CONTENT$]'
+// XXX need a way to uniquely serilaize this to a string path...
+// 		...or some other way to use it in a convinient manner...
+var CONTENT =
+module.CONTENT = 
+//Symbol.CONTENT = 
+	Symbol('CONTENT')
 
 
 // XXX need to deal with functions...
@@ -34,53 +52,75 @@ module.HANDLERS = {
 			return true },
 		handle: function(obj){
 			...
-			return [key, value, next] },
-	},
+			return [key, value, next] }, },
 	//*/
 	
+
+	// null...
+	//
 	null: {
 		final: true,
 		match: function(obj){
 			return obj === null },
 		handle: function(obj){
-			return [[], obj] },
-	},
+			return [[], obj] }, },
 	
-	value: {
+	// Functions...
+	//
+	// XXX STUB...
+	func: {
 		match: function(obj){
-			return typeof(obj) != 'object' },
+			return typeof(obj) == 'function' },
 		handle: function(obj){
-			return [[], obj] },
-	},
+			return [[], {
+				type: 'function',
+				gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
+				// XXX
+				source: obj,
+			}] }, },
 
+	// Non-Objects...
+	//
+	// NOTE: this will include undefined and NaN...
+	value: {
+		final: true,
+		match: function(obj){
+			return typeof(obj) != 'object'
+	   			&& typeof(obj) != 'function' },
+		handle: function(obj){
+			return [[], obj] }, },
+
+	// Base objects...
+	//
 	object: {
 		match: function(obj){
 			return typeof(obj) == 'object' },
 		handle: function(obj){
 			return [[], {
-				// XXX revise...
+				// XXX need to check if a constructor is built-in...
 				type: obj.constructor.name,
+
+				// Object generations:
+				// 	1	- directly constructed objects
+				// 	2	- objects at least one level deeper than gen 1
+				gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
+
 				// XXX
-			}] },
-	},
-
-	// XXX need to optionally treat special attributes...
-	// 		.__proto__
-	specialKeys: {
-		//match: function(obj){
-		//	return typeof(obj) == 'object' },
+				source: obj,
+			}] }, },
+	// special keys...
+	proto: {
+		match: function(obj){
+			return typeof(obj) == 'object'
+				&& obj.constructor.prototype !== obj.__proto__ },
 		handle: function(obj){
-			// XXX
-		},
-	},
+			return [[ [['__proto__'], obj.__proto__], ]] }, },
+	// XXX any other special keys???
+	// 		- non-iterable?
 
-	// XXX these still intersect with attrs...
-	// 		...need a destinct way to encapsulate these to destinguish
-	// 		the data from attrs...
-	// 		this is simple when nesting, i.e. just add the entries to 
-	// 		.entries, attributes to .attrs and done, but in a flat format 
-	// 		this is not obvious -- i.e. how do we destinguish attr 'x' 
-	// 		from map key 'x'???
+
+	// Entries / Non-attribute (encapsulated) content...
+	//
 	setEntries: {
 		match: function(obj){
 			return obj instanceof Set },
@@ -88,37 +128,25 @@ module.HANDLERS = {
 		handle: function(obj){
 			return [ obj.values()
 				.map(function(v, i){ 
-					return [[i], v] })
-	   			.toArray() ] },
-	},
+					return [[module.CONTENT, i], v] })
+	   			.toArray() ] }, },
 	mapEntries: {
-		// XXX should this be more generic and just check for .entries(..) ???
 		match: function(obj){
 			return obj instanceof Map },
 		handle: function(obj, path, options){
-			// NOTE: we store content in a special attribute...
-			var pattern = options.contentAttr || module.CONTENT_ATTR
-			var i = 0
-			do{
-				var attr = pattern
-					.replace('$', i == 0 ?  '' : i)
-				i++
-			} while(attr in obj)
-			// XXX store the attr in parent spec...
-			// 		...how can we get the parent spec???
-			// XXX
-
 			return [ obj.entries()
 				.map(function([k, v], i){ 
 					return [
-						// XXX not sure how to format these...
-						[[attr, i +':key'], k], 
-						[[attr, i], v], 
+						[[module.CONTENT, i +'@key'], k], 
+						[[module.CONTENT, i], v], 
 					] })
 				.flat()
-		   		.toArray() ] },
-	},
+		   		.toArray() ] }, },
 
+	// Keys / Attributes...
+	//
+	// NOTE: this includes array items...
+	//
 	// XXX do we need to treat array keys as a special case???
 	// 		...the best approach could be to simply:
 	// 			- prioretize handlers -- already done
@@ -126,38 +154,75 @@ module.HANDLERS = {
 	// 				...this could be done on the root handler level...
 	// XXX need to optionally handle props...
 	keys: {
-		match: function(obj){
-			return typeof(obj) == 'object' },
+		//match: 'object',
+		//match: ['object', 'func'],
+		match: function(obj, handlers){
+			return handlers.object.match(obj) 
+				|| handlers.func.match(obj) },
 		handle: function(obj){
 			return [ Object.entries(obj) 
 				.map(function([k, v]){ 
-					return [[k], v] }), ] },
-	},
-}
+					return [[k], v] }), ] }, },
+	/* XXX
+	props: {
+		//match: 'object',
+		//match: ['object', 'func'],
+		match: function(obj, handlers){
+			return handlers.object.match(obj) 
+				|| handlers.func.match(obj) },
+		handle: function(obj){
+			return [key, value, next] }, },
+	//*/
+	
 
 
-var getType = 
-module.getType = 
-function*(obj){
-	// XXX
+	// Testing...
+	//
+	// XXX alias loop...
+	//alias_loop: { match: 'alias_loop' },
+	//alias_loop_a: { match: 'alias_loop_b' },
+	//alias_loop_b: { match: 'alias_loop_a' },
+	// XXX orphaned alias...
+	//alias_orphan: { match: 'orphan' },
+	//false: { match: false },
 }
+
 
 
 // XXX use STOP...
+// XXX might be good to cache output via some citeria (type?)...
+// 		...this criteria needs to be consistent with how .match(..) works...
+// XXX does .match(..) need options???
+// XXX do we warn of orphans???
 var getHandlers = 
 module.getHandlers = 
 function(obj, handlers=module.HANDLERS){
 	return [...Object.entries(handlers)
-			.iter()
-			.filter(function([k, v]){
-				if(v.final 
-						&& v.match 
-						&& v.match(obj)){
-					throw types.STOP(true) }
-				return v.match 
-					&& v.match(obj) })
-			.map(function([k, v]){
-				return v })] }
+		.iter()
+		.filter(function([k, v]){
+			var stop = !!v.final
+			// expand aliases...
+			var seen = new Set()
+			while(v && typeof(v.match) == 'string'){
+				var n = v.match
+				if(seen.has(n)){
+					throw new Error('.match(..): alias loop detected:\n\t'
+						+ [...seen, n].join('\n \t  -> ')) }
+				seen.add(n)
+				v = handlers[n] }
+			// orphan or falsy .match...
+			if(!v){
+				return false }
+			// handle .final/final...
+			if(stop 
+					&& v.match 
+					&& v.match(obj, handlers)){
+				throw types.STOP(true) }
+			// normal match...
+			return v.match 
+				&& v.match(obj, handlers) })
+		.map(function([k, v]){
+			return v })] }
 
 
 
@@ -172,18 +237,14 @@ function(obj, handlers=module.HANDLERS){
 //
 // XXX need a way to index the path...
 // 		...and to filter paths by pattern...
-// XXX need to generate object UIDs for use in paths etc...
-// XXX might be a good idea to include obj in the output to negate the 
-// 		need to get it via the path in client code...
+// XXX might be a good idea to generate "structural hashes" for objects...
 var handle = 
 module.handle = 
 function*(obj, path=[], options={}){
 	// handle recursive structures...
-	// XXX would be nice to index paths to make them unique...
 	var seen = options.seen =
 	   options.seen || new Map()	
 	if(seen.has(obj)){
-		// XXX revise format...
 		yield [path, ['LINK', seen.get(obj)]]
 		return }
 	typeof(obj) == 'object'
@@ -192,12 +253,7 @@ function*(obj, path=[], options={}){
 	// get compatible handler list...
 	var cache = options.cache = 
 		options.cache || new Map()
-	var type = getType(obj)
-	var handlers = 
-		(type && cache.get(type)) 
-			|| module.getHandlers(obj, options.handlers || module.HANDLERS)
-	type
-		&& cache.set(type, handlers)
+	var handlers = module.getHandlers(obj, options.handlers || module.HANDLERS)
 
 	// XXX might be a good idea to move this up (or into options) so as 
 	// 		not to define this on each call...
@@ -222,6 +278,8 @@ function*(obj, path=[], options={}){
 	// apply the handlers...
 	yield* handlers
 		.iter()
+		.filter(function(handler){ 
+			return !!handler.handle })
 		.map(function*(handler){
 			yield* handler.handle instanceof types.Generator ?
 				handler.handle(obj, path, options)
@@ -230,55 +288,59 @@ function*(obj, path=[], options={}){
 
 
 
-// XXX need a better way to serialize the path...
-var serializePathElem = function(p){
+// XXX need to figure out a way to avoid clashes with module.CONTENT in 
+// 		path with actual attribute keys...
+// 		ways to do this:
+// 			- serialize CONTENT in a cleaver way
+// 			- add a different path separator to indicate content and quote 
+// 				it in strings -- ':'???
+var serializePathElem = function(p, i, l){
 	return typeof(p) == 'object' ?
-		JSON.stringify(p)
+			JSON.stringify(p)
+		// quote special chars...
+		: typeof(p) == 'string' ?
+			p.replace(/([\/:])/g, '\\$1')
 		: p }
 var serializePath = function(p){
-	//return '/'+ p.map(JSON.stringify).join('/') }
-	return '/'+ p.map(serializePathElem).join('/') }
+	return '/'+ p
+		.map(serializePathElem)
+		.reduce(function(res, e){
+			e = e === module.CONTENT ?
+				res.pop() + ':CONTENT'
+				: e
+			res.push(e)
+			return res }, [])
+		.join('/') }
+/*/ XXX might also be a good idea to serialize the path into an 
+// 		arbitrary length as we always have exactly one value, e.g.:
+// 			[ '/path/to/map', 'CONTENT', 'path/in/content', 123]
+var serializePathElem = function(p, i, l){
+	return typeof(p) == 'object' ?
+			JSON.stringify(p)
+		// quote special chars...
+		: typeof(p) == 'string' ?
+			p.replace(/([\/])/g, '\\$1')
+		: p }
+var serializePath = function(p){
+	return p
+		.map(serializePathElem)
+		.reduce(function(res, e){
+			e === module.CONTENT ?
+				res.splice(res.length, 0, 'CONTENT', '')
+				: (res[res.length-1] += '/'+ e)
+			return res }, ['']) }
+//*/
 var serializePaths = 
 module.serializePaths =
 types.generator.iter
 	.map(function([p, v]){
-		return (
-			// XXX revise...
-			v instanceof Array && v[0] == 'LINK' ?
-				[serializePath(p), 
-					'LINK', serializePath(v[1])]
-			: [serializePath(p), v] ) })
+		return v instanceof Array && v[0] == 'LINK' ?
+			// link...
+			[serializePath(p), 
+				'LINK', serializePath(v[1])]
+			: [serializePath(p), v] })
 
 
-
-// XXX make this more generic...
-// 		...or move these to the HANDLERS as .build(..)...
-var construct = function(spec){
-	return typeof(spec) != 'object' ?
-			spec
-		: spec.type == 'Object' ?
-			{}
-		: spec.type == 'Array' ?
-			[]
-		: spec.type == 'Set' ?
-			new Set()
-		: spec.type == 'Map' ?
-			new Map()
-		: undefined }
-var has = function(root, path){
-}
-var get = function(root, path){
-}
-var set = function(root, path, value){
-}
-
-var build = 
-types.generator.iter
-	.reduce(function(root, [path, spec]){
-		return path.length == 0 ?
-			construct(spec)
-			: set(root, path, value)
-	}, undefined)
 
 
 
@@ -292,6 +354,7 @@ var o = {
 	// XXX add a mode to unify these...
 	'null': null,
 	'undefined': undefined,
+	'NaN': NaN,
 	
 
 	empty_array: [],
@@ -311,6 +374,23 @@ var o = {
 	object: {
 		x: {},
 	},
+	object_gen2: Object.assign(
+		Object.create({
+			x: 'parent',
+			z: 'shadowed',
+		}),
+		{
+			y: 'local',
+			z: 'shadowing',
+		}),
+
+	// XXX
+	func: function(){},
+	func_with_attrs: Object.assign(
+		function(){},
+		{
+			x: 333,
+		}),
 
 	array_with_attrs: Object.assign(
 		[1, 2, 3],
@@ -319,7 +399,9 @@ var o = {
 			b: 'some other value',
 			// will overwrite 2...
 			1: 333,
-		})
+		}),
+
+	'special/character\\in:key': [],
 }
 
 // clone...
