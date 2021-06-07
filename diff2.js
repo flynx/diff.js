@@ -23,6 +23,13 @@ var types = require('ig-types')
 // 		- subtract specs (diff)
 // 			- full
 // 			- relaxed -- ignore item order
+// 		- modes:
+// 			- JSON
+// 			- reconstructable
+// 			- full
+// 				- not reconstructable -- if some types are used (functions, ...)
+// 		- compare protocol
+// 		- reconstruct protocol
 //
 //
 /*********************************************************************/
@@ -35,6 +42,27 @@ module.CONTENT =
 	Symbol('CONTENT')
 
 
+//
+// Format:
+// 	{
+// 		<name>: {
+// 			// optional
+// 			final: <bool>,
+//
+// 			match: <name> | <func>,
+//
+//			handle: <name> | <func>,
+// 		},
+// 	}
+//
+//
+// NOTE: this is more of a grammar than a set of object handlers, nother
+// 		way to think of this is as a set of handlrs of aspects of objects
+// 		and not full objects...
+// 		XXX not sure if this is how this is going to continue though as 
+// 			we'll need to organize constructors preferably within this 
+// 			structure and keep it extensible...
+// 
 // XXX need to deal with functions...
 var HANDLERS =
 module.HANDLERS = {
@@ -62,8 +90,7 @@ module.HANDLERS = {
 		final: true,
 		match: function(obj){
 			return obj === null },
-		handle: function(obj){
-			return [[], obj] }, },
+		handle: 'value', }, 
 	
 	// Functions...
 	//
@@ -71,13 +98,7 @@ module.HANDLERS = {
 	func: {
 		match: function(obj){
 			return typeof(obj) == 'function' },
-		handle: function(obj){
-			return [[], {
-				type: 'function',
-				gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
-				// XXX
-				source: obj,
-			}] }, },
+		handle: 'object', },
 
 	// Non-Objects...
 	//
@@ -175,6 +196,14 @@ module.HANDLERS = {
 	//*/
 	
 
+	/* XXX not sure about this...
+	// Service stuff...
+	//
+	error: {
+		match: function(obj){},
+	},
+	//*/
+
 
 	// Testing...
 	//
@@ -253,7 +282,8 @@ function*(obj, path=[], options={}){
 	// get compatible handler list...
 	var cache = options.cache = 
 		options.cache || new Map()
-	var handlers = module.getHandlers(obj, options.handlers || module.HANDLERS)
+	var HANDLERS = options.handlers || module.HANDLERS
+	var handlers = module.getHandlers(obj, HANDLERS)
 
 	// XXX might be a good idea to move this up (or into options) so as 
 	// 		not to define this on each call...
@@ -281,10 +311,15 @@ function*(obj, path=[], options={}){
 		.filter(function(handler){ 
 			return !!handler.handle })
 		.map(function*(handler){
-			yield* handler.handle instanceof types.Generator ?
-				handler.handle(obj, path, options)
+			var  h = handler
+			// expand aliases...
+			while(h && typeof(h.handle) == 'string'){
+				h = HANDLERS[h.handle] }
+			yield* h.handle instanceof types.Generator ?
+				// XXX should .handle(..) be called in the context of h or handler???
+				h.handle.call(handler, obj, path, options)
 					.map(subtree)
-				: subtree(handler.handle(obj, path, options)) }) }
+				: subtree(h.handle.call(handler, obj, path, options)) }) }
 
 
 
@@ -340,6 +375,20 @@ types.generator.iter
 				'LINK', serializePath(v[1])]
 			: [serializePath(p), v] })
 
+
+var stripAttr =
+module.stripAttr =
+function(...attrs){
+	return types.generator.iter
+		.map(function([p, v]){
+			if(v && typeof(v) == 'object'){
+				// keep things non-destructive...
+				v = Object.assign({}, v)
+				attrs
+					.forEach(function(attr){
+						attr in v
+							&& (delete v[attr]) }) }
+			return [p, v] }) }
 
 
 
@@ -420,7 +469,9 @@ o.object.y = o.object
 
 console.log([
 	...handle(o)
-		.chain(serializePaths)])
+		.chain(
+			serializePaths, 
+			stripAttr('source'), )])
 
 //console.log([...handle(o)])
 
