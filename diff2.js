@@ -63,26 +63,12 @@ module.CONTENT =
 // 			we'll need to organize constructors preferably within this 
 // 			structure and keep it extensible...
 // 
+// XXX might be nice to have conditional stopping...
+// 		a-la event.preventDefault()
+// XXX need option threading...
 // XXX need to deal with functions...
 var HANDLERS =
 module.HANDLERS = {
-	/*/ XXX
-	// XXX need option threading...
-	// XXX need to be able to stop processing handlers...
-	// 		for example when handling 'text' we do not need to also call 
-	// 		'value' too...
-	// 		this can be done via:
-	// 			- a-la evt.preventDefault()
-	// 			- handler.final
-	// 			- callback...
-	example: {
-		match: function(obj){
-			return true },
-		handle: function(obj){
-			...
-			return [key, value, next] }, },
-	//*/
-	
 
 	// null...
 	//
@@ -99,6 +85,25 @@ module.HANDLERS = {
 		match: function(obj){
 			return typeof(obj) == 'function' },
 		handle: 'object', },
+
+	// Text...
+	//
+	// XXX EXPERIMENTAL...
+	text: {
+		final: true,
+		match: function(obj){
+			return typeof(obj) == 'string'
+				// XXX make this more optimal...
+				&& obj.includes('\n') },
+		handle: function(obj){
+			return [[], 
+				{
+					type: 'Text',	
+					source: obj,
+				}, 
+				obj.split(/\n/g)
+					.map(function(line, i){
+						return [[module.CONTENT, i], line] }) ] }, },
 
 	// Non-Objects...
 	//
@@ -376,6 +381,16 @@ types.generator.iter
 			: [serializePath(p), v] })
 
 
+// remove attributes from object metadata...
+//
+// 	stripAttr(attr, ...)
+// 		-> <chainable>
+//
+// 	<chainable>(<input>)
+// 		-> <generator>
+//
+// 	<input>.chain(<chainable>)
+//
 var stripAttr =
 module.stripAttr =
 function(...attrs){
@@ -451,6 +466,12 @@ var o = {
 		}),
 
 	'special/character\\in:key': [],
+
+	text: `this
+		is
+		a
+		multi-line
+		block of text...`,
 }
 
 // clone...
@@ -471,7 +492,9 @@ console.log([
 	...handle(o)
 		.chain(
 			serializePaths, 
-			stripAttr('source'), )])
+			// make the output a bit more compact...
+			stripAttr('source'), 
+		)])
 
 //console.log([...handle(o)])
 
