@@ -34,6 +34,12 @@ var types = require('ig-types')
 //
 /*********************************************************************/
 
+var EMPTY =
+module.EMPTY = 
+//Symbol.EMPTY = 
+	Symbol('EMPTY')
+
+
 // XXX need a way to uniquely serilaize this to a string path...
 // 		...or some other way to use it in a convinient manner...
 var CONTENT =
@@ -344,7 +350,9 @@ var serializePathElem = function(p, i, l){
 		: typeof(p) == 'string' ?
 			p.replace(/([\/:])/g, '\\$1')
 		: p }
-var serializePath = function(p){
+var path2str = 
+module.path2str =
+function(p){
 	return '/'+ p
 		.map(serializePathElem)
 		.reduce(function(res, e){
@@ -354,34 +362,35 @@ var serializePath = function(p){
 			res.push(e)
 			return res }, [])
 		.join('/') }
-/*/ XXX might also be a good idea to serialize the path into an 
-// 		arbitrary length as we always have exactly one value, e.g.:
-// 			[ '/path/to/map', 'CONTENT', 'path/in/content', 123]
-var serializePathElem = function(p, i, l){
-	return typeof(p) == 'object' ?
-			JSON.stringify(p)
-		// quote special chars...
-		: typeof(p) == 'string' ?
-			p.replace(/([\/])/g, '\\$1')
-		: p }
-var serializePath = function(p){
-	return p
-		.map(serializePathElem)
-		.reduce(function(res, e){
-			e === module.CONTENT ?
-				res.splice(res.length, 0, 'CONTENT', '')
-				: (res[res.length-1] += '/'+ e)
-			return res }, ['']) }
-//*/
+
+
+// XXX do we handle @key here???
+var deserializePathElem = function(p){
+	return /[^\\]:CONTENT$/.test(p) ?
+		[p.replace(/(?<!\\):CONTENT$/, ''), module.CONTENT]
+		: [p] }
+// XXX should we hanve relative paths????
+var str2path = 
+module.str2path =
+function(str){
+	return str instanceof Array ?  
+		str 
+		: (str
+			.replace(/^\//, '')
+			.split(/\//g)
+			.map(deserializePathElem)
+			.flat()) }
+
+
 var serializePaths = 
 module.serializePaths =
 types.generator.iter
 	.map(function([p, v]){
 		return v instanceof Array && v[0] == 'LINK' ?
 			// link...
-			[serializePath(p), 
-				'LINK', serializePath(v[1])]
-			: [serializePath(p), v] })
+			[path2str(p), 
+				'LINK', path2str(v[1])]
+			: [path2str(p), v] })
 
 
 // remove attributes from object metadata...
@@ -412,6 +421,93 @@ function(...attrs){
 
 //---------------------------------------------------------------------
 // XXX construct...
+
+
+//
+// 	atPath(root, path)
+// 		-> value
+//
+// 	atPath(root, path, value)
+// 		-> value
+//
+// NOTE: to set this needs the full basepath to exist...
+//
+// XXX overcomplicated...
+// XXX add support for deleting / writeing EMPTY
+var atPath = 
+module.atPath =
+function(root, path, value){
+	path = str2path(path)
+	// get value at path...
+	var content = false
+	var base
+	var target = path
+		.reduce(function(cur, p){
+			// CONTENT...
+			if(p === module.CONTENT){
+				// NOTE: indicate to the next iteration that we'll need 
+				// 		to use map/set API to get/set the value...
+				content = true
+				base = cur
+				return cur }
+			// value in content...
+			if(content){
+				return cur instanceof Set ?
+						[...cur][p]
+					// map key...
+					: p.slice(-4) == '@key' ?
+						[...cur][p.slice(0, -4)][0] 
+					// map value...
+					: [...cur][p][1] }
+			content = false
+			base = cur
+			return cur[p] }, root)
+
+	// get...
+	if(arguments.length <= 2){
+		return target }
+
+	// write attr...
+	if(!content){
+		value === module.EMPTY ?
+			(delete base[path.last()])
+			: (base[path.last()] = value)
+		// XXX should we return value or base???
+		// 		...should we return target when writing EMPTY
+		return value}
+
+	var index = path.last()
+	// write set item...
+	if(base instanceof Set){
+		value === module.EMPTY ?
+			base.delete(target)
+		:index == base.size ? 
+			base.add(value)
+		: base.replaceAt(index, value)
+		// XXX should we return value or base???
+		// 		...should we return target when writing EMPTY
+		return value }
+
+	// write map item/key...
+	var isKey = index.slice(-4) == '@key'
+	index = isKey ? 
+		index.slice(0, -4) 
+		: index
+	var key = atPath(root, 
+		path
+			.slice(0,-1)
+			.concat([index +'@key']))
+	value === module.EMPTY ?
+		base.delete(key)
+	: isKey ?
+		base.replaceKey(key, value)
+	: base.set(key, value)
+
+	// XXX should we return value or base???
+	// 		...should we return target when writing EMPTY
+	return value }
+
+
 
 
 
