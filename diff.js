@@ -134,8 +134,7 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 		// cache...
 		var res = (cache[a] || [])[b]
 		if(res != null){
-			return res
-		}
+			return res }
 
 		// collect common chunk...
 		var chunk = {
@@ -145,10 +144,10 @@ var getCommonSections = function(A, B, cmp, min_chunk){
 		}
 		var l = chunk.length
 		while((a+l < A.length && b+l < B.length)
-					// cmp non-empty slots only...
-					&& ((a+l in A && b+l in B) ?
-						cmp(A[a+l], B[b+l])
-						: (!(a+l in A) && !(b+l in B)))){
+				// cmp non-empty slots only...
+				&& ((a+l in A && b+l in B) ?
+					cmp(A[a+l], B[b+l])
+					: (!(a+l in A) && !(b+l in B)))){
 			l = chunk.length += 1 }
 		// ignore small chunks...
 		l = chunk.length >= min_chunk ? 

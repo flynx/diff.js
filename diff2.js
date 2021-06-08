@@ -80,6 +80,7 @@ module.HANDLERS = {
 	
 	// Functions...
 	//
+	// XXX EXPERIMENTAL...
 	// XXX STUB...
 	func: {
 		match: function(obj){
@@ -260,6 +261,7 @@ function(obj, handlers=module.HANDLERS){
 
 
 
+// 
 // Format:
 // 	[
 //		[<path>, {type: <name>}],
@@ -269,6 +271,7 @@ function(obj, handlers=module.HANDLERS){
 //		[<path>, <value>], 
 // 	]
 //
+// XXX add a tree mode -- containers as levels...
 // XXX need a way to index the path...
 // 		...and to filter paths by pattern...
 // XXX might be a good idea to generate "structural hashes" for objects...
@@ -404,6 +407,12 @@ function(...attrs){
 						attr in v
 							&& (delete v[attr]) }) }
 			return [p, v] }) }
+
+
+
+//---------------------------------------------------------------------
+// XXX construct...
+
 
 
 
