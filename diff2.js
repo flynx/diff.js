@@ -364,17 +364,20 @@ function(p){
 		.join('/') }
 
 
-// XXX do we handle @key here???
 var deserializePathElem = function(p){
-	return /[^\\]:CONTENT$/.test(p) ?
-		[p.replace(/(?<!\\):CONTENT$/, ''), module.CONTENT]
+	return p == ':CONTENT'?
+			[module.CONTENT]
+		: /[^\\]:CONTENT$/.test(p) ?
+			[p.replace(/(?<!\\):CONTENT$/, ''), module.CONTENT]
 		: [p] }
 // XXX should we hanve relative paths????
 var str2path = 
 module.str2path =
 function(str){
 	return str instanceof Array ?  
-		str 
+			str 
+		: str == '' || str == '/' ?
+			[]
 		: (str
 			.replace(/^\//, '')
 			.split(/\//g)
@@ -407,7 +410,7 @@ var stripAttr =
 module.stripAttr =
 function(...attrs){
 	return types.generator.iter
-		.map(function([p, v]){
+		.map(function([p, v, ...rest]){
 			if(v && typeof(v) == 'object'){
 				// keep things non-destructive...
 				v = Object.assign({}, v)
@@ -415,7 +418,7 @@ function(...attrs){
 					.forEach(function(attr){
 						attr in v
 							&& (delete v[attr]) }) }
-			return [p, v] }) }
+			return [p, v, ...rest] }) }
 
 
 
@@ -432,14 +435,20 @@ function(...attrs){
 //
 // NOTE: to set this needs the full basepath to exist...
 //
-// XXX overcomplicated...
-// XXX add support for deleting / writeing EMPTY
+// XXX how do we get :CONTENT of root???
+// XXX need to write a map key to an item that does not exist...
+// XXX str2path and passing in a list path produce different results...
 var atPath = 
 module.atPath =
 function(root, path, value){
 	path = str2path(path)
+	// special case: get/set root...
+	if(path.length == 0 || path[0] == '/'){
+		return arguments.length > 2 ?
+			value
+			: root }
 	// get value at path...
-	var content = false
+	var mode = 'normal'
 	var base
 	var target = path
 		.reduce(function(cur, p){
@@ -447,11 +456,12 @@ function(root, path, value){
 			if(p === module.CONTENT){
 				// NOTE: indicate to the next iteration that we'll need 
 				// 		to use map/set API to get/set the value...
-				content = true
+				mode = 'content'
 				base = cur
 				return cur }
 			// value in content...
-			if(content){
+			if(mode == 'content'){
+				mode = 'content-item'
 				return cur instanceof Set ?
 						[...cur][p]
 					// map key...
@@ -459,7 +469,7 @@ function(root, path, value){
 						[...cur][p.slice(0, -4)][0] 
 					// map value...
 					: [...cur][p][1] }
-			content = false
+			mode = 'normal'
 			base = cur
 			return cur[p] }, root)
 
@@ -468,13 +478,13 @@ function(root, path, value){
 		return target }
 
 	// write attr...
-	if(!content){
+	if(mode != 'content-item'){
 		value === module.EMPTY ?
 			(delete base[path.last()])
 			: (base[path.last()] = value)
 		// XXX should we return value or base???
 		// 		...should we return target when writing EMPTY
-		return value}
+		return value }
 
 	var index = path.last()
 	// write set item...
@@ -508,6 +518,42 @@ function(root, path, value){
 	return value }
 
 
+// XXX rename to patch(..)
+var write =
+module.write =
+function(root, spec){
+	return types.generator.iter(spec)
+		.reduce(function(root, [path, value, ...rest]){
+			console.log('>>>>', path2str(path), value)
+			// generate/normalize value...
+			value = 
+				// XXX STUB...
+				typeof(value) == 'function' ?
+					value.source
+				: value == null || typeof(value) != 'object' ?
+					value
+				// XXX move this out / use HANDLERS...
+				: value.type == 'Object' ?
+					{}
+				: value.type == 'Array' ?
+					[]
+				: value.type == 'Set' ?
+					new Set()
+				: value.type == 'Map'?
+					new Map()
+				: undefined
+			// root value...
+			if(path.length == 0 
+					|| (path.length == 1 
+						&& (path[0] == '/' || path[0] == ''))){
+				return value }
+			// link...
+			if(rest.length > 0 && value == 'LINK'){
+				atPath(root, path, atPath(root, rest[0])) 
+				return root }
+			// set value...
+			atPath(root, path, value)
+			return root }, root) }
 
 
 
@@ -516,7 +562,7 @@ function(root, path, value){
 //---------------------------------------------------------------------
 // XXX move to test...
 
-var o = {
+var o = module.o = {
 	number: 123,
 	string: 'abc',
 
@@ -579,18 +625,10 @@ var o = {
 		block of text...`,
 }
 
-// clone...
-// NOTE: JSON does not support:
-// 		- sparse arrays
-// 		= sets/maps
-// 		- loops
-oo = JSON.parse(JSON.stringify(o))
-
 // loop...
 // NOTE: we are creating the loop before we pass it to JSON because JSON
 // 		does not support loops in objects...
 o.object.y = o.object
-
 
 
 console.log([
@@ -601,7 +639,8 @@ console.log([
 			stripAttr('source'), 
 		)])
 
-//console.log([...handle(o)])
+//console.log('---\n', 
+//	write(null, handle(o)))
 
 
 
