@@ -281,6 +281,12 @@ function(obj, handlers=module.HANDLERS){
 // XXX need a way to index the path...
 // 		...and to filter paths by pattern...
 // XXX might be a good idea to generate "structural hashes" for objects...
+// XXX can we combine .handle(..) and .match(..) ???
+// 		...for example via .handle(obj, '?') protocol...
+// 		.....or even simpler, just thread the object through all the 
+// 		handlers in one go -- unless there is a fast way to test and 
+// 		classify object predictably there is no point in a test stage...
+// 		.....would also be nice to support a STOP(res) instead of .final
 var handle = 
 module.handle = 
 function*(obj, path=[], options={}){
@@ -337,12 +343,22 @@ function*(obj, path=[], options={}){
 
 
 
+// path2str(..)
+//
 // XXX need to figure out a way to avoid clashes with module.CONTENT in 
 // 		path with actual attribute keys...
 // 		ways to do this:
 // 			- serialize CONTENT in a cleaver way
 // 			- add a different path separator to indicate content and quote 
 // 				it in strings -- ':'???
+// XXX Q: should there be a difference between:
+// 			['', module.CONTENT]
+// 		and
+// 			[module.CONTENT] ???
+// 		...currently they are the same...
+// 		A: there should be a difference....
+// 			[...d.handle({'':new Set([1,2,3]), x:123}).chain(d.serializePaths)]
+//		...the problem is in path2str(..)
 var serializePathElem = function(p, i, l){
 	return typeof(p) == 'object' ?
 			JSON.stringify(p)
@@ -357,20 +373,34 @@ function(p){
 		.map(serializePathElem)
 		.reduce(function(res, e){
 			e = e === module.CONTENT ?
-				res.pop() + ':CONTENT'
+				(res.length == 0 ? 
+						'' 
+						: res.pop()) 
+					+ ':CONTENT'
+				// special case: '' as key...
+				: e == '' ?
+					"''"
 				: e
 			res.push(e)
 			return res }, [])
 		.join('/') }
 
 
+// str2path(..)
+//
+var unquote = function(str){
+	return str
+		.replace(/^(['"])(.*)\1$/, '$2') }
 var deserializePathElem = function(p){
 	return p == ':CONTENT'?
 			[module.CONTENT]
 		: /[^\\]:CONTENT$/.test(p) ?
-			[p.replace(/(?<!\\):CONTENT$/, ''), module.CONTENT]
-		: [p] }
+			[unquote(p.replace(/(?<!\\):CONTENT$/, '')), module.CONTENT]
+		: [unquote(p)] }
 // XXX should we hanve relative paths????
+// XXX PROBLEM: need to be able to reference '' in {'': 123}, i.e, how do
+// 		we stringify ['']???
+// 			[''] => ???
 var str2path = 
 module.str2path =
 function(str){
@@ -379,6 +409,7 @@ function(str){
 		: str == '' || str == '/' ?
 			[]
 		: (str
+			// remove leading '/'
 			.replace(/^\//, '')
 			.split(/\//g)
 			.map(deserializePathElem)
@@ -435,13 +466,13 @@ function(...attrs){
 //
 // NOTE: to set this needs the full basepath to exist...
 //
-// XXX how do we get :CONTENT of root???
 // XXX need to write a map key to an item that does not exist...
 // XXX str2path and passing in a list path produce different results...
 var atPath = 
 module.atPath =
 function(root, path, value){
 	path = str2path(path)
+	//console.log('    ', path, value)
 	// special case: get/set root...
 	if(path.length == 0 || path[0] == '/'){
 		return arguments.length > 2 ?
@@ -462,13 +493,18 @@ function(root, path, value){
 			// value in content...
 			if(mode == 'content'){
 				mode = 'content-item'
-				return cur instanceof Set ?
+				return (
+					// set item...
+					cur instanceof Set ?
 						[...cur][p]
 					// map key...
-					: p.slice(-4) == '@key' ?
-						[...cur][p.slice(0, -4)][0] 
+					: typeof(p) != 'number' 
+							&& p.slice(-4) == '@key' ?
+						// NOTE: we can write to a non-existant item...
+						([...cur][p.slice(0, -4)] || [])[0] 
 					// map value...
-					: [...cur][p][1] }
+					: [...cur][p][1] )}
+			// attr...
 			mode = 'normal'
 			base = cur
 			return cur[p] }, root)
@@ -499,7 +535,8 @@ function(root, path, value){
 		return value }
 
 	// write map item/key...
-	var isKey = index.slice(-4) == '@key'
+	var isKey = typeof(index) != 'number' 
+		&& index.slice(-4) == '@key'
 	index = isKey ? 
 		index.slice(0, -4) 
 		: index
@@ -510,7 +547,9 @@ function(root, path, value){
 	value === module.EMPTY ?
 		base.delete(key)
 	: isKey ?
-		base.replaceKey(key, value)
+		(base.has(key) ?
+			base.replaceKey(key, value)
+			: base.set(value, undefined))
 	: base.set(key, value)
 
 	// XXX should we return value or base???
@@ -524,7 +563,7 @@ module.write =
 function(root, spec){
 	return types.generator.iter(spec)
 		.reduce(function(root, [path, value, ...rest]){
-			console.log('>>>>', path2str(path), value)
+			//console.log('>>>>', path2str(path), value)
 			// generate/normalize value...
 			value = 
 				// XXX STUB...
@@ -554,6 +593,9 @@ function(root, spec){
 			// set value...
 			atPath(root, path, value)
 			return root }, root) }
+
+
+
 
 
 
@@ -599,13 +641,14 @@ var o = module.o = {
 			z: 'shadowing',
 		}),
 
-	// XXX
+	/*/ XXX
 	func: function(){},
 	func_with_attrs: Object.assign(
 		function(){},
 		{
 			x: 333,
 		}),
+	//*/
 
 	array_with_attrs: Object.assign(
 		[1, 2, 3],
@@ -618,11 +661,13 @@ var o = module.o = {
 
 	'special/character\\in:key': [],
 
+	/* XXX EXPERIMENTAL
 	text: `this
 		is
 		a
 		multi-line
 		block of text...`,
+	//*/
 }
 
 // loop...
@@ -639,8 +684,14 @@ console.log([
 			stripAttr('source'), 
 		)])
 
-//console.log('---\n', 
-//	write(null, handle(o)))
+
+console.log('\n\n---\n', 
+	[...handle(write(null, handle(o)))
+		.chain(
+			serializePaths, 
+			// make the output a bit more compact...
+			stripAttr('source'), 
+		)])
 
 
 
