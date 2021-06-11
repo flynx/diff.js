@@ -341,6 +341,42 @@ function*(obj, path=[], options={}){
 					.map(subtree)
 				: subtree(h.handle.call(handler, obj, path, options)) }) }
 
+var HANDLERS2 =
+module.HANDLERS2 = {
+	null: {
+		handle: function(obj){
+			if(obj === null){
+				throw module.STOP(obj) } }, }, 
+	value: {
+		handle: function(obj){
+			if(typeof(obj) != 'object'
+					&& typeof(obj) != 'function'){
+				throw module.STOP(obj) } },
+
+	object: {
+		handle: function(obj){
+			return typeof(obj) == 'object' ? 
+				[[], {
+					// XXX need to check if a constructor is built-in...
+					type: obj.constructor.name,
+
+					// Object generations:
+					// 	1	- directly constructed objects
+					// 	2	- objects at least one level deeper than gen 1
+					gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
+
+					// XXX
+					source: obj,
+				}] 
+				: undefined }, },
+}
+
+var handle2 =
+module.handle2 =
+function(){
+
+}
+
 
 
 // path2str(..)
