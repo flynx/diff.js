@@ -67,11 +67,12 @@ module.CONTENT =
 // 	}
 //
 //
-//	.handle(obj, res, next, stop)
+//	.handle(obj, res, next(..), stop(..), options)
 //		-> [path, res]
 //		-> undefined
 //
-//	res ::= [path] | [path, value]
+//	res ::= [path] 
+//		| [path, value]
 //
 //	next([path, value], ..)
 //		-> true
@@ -81,14 +82,10 @@ module.CONTENT =
 //
 //
 //
-// NOTE: this is more of a grammar than a set of object handlers, nother
-// 		way to think of this is as a set of handlrs of aspects of objects
+// NOTE: this is more of a grammar than a set of object handlers, another
+// 		way to think of this is as a set of handlers of aspects of objects
 // 		and not full objects...
-// 		XXX not sure if this is how this is going to continue though as 
-// 			we'll need to organize constructors preferably within this 
-// 			structure and keep it extensible...
 //
-// XXX need option threading...
 // XXX need to deal with functions...
 // XXX add a tree mode -- containers as levels...
 // XXX need a way to index the path...
@@ -128,7 +125,7 @@ module.HANDLERS = {
 	//
 	// XXX EXPERIMENTAL...
 	text: {
-		handle: function(obj, res, next, stop){
+		handle: function(obj, res, next, stop, options){
 			typeof(obj) == 'string'
 				// XXX make this more optimal...
 				&& obj.includes('\n')
@@ -268,6 +265,15 @@ module.HANDLERS = {
 var handle =
 module.handle =
 function*(obj, path=[], options={}){
+	// parse args...
+	options = typeof(path) == 'object' && !(path instanceof Array) ?
+		path
+		: options
+	path = path instanceof Array ?
+			path
+		: typeof(path) == 'string' ?
+			str2path(path)
+		: [] 
 	// handle object loops...
 	var seen = options.seen =
 	   options.seen || new Map()	
@@ -289,11 +295,14 @@ function*(obj, path=[], options={}){
 	// handle the object...
 	var handlers = options.handlers || module.HANDLERS
 	var res = [path]
-	yield* Object.values(handlers)
+	yield* Object.entries(handlers)
 		.iter()
-		.filter(function(handler){ 
+		.filter(function([_, handler]){ 
 			return !!handler.handle })
-		.map(function*(handler){
+		.map(function*([name, handler]){
+			// skip...
+			if(!!options['no'+ name.capitalize()]){
+				return }
 			// expand aliases...
 			var  h = handler
 			while(h && typeof(h.handle) == 'string'){
