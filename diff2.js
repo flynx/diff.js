@@ -185,7 +185,6 @@ module.HANDLERS = {
 	// 			- prioretize handlers -- already done
 	// 			- skip repeating keys
 	// 				...this could be done on the root handler level...
-	// XXX need to optionally handle props...
 	keys: {
 		//match: 'object',
 		//match: ['object', 'func'],
