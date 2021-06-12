@@ -34,6 +34,11 @@ var types = require('ig-types')
 //
 /*********************************************************************/
 
+var STOP =
+module.STOP = 
+	types.STOP
+	
+
 var EMPTY =
 module.EMPTY = 
 //Symbol.EMPTY = 
@@ -48,18 +53,32 @@ module.CONTENT =
 	Symbol('CONTENT')
 
 
+
+//---------------------------------------------------------------------
+
 //
 // Format:
 // 	{
 // 		<name>: {
-// 			// optional
-// 			final: <bool>,
-//
-// 			match: <name> | <func>,
-//
 //			handle: <name> | <func>,
+//
+//			...
 // 		},
 // 	}
+//
+//
+//	.handle(obj, res, next, stop)
+//		-> [path, res]
+//		-> undefined
+//
+//	res ::= [path] | [path, value]
+//
+//	next([path, value], ..)
+//		-> true
+//
+//	stop(value)
+//	stop(path, value)
+//
 //
 //
 // NOTE: this is more of a grammar than a set of object handlers, nother
@@ -68,113 +87,114 @@ module.CONTENT =
 // 		XXX not sure if this is how this is going to continue though as 
 // 			we'll need to organize constructors preferably within this 
 // 			structure and keep it extensible...
-// 
-// XXX might be nice to have conditional stopping...
-// 		a-la event.preventDefault()
+//
 // XXX need option threading...
 // XXX need to deal with functions...
+// XXX add a tree mode -- containers as levels...
+// XXX need a way to index the path...
+// 		...and to filter paths by pattern...
+// XXX might be a good idea to generate "structural hashes" for objects...
 var HANDLERS =
 module.HANDLERS = {
 
 	// null...
 	//
 	null: {
-		final: true,
-		match: function(obj){
-			return obj === null },
-		handle: 'value', }, 
-	
+		handle: function(obj, res, next, stop){
+			obj === null
+				&& stop(obj) }, }, 
+
 	// Functions...
 	//
 	// XXX EXPERIMENTAL...
 	// XXX STUB...
+	// XXX can we reuse object's .handle(..) here???
 	func: {
-		match: function(obj){
-			return typeof(obj) == 'function' },
-		handle: 'object', },
+		handle: function(obj, res, next, stop){
+			return typeof(obj) == 'function' ?
+				{
+					// XXX need to check if a constructor is built-in...
+					type: obj.constructor.name,
+					// Object generations:
+					// 	1	- directly constructed objects
+					// 	2	- objects at least one level deeper than gen 1
+					gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
+					// XXX
+					source: obj,
+				} 
+				: undefined }, },
 
 	// Text...
 	//
 	// XXX EXPERIMENTAL...
 	text: {
-		final: true,
-		match: function(obj){
-			return typeof(obj) == 'string'
+		handle: function(obj, res, next, stop){
+			typeof(obj) == 'string'
 				// XXX make this more optimal...
-				&& obj.includes('\n') },
-		handle: function(obj){
-			return [[], 
-				{
-					type: 'Text',	
-					source: obj,
-				}, 
-				obj.split(/\n/g)
-					.map(function(line, i){
-						return [[module.CONTENT, i], line] }) ] }, },
+				&& obj.includes('\n')
+				&& next(
+					...obj.split(/\n/g)
+						.map(function(line, i){
+							return [[module.CONTENT, i], line] }))
+	   			&& stop({
+						type: 'Text',	
+						source: obj,
+					}) }, },
 
 	// Non-Objects...
 	//
 	// NOTE: this will include undefined and NaN...
 	value: {
-		final: true,
-		match: function(obj){
-			return typeof(obj) != 'object'
-	   			&& typeof(obj) != 'function' },
-		handle: function(obj){
-			return [[], obj] }, },
+		handle: function(obj, res, next, stop){
+			typeof(obj) != 'object'
+				&& typeof(obj) != 'function'
+				&& stop(obj) }, },
 
 	// Base objects...
 	//
 	object: {
-		match: function(obj){
-			return typeof(obj) == 'object' },
-		handle: function(obj){
-			return [[], {
-				// XXX need to check if a constructor is built-in...
-				type: obj.constructor.name,
-
-				// Object generations:
-				// 	1	- directly constructed objects
-				// 	2	- objects at least one level deeper than gen 1
-				gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
-
-				// XXX
-				source: obj,
-			}] }, },
+		handle: function(obj, res, next, stop){
+			return typeof(obj) == 'object' ? 
+				{
+					// XXX need to check if a constructor is built-in...
+					type: obj.constructor.name,
+					// Object generations:
+					// 	1	- directly constructed objects
+					// 	2	- objects at least one level deeper than gen 1
+					gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
+					// XXX
+					source: obj,
+				} 
+				: undefined }, },
 	// special keys...
 	proto: {
-		match: function(obj){
-			return typeof(obj) == 'object'
-				&& obj.constructor.prototype !== obj.__proto__ },
-		handle: function(obj){
-			return [[ [['__proto__'], obj.__proto__], ]] }, },
+		handle: function(obj, res, next, stop){
+			typeof(obj) == 'object'
+				&& obj.constructor.prototype !== obj.__proto__
+				&& next([['__proto__'], obj.__proto__]) }, },
 	// XXX any other special keys???
 	// 		- non-iterable?
-
 
 	// Entries / Non-attribute (encapsulated) content...
 	//
 	setEntries: {
-		match: function(obj){
-			return obj instanceof Set },
-		// NOTE: we are indexing sets...
-		handle: function(obj){
-			return [ obj.values()
-				.map(function(v, i){ 
-					return [[module.CONTENT, i], v] })
-	   			.toArray() ] }, },
+		handle: function(obj, res, next, stop){
+			obj instanceof Set
+				&& next(
+					...obj.values()
+						.map(function(v, i){ 
+							return [[module.CONTENT, i], v] })) }, },
 	mapEntries: {
-		match: function(obj){
-			return obj instanceof Map },
-		handle: function(obj, path, options){
-			return [ obj.entries()
-				.map(function([k, v], i){ 
-					return [
-						[[module.CONTENT, i +'@key'], k], 
-						[[module.CONTENT, i], v], 
-					] })
-				.flat()
-		   		.toArray() ] }, },
+		handle: function(obj, res, next, stop){
+			obj instanceof Map
+				&& next(
+					...obj.entries()
+						.map(function([k, v], i){ 
+							return [
+								[[module.CONTENT, i +'@key'], k], 
+								[[module.CONTENT, i], v], 
+							] })
+						.flat()) }, },
 
 	// Keys / Attributes...
 	//
@@ -186,15 +206,15 @@ module.HANDLERS = {
 	// 			- skip repeating keys
 	// 				...this could be done on the root handler level...
 	keys: {
-		//match: 'object',
-		//match: ['object', 'func'],
-		match: function(obj, handlers){
-			return handlers.object.match(obj) 
-				|| handlers.func.match(obj) },
-		handle: function(obj){
-			return [ Object.entries(obj) 
-				.map(function([k, v]){ 
-					return [[k], v] }), ] }, },
+		handle: function(obj, res, next, stop){
+			;(typeof(obj) == 'object'
+					|| typeof(obj) == 'function')
+				&& next(
+					...Object.entries(obj) 
+						.map(function([k, v]){ 
+							return [[k], v] })) }, },
+
+
 	/* XXX
 	props: {
 		//match: 'object',
@@ -227,156 +247,73 @@ module.HANDLERS = {
 	//false: { match: false },
 }
 
-
-
-// XXX use STOP...
-// XXX might be good to cache output via some citeria (type?)...
-// 		...this criteria needs to be consistent with how .match(..) works...
-// XXX does .match(..) need options???
-// XXX do we warn of orphans???
-var getHandlers = 
-module.getHandlers = 
-function(obj, handlers=module.HANDLERS){
-	return [...Object.entries(handlers)
-		.iter()
-		.filter(function([k, v]){
-			var stop = !!v.final
-			// expand aliases...
-			var seen = new Set()
-			while(v && typeof(v.match) == 'string'){
-				var n = v.match
-				if(seen.has(n)){
-					throw new Error('.match(..): alias loop detected:\n\t'
-						+ [...seen, n].join('\n \t  -> ')) }
-				seen.add(n)
-				v = handlers[n] }
-			// orphan or falsy .match...
-			if(!v){
-				return false }
-			// handle .final/final...
-			if(stop 
-					&& v.match 
-					&& v.match(obj, handlers)){
-				throw types.STOP(true) }
-			// normal match...
-			return v.match 
-				&& v.match(obj, handlers) })
-		.map(function([k, v]){
-			return v })] }
-
-
-
-// 
+//
 // Format:
 // 	[
-//		[<path>, {type: <name>}],
-//
-//		[<path>, ['LINK', <path>]],
-//
+//		// primitive value...
 //		[<path>, <value>], 
+//
+//		// constructed object...
+//		[<path>, {
+//			type: <name>,
+//			gen: <generation>,
+//			source: <obj>,
+//		}],
+//
+//		// link...
+//		[<path>, 'LINK', <path>],
+//
 // 	]
 //
-// XXX add a tree mode -- containers as levels...
-// XXX need a way to index the path...
-// 		...and to filter paths by pattern...
-// XXX might be a good idea to generate "structural hashes" for objects...
-// XXX can we combine .handle(..) and .match(..) ???
-// 		...for example via .handle(obj, '?') protocol...
-// 		.....or even simpler, just thread the object through all the 
-// 		handlers in one go -- unless there is a fast way to test and 
-// 		classify object predictably there is no point in a test stage...
-// 		.....would also be nice to support a STOP(res) instead of .final
-var handle = 
-module.handle = 
+var handle =
+module.handle =
 function*(obj, path=[], options={}){
-	// handle recursive structures...
+	// handle object loops...
 	var seen = options.seen =
 	   options.seen || new Map()	
 	if(seen.has(obj)){
-		yield [path, ['LINK', seen.get(obj)]]
+		yield [path, 'LINK', seen.get(obj)]
 		return }
 	typeof(obj) == 'object'
 		&& seen.set(obj, path)
 
-	// get compatible handler list...
-	var cache = options.cache = 
-		options.cache || new Map()
-	var HANDLERS = options.handlers || module.HANDLERS
-	var handlers = module.getHandlers(obj, HANDLERS)
+	var __next = []
+	var next = function(...values){
+		__next.splice(__next.length, 0, ...values)
+		return true }
+	var stop = function(p, v){
+		throw module.STOP(arguments.length == 1 ? 
+			[path, arguments[0]] 
+			: [p, v]) }
 
-	// XXX might be a good idea to move this up (or into options) so as 
-	// 		not to define this on each call...
-	// 		...we'll need to somehow curry in the path which is now passed 
-	// 		via a closure...
-	var subtree = function*(data){
-		// a handler just returned a list of next objects to handle...
-		if(data.length == 1){
-			var next = data.pop()
-			var p = path
-		// a normal handler...
-		} else {
-			var [k, v, next] = data
-			var p = path.concat(k)
-			yield [p, v] }
-		// process queued/next objects...
-		yield* (next || [])
-			.iter()
-			.map(function*([k, v]){
-				yield* handle(v, p.concat(k), options) }) }
-
-	// apply the handlers...
-	yield* handlers
+	// handle the object...
+	var handlers = options.handlers || module.HANDLERS
+	var res = [path]
+	yield* Object.values(handlers)
 		.iter()
 		.filter(function(handler){ 
 			return !!handler.handle })
 		.map(function*(handler){
-			var  h = handler
 			// expand aliases...
+			var  h = handler
 			while(h && typeof(h.handle) == 'string'){
-				h = HANDLERS[h.handle] }
-			yield* h.handle instanceof types.Generator ?
-				// XXX should .handle(..) be called in the context of h or handler???
-				h.handle.call(handler, obj, path, options)
-					.map(subtree)
-				: subtree(h.handle.call(handler, obj, path, options)) }) }
-
-var HANDLERS2 =
-module.HANDLERS2 = {
-	null: {
-		handle: function(obj){
-			if(obj === null){
-				throw module.STOP(obj) } }, }, 
-	value: {
-		handle: function(obj){
-			if(typeof(obj) != 'object'
-					&& typeof(obj) != 'function'){
-				throw module.STOP(obj) } },
-
-	object: {
-		handle: function(obj){
-			return typeof(obj) == 'object' ? 
-				[[], {
-					// XXX need to check if a constructor is built-in...
-					type: obj.constructor.name,
-
-					// Object generations:
-					// 	1	- directly constructed objects
-					// 	2	- objects at least one level deeper than gen 1
-					gen: obj.constructor.prototype === obj.__proto__ ? 1 : 2,
-
-					// XXX
-					source: obj,
-				}] 
-				: undefined }, },
-}
-
-var handle2 =
-module.handle2 =
-function(){
-
-}
+				h = handlers[h.handle] }
+			// XXX should .handle(..) be called in the context of h or handler???
+			res = h.handle.call(handler, obj, res, next, stop, options)
+			yield res 
+				&& [path, res] }) 
+		.filter(function(e){ 
+			return !!e })
+	// handle the next stuff...
+	yield* __next.splice(0, __next.length)
+		.iter()
+		.map(function*([k, v]){
+			yield* handle(v, path.concat(k), options) }) }
 
 
+
+
+//---------------------------------------------------------------------
 
 // path2str(..)
 //
@@ -454,11 +391,10 @@ function(str){
 var serializePaths = 
 module.serializePaths =
 types.generator.iter
-	.map(function([p, v]){
-		return v instanceof Array && v[0] == 'LINK' ?
+	.map(function([p, v, ...rest]){
+		return rest.length > 0 && v == 'LINK' ?
 			// link...
-			[path2str(p), 
-				'LINK', path2str(v[1])]
+			[path2str(p), v, path2str(rest[0])]
 			: [path2str(p), v] })
 
 
@@ -711,6 +647,7 @@ var o = module.o = {
 o.object.y = o.object
 
 
+// generate spec...
 console.log([
 	...handle(o)
 		.chain(
@@ -720,6 +657,7 @@ console.log([
 		)])
 
 
+// use spec to create a new object...
 console.log('\n\n---\n', 
 	[...handle(write(null, handle(o)))
 		.chain(
@@ -727,7 +665,6 @@ console.log('\n\n---\n',
 			// make the output a bit more compact...
 			stripAttr('source'), 
 		)])
-
 
 
 
