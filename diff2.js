@@ -245,6 +245,11 @@ module.HANDLERS = {
 }
 
 //
+//	handle(obj[,options])
+//	handle(obj, path[,options])
+//		-> generator
+//
+//
 // Format:
 // 	[
 //		// primitive value...
@@ -274,6 +279,7 @@ function*(obj, path=[], options={}){
 		: typeof(path) == 'string' ?
 			str2path(path)
 		: [] 
+
 	// handle object loops...
 	var seen = options.seen =
 	   options.seen || new Map()	
@@ -283,9 +289,9 @@ function*(obj, path=[], options={}){
 	typeof(obj) == 'object'
 		&& seen.set(obj, path)
 
-	var __next = []
+	var _next = []
 	var next = function(...values){
-		__next.splice(__next.length, 0, ...values)
+		_next.splice(_next.length, 0, ...values)
 		return true }
 	var stop = function(p, v){
 		throw module.STOP(arguments.length == 1 ? 
@@ -311,10 +317,11 @@ function*(obj, path=[], options={}){
 			res = h.handle.call(handler, obj, res, next, stop, options)
 			yield res 
 				&& [path, res] }) 
+		// clean out remains of handlers that rejected the obj...
 		.filter(function(e){ 
 			return !!e })
 	// handle the next stuff...
-	yield* __next.splice(0, __next.length)
+	yield* _next
 		.iter()
 		.map(function*([k, v]){
 			yield* handle(v, path.concat(k), options) }) }
@@ -407,7 +414,7 @@ types.generator.iter
 			: [path2str(p), v] })
 
 
-// remove attributes from object metadata...
+// Remove attributes from object metadata...
 //
 // 	stripAttr(attr, ...)
 // 		-> <chainable>
@@ -447,6 +454,15 @@ function(...attrs){
 // NOTE: to set this needs the full basepath to exist...
 //
 // XXX need to write a map key to an item that does not exist...
+// XXX for arrays ans sets need a way to insert values after a specific 
+// 		index, this would require:
+// 			- indicated this in spec:
+// 				a) AFTER/BEFORE symbol(s) in path (???)
+//				b) context (a-la diff)
+// 			- insert to array:
+// 				.splice(i, 0, <value>)
+// 			- insert into set:
+// 				???
 // XXX str2path and passing in a list path produce different results...
 var atPath = 
 module.atPath =
