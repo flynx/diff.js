@@ -18,8 +18,9 @@ var types = require('ig-types')
 // 		- generate a spec			- DONE
 // 			- serializable
 // 		- support props
-// 		- build object via spec
+// 		- build object via spec		- DONE
 // 		- update object via spec
+// 			- contextual updates
 // 		- subtract specs (diff)
 // 			- full
 // 			- relaxed -- ignore item order
@@ -454,15 +455,23 @@ function(...attrs){
 // NOTE: to set this needs the full basepath to exist...
 //
 // XXX need to write a map key to an item that does not exist...
-// XXX for arrays ans sets need a way to insert values after a specific 
-// 		index, this would require:
+// XXX need a way to insert values after a specific index/key, this 
+// 		would require:
 // 			- indicated this in spec:
 // 				a) AFTER/BEFORE symbol(s) in path (???)
+// 					here there are two ways to think about this:
+// 					- AFTER means *replace* the item after
+// 					- AFTER means *between* this and the item after
 //				b) context (a-la diff)
 // 			- insert to array:
 // 				.splice(i, 0, <value>)
 // 			- insert into set:
+// 				.splice(..)
+// 			- insert into map
 // 				???
+// 			- insert into object
+// 				???
+// 		...revise...
 // XXX str2path and passing in a list path produce different results...
 var atPath = 
 module.atPath =
