@@ -33,6 +33,36 @@ var types = require('ig-types')
 // 		- reconstruct protocol
 //
 //
+// XXX proposed diff format:
+// 	[
+// 		// change...
+// 		[
+// 			// pre-context...
+// 			// XXX should '=' here be optional???
+// 			['=', <path>, <value>],
+// 			...
+// 			['=', <path>, <value>],
+//
+// 			// changes...
+// 			// addition...
+// 			['+', <path>, <value>],
+// 			// removal...
+// 			['-', <path>, <value>],
+// 			// unchanged context line....
+// 			['=', <path>, <value>],
+// 			...
+//
+// 			// post-context...
+// 			['=', <path>, <value>],
+// 			...
+// 			['=', <path>, <value>],
+// 		],
+//
+// 		...
+// 	]
+//
+//
+//
 /*********************************************************************/
 
 var STOP =
@@ -601,6 +631,83 @@ function(root, spec){
 
 
 
+//---------------------------------------------------------------------
+
+// Get common chunks (LCS)...
+//
+// Format:
+// 	[
+// 		<total-intersection-length>,
+//
+// 		// XXX should this be an obj???
+// 		[
+// 			<offset-A>,
+// 			<offset-B>,
+// 			<section-length>,
+// 		],
+// 		...
+// 	]
+//
+var commonSections = 
+module.commonSections =
+function(A, B, cmp){
+	cmp = cmp 
+		|| function(a, b){ 
+			return a === b || a == b }
+
+	var LCS = function(a, b){
+		// calculate length of chunk...
+		var l = 0
+		while(a+l < A.length && b+l < B.length
+				&& a+l in A && b+l in B
+				&& cmp(A[a+l], B[b+l])){
+			l++ }
+		// get next chunks...
+		var L = A.length > a+l ? 
+			LCS(a+l+1, b+l) 
+			: [0]
+		var R = B.length > b+l ? 
+			LCS(a+l, b+l+1) 
+			: [0]
+		// select the best chunk-set...
+		// NOTE: we maximize the number of elements in a chunk set then 
+		// 		minimize the number of chunks per set...
+		var next = L[0] == R[0] ? 
+				(L.length < R.length ? L : R)
+			: L[0] > R[0] ? 
+				L 
+			: R
+		return ( 
+			// non-empty chunk and next...
+			next[0] > 0 && l > 0 ? 
+				[l + next[0], [a, b, l]].concat(next.slice(1)) 
+			// non-empty chunk and empty next...
+			: l > 0 ? 
+				[l, [a, b, l]]
+			// empty chunk...
+			: next ) }
+
+	return LCS(0, 0) }
+
+
+var diffSections =
+function(A, B, cmp){
+	var pa = 0
+	var pb = 0
+	return commonSections(A, B, cmp)
+		.slice(1)
+		.concat([[A.length, B.length, 0]])
+		.reduce(function(gaps, [a, b, l]){
+			;(pa == a && pb == b)
+				|| gaps.push([
+					pa,
+						A.slice(pa, a), 
+					pb,
+						B.slice(pb, b),
+				])
+			pa = a + l
+			pb = b + l
+			return gaps }, []) }	
 
 
 
@@ -699,6 +806,16 @@ console.log('\n\n---\n',
 			// make the output a bit more compact...
 			stripAttr('source'), 
 		)])
+
+
+var A = [1,2,3,1,2,3,4,5,,,4]
+var B = [1,2,3,4,5,6]
+console.log(A)
+console.log(B)
+console.log(
+	commonSections(A, B))
+console.log(
+	diffSections(A, B))
 
 
 

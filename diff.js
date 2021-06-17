@@ -224,8 +224,10 @@ var getDiffSections = function(A, B, cmp, min_chunk){
 			// store the gap...
 			;(a != e.A || b != e.B)
 				&& gaps.push([
-					[a, A.slice(a, e.A)],
-					[b, B.slice(b, e.B)],
+					[a, 
+						A.slice(a, e.A)],
+					[b, 
+						B.slice(b, e.B)],
 				])
 			// go to next gap...
 			a = e.A + e.length
