@@ -690,7 +690,20 @@ function(A, B, cmp){
 	return LCS(0, 0) }
 
 
+// 
+// Format:
+// 	[
+// 		// change...
+// 		[
+// 			<a-index>, <a-chunk>,
+// 			<b-index>, <b-chunk>,
+// 		],
+//
+// 		...
+// 	]
+//
 var diffSections =
+module.diffSections =
 function(A, B, cmp){
 	var pa = 0
 	var pb = 0
@@ -698,18 +711,39 @@ function(A, B, cmp){
 		.slice(1)
 		.concat([[A.length, B.length, 0]])
 		.reduce(function(gaps, [a, b, l]){
+			// only push changes of >0 length...
 			;(pa == a && pb == b)
+				// NOTE: we are collecting changes before the current chunk...
 				|| gaps.push([
 					pa,
 						A.slice(pa, a), 
 					pb,
 						B.slice(pb, b),
 				])
+			// next change start...
 			pa = a + l
 			pb = b + l
 			return gaps }, []) }	
 
 
+// XXX something about this is wrong...
+// 		...should return mirrored results from diffSections(..) but the 
+// 		results are very different...
+var diff =
+function(A, B){
+	return diffSections(
+		[...handle(A)
+			.chain(serializePaths)], 
+		[...handle(B)
+			.chain(serializePaths)], 
+		// XXX add link support...
+		function([ap, av], [bp, bv]){
+			return ap == bp 
+				&& (av == bv 
+					|| (typeof(av) == 'object' 
+						&& typeof(bv) == 'object' 
+						&& av.type
+						&& av.type == bv.type )) }) }
 
 
 
@@ -808,14 +842,22 @@ console.log('\n\n---\n',
 		)])
 
 
-var A = [1,2,3,1,2,3,4,5,,,4]
-var B = [1,2,3,4,5,6]
+var A = ['x',1,2,3,1,2,3,4,5,,,4]
+var B = ['x',1,2,3,4,5,6]
+
 console.log(A)
 console.log(B)
+
 console.log(
 	commonSections(A, B))
 console.log(
 	diffSections(A, B))
+
+console.log([...handle(A).chain(serializePaths)])
+console.log([...handle(B).chain(serializePaths)])
+
+// XXX
+console.log(diff(B, A))
 
 
 
