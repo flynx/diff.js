@@ -702,6 +702,7 @@ function(A, B, cmp){
 // 		...
 // 	]
 //
+// NOTE: this is generic -- does not care what it compares...
 var diffSections =
 module.diffSections =
 function(A, B, cmp){
@@ -726,9 +727,12 @@ function(A, B, cmp){
 			return gaps }, []) }	
 
 
-// XXX something about this is wrong...
-// 		...should return mirrored results from diffSections(..) but the 
-// 		results are very different...
+// XXX at this point array indexes are treated as changes, i.e. if we 
+// 		insert an item into an array, this effectively changes all other 
+// 		items (shifting their indexes by the number of items inserted)... 
+// 		...need to treat this gracefully...
+// 		......ignore array index???
+// 			...to do this we need to know object type per element compared...
 var diff =
 function(A, B){
 	return diffSections(
@@ -842,6 +846,7 @@ console.log('\n\n---\n',
 		)])
 
 
+/* XXX
 var A = ['x',1,2,3,1,2,3,4,5,,,4]
 var B = ['x',1,2,3,4,5,6]
 
@@ -858,6 +863,12 @@ console.log([...handle(B).chain(serializePaths)])
 
 // XXX
 console.log(diff(B, A))
+//*/
+
+console.log(JSON.stringify(diff(
+	[1,4,2,3],
+	[1,2,3],
+), null, '    '))
 
 
 
