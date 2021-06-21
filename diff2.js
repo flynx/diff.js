@@ -730,6 +730,8 @@ function(A, B, cmp){
 			return gaps }, []) }	
 
 
+// XXX if two sub-trees are different, to we treat them as a big set of 
+// 		atomic changes or replace X with Y???
 // XXX at this point array indexes are treated as changes, i.e. if we 
 // 		insert an item into an array, this effectively changes all other 
 // 		items (shifting their indexes by the number of items inserted)... 
