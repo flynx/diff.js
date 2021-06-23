@@ -7,6 +7,7 @@
 (function(require){ var module={} // make module AMD/node compatible...
 /*********************************************************************/
 
+var object = require('ig-object')
 var types = require('ig-types')
 
 
@@ -275,6 +276,19 @@ module.HANDLERS = {
 	//false: { match: false },
 }
 
+
+var HANDLE_DEFAULTS =
+module.HANDLE_DEFAULTS = {
+	flat: true, 
+
+	flatPaths: true,
+
+// 	handlers: <object>,
+// 	seen: <map>
+
+// 	no<handler-name>: true | false,
+}
+
 //
 //	handle(obj[,options])
 //	handle(obj, path[,options])
@@ -302,9 +316,17 @@ var handle =
 module.handle =
 function*(obj, path=[], options={}){
 	// parse args...
-	options = typeof(path) == 'object' && !(path instanceof Array) ?
-		path
-		: options
+	options = 
+		typeof(path) == 'object' && !(path instanceof Array) ?
+			path
+			: options
+	options = 
+		// inherit options from HANDLE_DEFAULTS of we don't already...
+		!object.parentOf(module.HANDLE_DEFAULTS, options) ?
+			Object.assign(
+				{ __proto__: module.HANDLE_DEFAULTS },
+				options)
+			: options
 	path = path instanceof Array ?
 			path
 		: typeof(path) == 'string' ?
@@ -330,33 +352,147 @@ function*(obj, path=[], options={}){
 			: [p, v]) }
 
 	// handle the object...
+	var res = [path, ]
 	var handlers = options.handlers || module.HANDLERS
-	var res = [path]
 	yield* Object.entries(handlers)
 		.iter()
-		.filter(function([_, handler]){ 
-			return !!handler.handle })
+		.filter(function([name, handler]){ 
+			return handler.handle 
+				// skip options.no<handler-name>...
+				&& !options['no'+ name.capitalize()] })
 		.map(function*([name, handler]){
-			// skip...
-			if(!!options['no'+ name.capitalize()]){
-				return }
 			// expand aliases...
 			var  h = handler
 			while(h && typeof(h.handle) == 'string'){
 				h = handlers[h.handle] }
 			// XXX should .handle(..) be called in the context of h or handler???
 			res = h.handle.call(handler, obj, res, next, stop, options)
+
+			// non-flat mode...
+			!options.flat
+				&& _next.length > 0
+				// XXX need to get the parent result to add .children to...
+				&& console.log('!!!!!!!!!!!!!!')
+				//&& parent.children.concat([...doNext()])
+
 			yield res 
 				&& [path, res] }) 
 		// clean out remains of handlers that rejected the obj...
 		.filter(function(e){ 
 			return !!e })
 	// handle the next stuff...
-	yield* _next
+	yield* _next 
 		.iter()
 		.map(function*([k, v]){
 			yield* handle(v, path.concat(k), options) }) }
 
+
+
+var WALK_HANDLERS = {
+	map: {
+		walk: function(obj){
+			return obj instanceof Map
+				&& obj.entries() } },
+	set: {
+		walk: function(obj){
+			return obj instanceof Set
+				&& obj.values() } },
+	attrs: {
+		walk: function(obj){
+			return typeof(obj) == 'object'
+				&& Object.entries(obj) } },
+	text: {
+		walk: function(obj){
+			return typeof(obj) == 'string'
+				&& obj.includes('\n') 
+				&& obj.split(/\n/g) } },
+}
+
+//	
+//	walk(<handler>[, <options>])
+//	walk(<handler>, <path>[, <options>])
+//		-> <walker>
+//
+//	<handler>(<obj>, <path>, <next>, <type>)
+//		-> <value>
+//		!> STOP(<value>)
+//
+//	<walker>(<obj>)
+//	<walker>(<obj>, <path>)
+//		-> <generator>
+//			-> <value>
+//
+//
+// XXX the idea here is to try to decouple the walk from the format and 
+// 		move the formatters and other stuff out...
+// 		...not sure if this is simpler yet... 
+var walk =
+module.walk =
+function(handler, path=[], options={}){
+	// parse args...
+	options = 
+		typeof(path) == 'object' && !(path instanceof Array) ?
+			path
+			: options
+	options = 
+		// inherit options from HANDLE_DEFAULTS of we don't already...
+		!object.parentOf(module.HANDLE_DEFAULTS, options) ?
+			Object.assign(
+				{ __proto__: module.HANDLE_DEFAULTS },
+				options)
+			: options
+
+	var _walk = function*(obj, path=path, type=undefined){
+		path = path instanceof Array ?
+				path
+			: typeof(path) == 'string' ?
+				str2path(path)
+			: [] 
+		type = type || 'root'
+
+		var handlers = options.handlers || module.HANDLERS
+		// format:
+		// 	[
+		// 		[<handler-name>, [ [<key>, <value>], .. ]],
+		// 		..
+		// 	]
+		var next = Object.entries(handlers)
+			.filter(function([n, h]){
+				return h.walk 
+					&& !options['no' + n.capitalize()] })
+			.map(function([n, h]){
+				// XXX should we call the handler(..) once per set of 
+				// 		next values (i.e. attrs, items, ...)???
+				var res = h.walk.call(obj)
+				return res 
+					&& [n, res] })
+			.filter(function(e){
+				return !!e })
+
+		try {
+			// main object...
+			if(handler instanceof types.Generator){
+				yield* handler(obj, path, next, type)
+			} else {
+				yield handler(obj, path, next, type) }
+			// next/children...
+			yield* next
+				.iter()
+				.map(function*([type, items]){
+					yield* items
+						.iter()
+						.map(function([key, value]){ 
+							yield* _walk(value, path.concat(key), type) }) })
+		// handle STOP...
+		} catch(err){
+			if(err === module.STOP){
+				return
+			} else if(err instanceof module.STOP){
+				yield err.value
+				return }
+			throw err } } 
+
+	return _walk }
 
 
 
@@ -389,6 +525,8 @@ var path2str =
 module.path2str =
 function(p){
 	return '/'+ p
+		// flatten lispPaths...
+		.flat(Infinity)
 		.map(serializePathElem)
 		.reduce(function(res, e){
 			e = e === module.CONTENT ?
@@ -420,6 +558,7 @@ var deserializePathElem = function(p){
 // XXX PROBLEM: need to be able to reference '' in {'': 123}, i.e, how do
 // 		we stringify ['']???
 // 			[''] => ???
+// XXX add support for options.lispPaths
 var str2path = 
 module.str2path =
 function(str){
@@ -754,7 +893,7 @@ function(A, B, cmp){
 // 				2) selectively match keys...
 // 			...need to test how complex this will be...
 //
-var diff =
+var keyValueDiff =
 function(A, B){
 	return diffSections(
 		[...handle(A)
@@ -769,6 +908,26 @@ function(A, B){
 						&& typeof(bv) == 'object' 
 						&& av.type
 						&& av.type == bv.type )) }) }
+
+// XXX this completely ignores the path/key...
+// XXX this works great for arrays but is questionable on other stuff...
+var valueDiff =
+function(A, B){
+	return diffSections(
+		[...handle(A)
+			.chain(serializePaths)], 
+		[...handle(B)
+			.chain(serializePaths)], 
+		// XXX add link support...
+		function([ap, av], [bp, bv]){
+			return av == bv 
+				|| (typeof(av) == 'object' 
+					&& typeof(bv) == 'object' 
+					&& av.type
+					&& av.type == bv.type ) }) }
+
+
+var diff = valueDiff
 
 
 
@@ -857,7 +1016,7 @@ console.log([
 		)])
 
 
-// use spec to create a new object...
+/*/ use spec to create a new object...
 console.log('\n\n---\n', 
 	[...handle(write(null, handle(o)))
 		.chain(
@@ -865,6 +1024,7 @@ console.log('\n\n---\n',
 			// make the output a bit more compact...
 			stripAttr('source'), 
 		)])
+//*/
 
 
 /* XXX
@@ -886,10 +1046,12 @@ console.log([...handle(B).chain(serializePaths)])
 console.log(diff(B, A))
 //*/
 
+/*
 console.log(JSON.stringify(diff(
 	[1,4,2,3],
 	[1,2,3],
 ), null, '    '))
+//*/
 
 
 

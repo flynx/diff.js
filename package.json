@@ -25,7 +25,7 @@
   "homepage": "https://github.com/flynx/object-diff.js#readme",
   "dependencies": {
     "generic-walk": "^1.4.0",
-    "ig-object": "^2.2.0",
+    "ig-object": "*",
     "ig-types": "*"
   },
   "devDependencies": {
