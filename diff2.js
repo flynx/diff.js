@@ -388,7 +388,8 @@ function*(obj, path=[], options={}){
 
 
 
-var WALK_HANDLERS = {
+var WALK_HANDLERS = 
+module.WALK_HANDLERS = {
 	map: {
 		walk: function(obj){
 			return obj instanceof Map
