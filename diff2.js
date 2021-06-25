@@ -396,18 +396,25 @@ module.WALK_HANDLERS = {
 			if(obj === null){
 				throw module.STOP } } },
 
+	set: {
+		walk: function(obj){
+			return obj instanceof Set
+				&& [...obj.values()].entries() } },
 	map: {
 		walk: function(obj){
 			return obj instanceof Map
 				&& obj.entries() } },
-	set: {
-		walk: function(obj){
-			return obj instanceof Set
-				&& [...[...obj.values()].entries()] } },
-	attrs: {
+
+	attr: {
 		walk: function(obj){
 			return typeof(obj) == 'object'
 				&& [...Object.entries(obj)] } },
+	proto: {
+		walk: function(obj){
+			return typeof(obj) == 'object'
+				&& obj.constructor.prototype !== obj.__proto__
+				&& [['__proto__', obj.__proto__]] }, },
+
 	text: {
 		walk: function(obj){
 			return typeof(obj) == 'string'
@@ -421,6 +428,10 @@ module.WALK_HANDLERS = {
 //		-> <walker>
 //
 //	<handler>(<obj>, <path>, <next>, <type>)
+//		-> <value>
+//		!> STOP(<value>)
+//
+//	<handler>(<obj>, <path>, <orig-path>, 'LINK')
 //		-> <value>
 //		!> STOP(<value>)
 //
@@ -451,6 +462,12 @@ function(handler, path=[], options={}){
 				options)
 			: options
 
+	var _handler = function*(){
+		if(handler instanceof types.Generator){
+			yield* handler(...arguments)
+		} else {
+			yield handler(...arguments) } }
+
 	var _walk = function*(obj, path=p, type=undefined){
 		path = path instanceof Array ?
 				path
@@ -458,6 +475,15 @@ function(handler, path=[], options={}){
 				str2path(path)
 			: [] 
 		type = type || 'root'
+
+		// handle loops...
+		var seen = options.seen =
+		   options.seen || new Map()	
+		if(seen.has(obj)){
+			yield* _handler(obj, path, seen.get(obj), 'LINK')
+			return }
+		typeof(obj) == 'object'
+			&& seen.set(obj, path)
 
 		var handlers = options.handlers || module.WALK_HANDLERS
 		// format:
@@ -482,10 +508,7 @@ function(handler, path=[], options={}){
 
 		try {
 			// main object...
-			if(handler instanceof types.Generator){
-				yield* handler(obj, path, next, type)
-			} else {
-				yield handler(obj, path, next, type) }
+			yield* _handler(obj, path, next, type)
 			// next/children...
 			yield* next
 				.map(function*([type, items]){
@@ -1066,47 +1089,21 @@ console.log(JSON.stringify(diff(
 
 console.log('---')
 
-var walker = walk(function(e, p){
-	return [
-		p,
-		e == null ?
-			e
-		: typeof(e) == 'object' ?
-			{type: e.constructor.name}
-		: e,
-	] })
+var walker = walk(function(e, p, n, t){
+	return t == 'LINK' ?
+		[p, 'LINK', n]
+		: [
+			p,
+			e == null ?
+				e
+			: typeof(e) == 'object' ?
+				{type: e.constructor.name}
+			: e,
+		] })
 
+// XXX test functions...
 console.log([
-	/*
 	...walker(o)
-	/*/
-	...walker({
-			// literals...
-			null: null,
-			undefined: undefined,
-			NaN: NaN,
-			true: true,
-			false: false,
-			number: 1, 
-			string: 'string', 
-
-			// containers...
-			array: [1,2,3], 
-			object: {a:1},
-
-			// encapsulated containers...
-			set: new Set([1, 2, 3]),
-			map: new Map([[1, 2], [3, 4]]),
-
-			// recursive...
-			// XXX
-
-			// mixed...
-			array_with_attrs: Object.assign(
-				[1,2,3], 
-				{a: 333}),
-		})
-	//*/
 		.chain(serializePaths) ])
 
 
