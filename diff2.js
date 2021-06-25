@@ -390,6 +390,12 @@ function*(obj, path=[], options={}){
 
 var WALK_HANDLERS = 
 module.WALK_HANDLERS = {
+	// prevent dissecting null...
+	null: {
+		walk: function(obj){
+			if(obj === null){
+				throw module.STOP } } },
+
 	map: {
 		walk: function(obj){
 			return obj instanceof Map
@@ -397,11 +403,11 @@ module.WALK_HANDLERS = {
 	set: {
 		walk: function(obj){
 			return obj instanceof Set
-				&& obj.values() } },
+				&& [...[...obj.values()].entries()] } },
 	attrs: {
 		walk: function(obj){
 			return typeof(obj) == 'object'
-				&& Object.entries(obj) } },
+				&& [...Object.entries(obj)] } },
 	text: {
 		walk: function(obj){
 			return typeof(obj) == 'string'
@@ -427,9 +433,11 @@ module.WALK_HANDLERS = {
 // XXX the idea here is to try to decouple the walk from the format and 
 // 		move the formatters and other stuff out...
 // 		...not sure if this is simpler yet... 
+// XXX handle recursive structures...
 var walk =
 module.walk =
 function(handler, path=[], options={}){
+	var p = path
 	// parse args...
 	options = 
 		typeof(path) == 'object' && !(path instanceof Array) ?
@@ -443,7 +451,7 @@ function(handler, path=[], options={}){
 				options)
 			: options
 
-	var _walk = function*(obj, path=path, type=undefined){
+	var _walk = function*(obj, path=p, type=undefined){
 		path = path instanceof Array ?
 				path
 			: typeof(path) == 'string' ?
@@ -451,20 +459,22 @@ function(handler, path=[], options={}){
 			: [] 
 		type = type || 'root'
 
-		var handlers = options.handlers || module.HANDLERS
+		var handlers = options.handlers || module.WALK_HANDLERS
 		// format:
 		// 	[
 		// 		[<handler-name>, [ [<key>, <value>], .. ]],
 		// 		..
 		// 	]
 		var next = Object.entries(handlers)
+			// NOTE: we need this to support throwing STOP...
+			.iter()
 			.filter(function([n, h]){
 				return h.walk 
 					&& !options['no' + n.capitalize()] })
 			.map(function([n, h]){
 				// XXX should we call the handler(..) once per set of 
 				// 		next values (i.e. attrs, items, ...)???
-				var res = h.walk.call(obj)
+				var res = h.walk(obj)
 				return res 
 					&& [n, res] })
 			.filter(function(e){
@@ -478,11 +488,10 @@ function(handler, path=[], options={}){
 				yield handler(obj, path, next, type) }
 			// next/children...
 			yield* next
-				.iter()
 				.map(function*([type, items]){
 					yield* items
 						.iter()
-						.map(function([key, value]){ 
+						.map(function*([key, value]){ 
 							yield* _walk(value, path.concat(key), type) }) })
 		// handle STOP...
 		} catch(err){
@@ -536,7 +545,7 @@ function(p){
 						: res.pop()) 
 					+ ':CONTENT'
 				// special case: '' as key...
-				: e == '' ?
+				: e === '' ?
 					"''"
 				: e
 			res.push(e)
@@ -1053,6 +1062,52 @@ console.log(JSON.stringify(diff(
 	[1,2,3],
 ), null, '    '))
 //*/
+
+
+console.log('---')
+
+var walker = walk(function(e, p){
+	return [
+		p,
+		e == null ?
+			e
+		: typeof(e) == 'object' ?
+			{type: e.constructor.name}
+		: e,
+	] })
+
+console.log([
+	/*
+	...walker(o)
+	/*/
+	...walker({
+			// literals...
+			null: null,
+			undefined: undefined,
+			NaN: NaN,
+			true: true,
+			false: false,
+			number: 1, 
+			string: 'string', 
+
+			// containers...
+			array: [1,2,3], 
+			object: {a:1},
+
+			// encapsulated containers...
+			set: new Set([1, 2, 3]),
+			map: new Map([[1, 2], [3, 4]]),
+
+			// recursive...
+			// XXX
+
+			// mixed...
+			array_with_attrs: Object.assign(
+				[1,2,3], 
+				{a: 333}),
+		})
+	//*/
+		.chain(serializePaths) ])
 
 
 
