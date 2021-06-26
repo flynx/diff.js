@@ -827,7 +827,12 @@ console.log('---')
 // XXX test functions...
 console.log([
 	//...objectWalker(o)
-	...objectWalker(['this\nis\nsome\n\ttext'])
+	...objectWalker(
+			`This
+			is
+			a
+			multiline
+			text`)
 		.chain(serializePaths) ])
 
 
