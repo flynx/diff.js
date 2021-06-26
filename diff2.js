@@ -206,39 +206,47 @@ function(handler, listers, path=[], options={}){
 	return walk }
 
 
+// XXX should we move this to a separate lib???
 var Walk =
 module.Walk =
 object.Constructor('Walk', {
 	options: {},
 
-	path: undefined,
-
 	handler: undefined,
 	listers: undefined,
 
-	// XXX handler is required...
+	normalizePath: undefined,
+
+	// XXX revise .listers format...
+	// 		...do we need nesting???
+	// 		......should it just be an object with a set of methods??
 	__init__: function(handler, listers, options){
+		// sanity check...
+		if(typeof(handler) != 'function'){
+			throw new Error('Walk(..): a callable handler us required.') }
 		this.handler =
 			handler instanceof types.Generator ?
 				handler
-				: function*(){ yield handler(...arguments) }
+				: Object.assign(
+					function*(){ yield handler(...arguments) },
+					{toString: function(){ return handler.toString() }})
 		this.listers = listers || {}
 		options = options || {}
-		this.options = 
+		options = this.options = 
 			!object.parentOf(this.options, options) ?
 				options
 				: Object.assign(
+					// inherit from .constructor.prototype.options...
 					{__proto__: this.options},
-					options) },
-	// XXX should str2path(..) be a static method????
+					options) 
+		options.normalizePath
+			&& (this.normalizePath = options.normalizePath) },
 	__call__: function*(_, obj, path=[], type='root', seen=new Map()){
 		var that = this
 		var options = this.options
-		path = path instanceof Array ?
-				path
-			: typeof(path) == 'string' ?
-				str2path(path)
-			: [] 
+		path = this.normalizePath ? 
+			this.normalizePath(path) 
+			: path
 		// handle reference loops...
 		if(seen.has(obj)){
 			yield* this.handler(obj, path, seen.get(obj), 'LINK')
@@ -302,11 +310,19 @@ module.OBJECT_LISTERS = {
 	set: {
 		list: function(obj){
 			return obj instanceof Set
-				&& [...obj.values()].entries() } },
+				&& [...obj.values()]
+					.entries() 
+					.map(function([k, v]){
+						return [[module.CONTENT, k], v] }) } },
 	map: {
 		list: function(obj){
 			return obj instanceof Map
-				&& obj.entries() } },
+				&& obj.entries()
+					.map(function*([k, v], i){
+						yield* [
+							[[module.CONTENT, i+'@key'], k],
+							[[module.CONTENT, i], v],
+						] }) } },
 
 	/* XXX should we handle array elements differently???
 	//		...these to simply mark attr type for the handler(..), not 
@@ -340,14 +356,17 @@ module.OBJECT_LISTERS = {
 }
 
 // XXX rename -- objectWalker(..) ???
-var walker = 
-module.walker =
+var objectWalker = 
+module.objectWalker =
 //walk(
 Walk(
 	function(obj, path, next, type){
 		// text...
 		if(typeof(obj) == 'string' && obj.includes('\n')){
-			next.push(['text', obj.split(/\n/g).entries()])
+			next.push(['text', 
+				obj.split(/\n/g).entries()
+					.map(function([k, v]){
+						return [[module.CONTENT, k], v] }) ])
 			return [path, {type: 'text'}] }
 		// other types...
 		return type == 'LINK' ?
@@ -360,7 +379,13 @@ Walk(
 					{type: obj.constructor.name}
 				: obj,
 			] }, 
-	module.OBJECT_LISTERS)
+	module.OBJECT_LISTERS,
+	{ normalizePath: function(path){
+		return path instanceof Array ?
+				path
+			: typeof(path) == 'string' ?
+				str2path(path)
+			: [] }, })
 
 
 
@@ -876,7 +901,7 @@ o.object.y = o.object
 
 // generate spec...
 console.log([
-	...walker(o)
+	...objectWalker(o)
 		.chain(
 			serializePaths, 
 		)])
@@ -884,7 +909,7 @@ console.log([
 
 /*/ use spec to create a new object...
 console.log('\n\n---\n', 
-	[...walker(write(null, walker(o)))
+	[...objectWalker(write(null, objectWalker(o)))
 		.chain(
 			serializePaths, 
 			// make the output a bit more compact...
@@ -905,8 +930,8 @@ console.log(
 console.log(
 	diffSections(A, B))
 
-console.log([...walker(A).chain(serializePaths)])
-console.log([...walker(B).chain(serializePaths)])
+console.log([...objectWalker(A).chain(serializePaths)])
+console.log([...objectWalker(B).chain(serializePaths)])
 
 // XXX
 console.log(diff(B, A))
@@ -924,8 +949,8 @@ console.log('---')
 
 // XXX test functions...
 console.log([
-	//...walker(o)
-	...walker(['this\nis\nsome\n\ttext'])
+	//...objectWalker(o)
+	...objectWalker(['this\nis\nsome\n\ttext'])
 		.chain(serializePaths) ])
 
 
