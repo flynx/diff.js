@@ -135,7 +135,7 @@ object.Constructor('Walk', {
 				.iter()
 				.filter(function([n, h]){
 					return (typeof(h) == 'function' || h.list)
-						&& !this['no' + n.capitalize()] })
+						&& !that['no' + n.capitalize()] })
 				.map(function([n, h]){
 					var res = typeof(h) == 'function' ?
 						h.call(that.listers, obj)
@@ -189,6 +189,16 @@ module.OBJECT_LISTERS = {
 		if(obj === null){
 			throw module.STOP } },
 
+	/* XXX not sure if this should be here...
+	// XXX also this is diff-specific...
+	text: function(obj){
+		return typeof(obj) == 'string' 
+			&& obj.includes('\n')
+			&& obj.split(/\n/g).entries()
+				.map(function([k, v]){
+					return [[module.CONTENT, k], v] }) },
+	//*/
+
 	set: function(obj){
 		return obj instanceof Set
 			&& [...obj.values()]
@@ -231,12 +241,16 @@ module.OBJECT_LISTERS = {
 }
 
 // XXX add function support...
+// XXX would be nice to be able to extend this...
+// 		e.g. make this a generic walker and for a diff-specific walker add
+// 		text support...
 var objectWalker = 
 module.objectWalker =
 Walk(
 	function(obj, path, next, type){
 		// text...
 		// XXX should this be here or in OBJECT_LISTERS???
+		// XXX also this is diff-specific...
 		if(typeof(obj) == 'string' && obj.includes('\n')){
 			next.push(['text', 
 				obj.split(/\n/g).entries()
@@ -824,9 +838,7 @@ console.log(JSON.stringify(diff(
 
 console.log('---')
 
-// XXX test functions...
 console.log([
-	//...objectWalker(o)
 	...objectWalker(
 			`This
 			is
