@@ -405,10 +405,29 @@ module.WALK_HANDLERS = {
 			return obj instanceof Map
 				&& obj.entries() } },
 
+	/* XXX should we handle array elements differently???
+	//		...these to simply mark attr type for the handler(..), not 
+	//		sure if the added complexity is worth it... (???)
+	array: {
+		walk: function(obj){
+			return obj instanceof Array
+				&& [...Object.entries(obj)]
+					.filter(function(e){ 
+						return !isNaN(parseInt(e)) }) }},
+	attr: {
+		walk: function(obj){
+			return obj instanceof Array ?
+				[...Object.entries(obj)]
+					.filter(function(e){ 
+						return isNaN(parseInt(e)) })
+				: typeof(obj) == 'object'
+					&& [...Object.entries(obj)] } },
+	/*/
 	attr: {
 		walk: function(obj){
 			return typeof(obj) == 'object'
 				&& [...Object.entries(obj)] } },
+	//*/
 	proto: {
 		walk: function(obj){
 			return typeof(obj) == 'object'
@@ -431,6 +450,7 @@ module.WALK_HANDLERS = {
 //		-> <value>
 //		!> STOP(<value>)
 //
+//	Link handling...
 //	<handler>(<obj>, <path>, <orig-path>, 'LINK')
 //		-> <value>
 //		!> STOP(<value>)
