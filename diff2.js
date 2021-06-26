@@ -89,54 +89,6 @@ module.CONTENT =
 //---------------------------------------------------------------------
 
 
-var WALK_HANDLERS = 
-module.WALK_HANDLERS = {
-	// prevent dissecting null...
-	null: {
-		walk: function(obj){
-			if(obj === null){
-				throw module.STOP } } },
-
-	set: {
-		walk: function(obj){
-			return obj instanceof Set
-				&& [...obj.values()].entries() } },
-	map: {
-		walk: function(obj){
-			return obj instanceof Map
-				&& obj.entries() } },
-
-	/* XXX should we handle array elements differently???
-	//		...these to simply mark attr type for the handler(..), not 
-	//		sure if the added complexity is worth it... (???)
-	array: {
-		walk: function(obj){
-			return obj instanceof Array
-				&& [...Object.entries(obj)]
-					.filter(function(e){ 
-						return !isNaN(parseInt(e)) }) }},
-	attr: {
-		walk: function(obj){
-			return obj instanceof Array ?
-				[...Object.entries(obj)]
-					.filter(function(e){ 
-						return isNaN(parseInt(e)) })
-				: typeof(obj) == 'object'
-					&& [...Object.entries(obj)] } },
-	/*/
-	attr: {
-		walk: function(obj){
-			return typeof(obj) == 'object'
-				&& Object.entries(obj) } },
-	//*/
-	proto: {
-		walk: function(obj){
-			return typeof(obj) == 'object'
-				&& obj.constructor.prototype !== obj.__proto__
-				&& [['__proto__', obj.__proto__]] }, },
-
-}
-
 //	
 //	walk(<handler>[, <options>])
 //	walk(<handler>, <path>[, <options>])
@@ -167,32 +119,37 @@ module.WALK_HANDLERS = {
 // 		move the formatters and other stuff out...
 // 		...not sure if this is simpler yet... 
 // XXX can we decouple this from what we are walking???
+// XXX should this be a constructor???
+// 		...for better introspection and instanceof testing...
 var walk =
 module.walk =
-function(handler, path=[], options={}){
+function(handler, listers, path=[], options={}){
 	// normalize the handler...
 	var _handler = 
 		handler instanceof types.Generator ?
 			handler
 			: function*(){ yield handler(...arguments) }
+	listers = 
+		options.listers || listers
 	// parse args...
 	options = 
 		typeof(path) == 'object' && !(path instanceof Array) ?
 			path
 			: options
 	options = 
-		// inherit options from HANDLE_DEFAULTS of we don't already...
+		// XXX inherit options from HANDLE_DEFAULTS of we don't already...
+		// XXX do we need to do this???
 		!object.parentOf(module.HANDLE_DEFAULTS, options) ?
 			Object.assign(
 				{ __proto__: module.HANDLE_DEFAULTS },
 				options)
 			: options
-	var handlers = options.handlers || module.WALK_HANDLERS
-	// XXX do we need this in options???
-	var seen = options.seen = options.seen || new Map()	
-	var p = path
 
-	var _walk = function*(obj, path=p, type=undefined){
+	var p = path
+	// NOTE: we are intentionally shadowing module.walk(..) here and thus 
+	// 		use the shadowing function recursively. This is done to 
+	// 		preserve the name for better introspection...
+	var walk = function*(obj, path=p, type=undefined, seen){
 		path = path instanceof Array ?
 				path
 			: typeof(path) == 'string' ?
@@ -201,6 +158,7 @@ function(handler, path=[], options={}){
 		type = type || 'root'
 
 		// handle reference loops...
+		seen = seen || new Map()	
 		if(seen.has(obj)){
 			yield* _handler(obj, path, seen.get(obj), 'LINK')
 			return }
@@ -213,23 +171,20 @@ function(handler, path=[], options={}){
 		// 		..
 		// 	]
 		var next = 
-			[...Object.entries(handlers)
+			[...Object.entries(listers)
 				// NOTE: we need this to support throwing STOP...
 				.iter()
 				.filter(function([n, h]){
-					return h.walk 
+					return h.list 
 						&& !options['no' + n.capitalize()] })
 				.map(function([n, h]){
-					// XXX should we call the handler(..) once per set of 
-					// 		next values (i.e. attrs, items, ...)???
-					var res = h.walk(obj)
+					var res = h.list(obj)
 					return res 
 						&& [n, res] })
 				.filter(function(e){
 					return !!e }) ]
 
 		try {
-			// main object...
 			yield* _handler(obj, path, next, type)
 			// next/children...
 			yield* next
@@ -238,7 +193,7 @@ function(handler, path=[], options={}){
 					yield* items
 						.iter()
 						.map(function*([key, value]){ 
-							yield* _walk(value, path.concat(key), type) }) })
+							yield* walk(value, path.concat(key), type, seen) }) })
 		// handle STOP...
 		} catch(err){
 			if(err === module.STOP){
@@ -248,27 +203,164 @@ function(handler, path=[], options={}){
 				return }
 			throw err } } 
 
-	return _walk }
+	return walk }
 
 
-// XXX rename...
+var Walk =
+module.Walk =
+object.Constructor('Walk', {
+	options: {},
+
+	path: undefined,
+
+	handler: undefined,
+	listers: undefined,
+
+	// XXX handler is required...
+	__init__: function(handler, listers, options){
+		this.handler =
+			handler instanceof types.Generator ?
+				handler
+				: function*(){ yield handler(...arguments) }
+		this.listers = listers || {}
+		options = options || {}
+		this.options = 
+			!object.parentOf(this.options, options) ?
+				options
+				: Object.assign(
+					{__proto__: this.options},
+					options) },
+	// XXX should str2path(..) be a static method????
+	__call__: function*(_, obj, path=[], type='root', seen=new Map()){
+		var that = this
+		var options = this.options
+		path = path instanceof Array ?
+				path
+			: typeof(path) == 'string' ?
+				str2path(path)
+			: [] 
+		// handle reference loops...
+		if(seen.has(obj)){
+			yield* this.handler(obj, path, seen.get(obj), 'LINK')
+			return }
+		typeof(obj) == 'object'
+			&& seen.set(obj, path)
+
+		// list...
+		//
+		// format:
+		// 	[
+		// 		[<handler-name>, [ [<key>, <value>], .. ]],
+		// 		..
+		// 	]
+		var next = 
+			[...Object.entries(this.listers || {})
+				// NOTE: we need this to support throwing STOP...
+				.iter()
+				.filter(function([n, h]){
+					return h.list 
+						&& !options['no' + n.capitalize()] })
+				.map(function([n, h]){
+					var res = h.list(obj)
+					return res 
+						&& [n, res] })
+				.filter(function(e){
+					return !!e }) ]
+		// walk...
+		try {
+			yield* this.handler(obj, path, next, type)
+			// next/children...
+			yield* next
+				.iter()
+				.map(function*([type, items]){
+					yield* items
+						.iter()
+						.map(function*([key, value]){ 
+							yield* that(value, path.concat(key), type, seen) }) })
+		// handle STOP...
+		} catch(err){
+			if(err === module.STOP){
+				return
+			} else if(err instanceof module.STOP){
+				yield err.value
+				return }
+			throw err } },
+})
+
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+var OBJECT_LISTERS = 
+module.OBJECT_LISTERS = {
+	// prevent dissecting null...
+	null: {
+		list: function(obj){
+			if(obj === null){
+				throw module.STOP } } },
+
+	set: {
+		list: function(obj){
+			return obj instanceof Set
+				&& [...obj.values()].entries() } },
+	map: {
+		list: function(obj){
+			return obj instanceof Map
+				&& obj.entries() } },
+
+	/* XXX should we handle array elements differently???
+	//		...these to simply mark attr type for the handler(..), not 
+	//		sure if the added complexity is worth it... (???)
+	array: {
+		list: function(obj){
+			return obj instanceof Array
+				&& [...Object.entries(obj)]
+					.filter(function(e){ 
+						return !isNaN(parseInt(e)) }) }},
+	attr: {
+		list: function(obj){
+			return obj instanceof Array ?
+				[...Object.entries(obj)]
+					.filter(function(e){ 
+						return isNaN(parseInt(e)) })
+				: typeof(obj) == 'object'
+					&& [...Object.entries(obj)] } },
+	/*/
+	attr: {
+		list: function(obj){
+			return typeof(obj) == 'object'
+				&& Object.entries(obj) } },
+	//*/
+	proto: {
+		list: function(obj){
+			return typeof(obj) == 'object'
+				&& obj.constructor.prototype !== obj.__proto__
+				&& [['__proto__', obj.__proto__]] }, },
+
+}
+
+// XXX rename -- objectWalker(..) ???
 var walker = 
-walk(function(obj, path, next, type){
-	// text...
-	if(typeof(obj) == 'string' && obj.includes('\n')){
-		next.push(['text', obj.split(/\n/g).entries()])
-		return [path, {type: 'text'}] }
-
-	return type == 'LINK' ?
-			[path, 'LINK', next]
-		: [
-			path,
-			obj == null ?
-				obj
-			: typeof(obj) == 'object' ?
-				{type: obj.constructor.name}
-			: obj,
-		] })
+module.walker =
+//walk(
+Walk(
+	function(obj, path, next, type){
+		// text...
+		if(typeof(obj) == 'string' && obj.includes('\n')){
+			next.push(['text', obj.split(/\n/g).entries()])
+			return [path, {type: 'text'}] }
+		// other types...
+		return type == 'LINK' ?
+				[path, 'LINK', next]
+			: [
+				path,
+				obj == null ?
+					obj
+				: typeof(obj) == 'object' ?
+					{type: obj.constructor.name}
+				: obj,
+			] }, 
+	module.OBJECT_LISTERS)
 
 
 
