@@ -426,7 +426,7 @@ module.WALK_HANDLERS = {
 	attr: {
 		walk: function(obj){
 			return typeof(obj) == 'object'
-				&& [...Object.entries(obj)] } },
+				&& Object.entries(obj) } },
 	//*/
 	proto: {
 		walk: function(obj){
@@ -434,17 +434,13 @@ module.WALK_HANDLERS = {
 				&& obj.constructor.prototype !== obj.__proto__
 				&& [['__proto__', obj.__proto__]] }, },
 
-	text: {
-		walk: function(obj){
-			return typeof(obj) == 'string'
-				&& obj.includes('\n') 
-				&& obj.split(/\n/g) } },
 }
 
 //	
 //	walk(<handler>[, <options>])
 //	walk(<handler>, <path>[, <options>])
 //		-> <walker>
+//
 //
 //	<handler>(<obj>, <path>, <next>, <type>)
 //		-> <value>
@@ -454,6 +450,7 @@ module.WALK_HANDLERS = {
 //	<handler>(<obj>, <path>, <orig-path>, 'LINK')
 //		-> <value>
 //		!> STOP(<value>)
+//
 //
 //	<walker>(<obj>)
 //	<walker>(<obj>, <path>)
@@ -468,7 +465,11 @@ module.WALK_HANDLERS = {
 var walk =
 module.walk =
 function(handler, path=[], options={}){
-	var p = path
+	// normalize the handler...
+	var _handler = 
+		handler instanceof types.Generator ?
+			handler
+			: function*(){ yield handler(...arguments) }
 	// parse args...
 	options = 
 		typeof(path) == 'object' && !(path instanceof Array) ?
@@ -481,12 +482,10 @@ function(handler, path=[], options={}){
 				{ __proto__: module.HANDLE_DEFAULTS },
 				options)
 			: options
-
-	var _handler = function*(){
-		if(handler instanceof types.Generator){
-			yield* handler(...arguments)
-		} else {
-			yield handler(...arguments) } }
+	var handlers = options.handlers || module.WALK_HANDLERS
+	// XXX do we need this in options???
+	var seen = options.seen = options.seen || new Map()	
+	var p = path
 
 	var _walk = function*(obj, path=p, type=undefined){
 		path = path instanceof Array ?
@@ -496,41 +495,40 @@ function(handler, path=[], options={}){
 			: [] 
 		type = type || 'root'
 
-		// handle loops...
-		var seen = options.seen =
-		   options.seen || new Map()	
+		// handle reference loops...
 		if(seen.has(obj)){
 			yield* _handler(obj, path, seen.get(obj), 'LINK')
 			return }
 		typeof(obj) == 'object'
 			&& seen.set(obj, path)
 
-		var handlers = options.handlers || module.WALK_HANDLERS
 		// format:
 		// 	[
 		// 		[<handler-name>, [ [<key>, <value>], .. ]],
 		// 		..
 		// 	]
-		var next = Object.entries(handlers)
-			// NOTE: we need this to support throwing STOP...
-			.iter()
-			.filter(function([n, h]){
-				return h.walk 
-					&& !options['no' + n.capitalize()] })
-			.map(function([n, h]){
-				// XXX should we call the handler(..) once per set of 
-				// 		next values (i.e. attrs, items, ...)???
-				var res = h.walk(obj)
-				return res 
-					&& [n, res] })
-			.filter(function(e){
-				return !!e })
+		var next = 
+			[...Object.entries(handlers)
+				// NOTE: we need this to support throwing STOP...
+				.iter()
+				.filter(function([n, h]){
+					return h.walk 
+						&& !options['no' + n.capitalize()] })
+				.map(function([n, h]){
+					// XXX should we call the handler(..) once per set of 
+					// 		next values (i.e. attrs, items, ...)???
+					var res = h.walk(obj)
+					return res 
+						&& [n, res] })
+				.filter(function(e){
+					return !!e }) ]
 
 		try {
 			// main object...
 			yield* _handler(obj, path, next, type)
 			// next/children...
 			yield* next
+				.iter()
 				.map(function*([type, items]){
 					yield* items
 						.iter()
@@ -1109,21 +1107,29 @@ console.log(JSON.stringify(diff(
 
 console.log('---')
 
-var walker = walk(function(e, p, n, t){
-	return t == 'LINK' ?
-		[p, 'LINK', n]
+var walker = walk(function(obj, path, next, type){
+	// text...
+	if(typeof(obj) == 'string' && obj.includes('\n')){
+		next.push(['text', obj.split(/\n/g).entries()])
+		return [path, {type: 'text'}] }
+
+	return type == 'LINK' ?
+			[path, 'LINK', next]
+		//: type == 'text' ?
+		//	[path, {type: 'text'}]
 		: [
-			p,
-			e == null ?
-				e
-			: typeof(e) == 'object' ?
-				{type: e.constructor.name}
-			: e,
+			path,
+			obj == null ?
+				obj
+			: typeof(obj) == 'object' ?
+				{type: obj.constructor.name}
+			: obj,
 		] })
 
 // XXX test functions...
 console.log([
-	...walker(o)
+	//...walker(o)
+	...walker(['this\nis\nsome\n\ttext'])
 		.chain(serializePaths) ])
 
 
