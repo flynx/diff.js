@@ -88,124 +88,6 @@ module.CONTENT =
 
 //---------------------------------------------------------------------
 
-
-//	
-//	walk(<handler>[, <options>])
-//	walk(<handler>, <path>[, <options>])
-//		-> <walker>
-//
-//
-//	<handler>(<obj>, <path>, <next>, <type>)
-//		-> <value>
-//		!> STOP(<value>)
-//
-//	Link handling...
-//	<handler>(<obj>, <path>, <orig-path>, 'LINK')
-//		-> <value>
-//		!> STOP(<value>)
-//
-//
-//	<walker>(<obj>)
-//	<walker>(<obj>, <path>)
-//		-> <generator>
-//			-> <value>
-//
-//
-//	<next> is a mutable array that can be edited it <handler> affecting
-//	further walking (a-la Python's walk(..)).
-//
-//
-// XXX the idea here is to try to decouple the walk from the format and 
-// 		move the formatters and other stuff out...
-// 		...not sure if this is simpler yet... 
-// XXX can we decouple this from what we are walking???
-// XXX should this be a constructor???
-// 		...for better introspection and instanceof testing...
-var walk =
-module.walk =
-function(handler, listers, path=[], options={}){
-	// normalize the handler...
-	var _handler = 
-		handler instanceof types.Generator ?
-			handler
-			: function*(){ yield handler(...arguments) }
-	listers = 
-		options.listers || listers
-	// parse args...
-	options = 
-		typeof(path) == 'object' && !(path instanceof Array) ?
-			path
-			: options
-	options = 
-		// XXX inherit options from HANDLE_DEFAULTS of we don't already...
-		// XXX do we need to do this???
-		!object.parentOf(module.HANDLE_DEFAULTS, options) ?
-			Object.assign(
-				{ __proto__: module.HANDLE_DEFAULTS },
-				options)
-			: options
-
-	var p = path
-	// NOTE: we are intentionally shadowing module.walk(..) here and thus 
-	// 		use the shadowing function recursively. This is done to 
-	// 		preserve the name for better introspection...
-	var walk = function*(obj, path=p, type=undefined, seen){
-		path = path instanceof Array ?
-				path
-			: typeof(path) == 'string' ?
-				str2path(path)
-			: [] 
-		type = type || 'root'
-
-		// handle reference loops...
-		seen = seen || new Map()	
-		if(seen.has(obj)){
-			yield* _handler(obj, path, seen.get(obj), 'LINK')
-			return }
-		typeof(obj) == 'object'
-			&& seen.set(obj, path)
-
-		// format:
-		// 	[
-		// 		[<handler-name>, [ [<key>, <value>], .. ]],
-		// 		..
-		// 	]
-		var next = 
-			[...Object.entries(listers)
-				// NOTE: we need this to support throwing STOP...
-				.iter()
-				.filter(function([n, h]){
-					return h.list 
-						&& !options['no' + n.capitalize()] })
-				.map(function([n, h]){
-					var res = h.list(obj)
-					return res 
-						&& [n, res] })
-				.filter(function(e){
-					return !!e }) ]
-
-		try {
-			yield* _handler(obj, path, next, type)
-			// next/children...
-			yield* next
-				.iter()
-				.map(function*([type, items]){
-					yield* items
-						.iter()
-						.map(function*([key, value]){ 
-							yield* walk(value, path.concat(key), type, seen) }) })
-		// handle STOP...
-		} catch(err){
-			if(err === module.STOP){
-				return
-			} else if(err instanceof module.STOP){
-				yield err.value
-				return }
-			throw err } } 
-
-	return walk }
-
-
 // XXX should we move this to a separate lib???
 var Walk =
 module.Walk =
@@ -355,13 +237,13 @@ module.OBJECT_LISTERS = {
 
 }
 
-// XXX rename -- objectWalker(..) ???
+// XXX add function support...
 var objectWalker = 
 module.objectWalker =
-//walk(
 Walk(
 	function(obj, path, next, type){
 		// text...
+		// XXX should this be here or in OBJECT_LISTERS???
 		if(typeof(obj) == 'string' && obj.includes('\n')){
 			next.push(['text', 
 				obj.split(/\n/g).entries()
