@@ -88,44 +88,30 @@ module.CONTENT =
 
 //---------------------------------------------------------------------
 
+// XXX need to think about extension use-cases...
 // XXX should we move this to a separate lib???
 var Walk =
 module.Walk =
 object.Constructor('Walk', {
-	options: {},
-
 	handler: undefined,
 	listers: undefined,
-
 	normalizePath: undefined,
 
-	// XXX revise .listers format...
-	// 		...do we need nesting???
-	// 		......should it just be an object with a set of methods??
-	__init__: function(handler, listers, options){
+	// NOTE: handler argument always overwrites the value given in options...
+	__init__: function(handler, options){
 		// sanity check...
 		if(typeof(handler) != 'function'){
 			throw new Error('Walk(..): a callable handler us required.') }
+		options
+			&& Object.assign(this, options) 
 		this.handler =
 			handler instanceof types.Generator ?
 				handler
 				: Object.assign(
 					function*(){ yield handler(...arguments) },
-					{toString: function(){ return handler.toString() }})
-		this.listers = listers || {}
-		options = options || {}
-		options = this.options = 
-			!object.parentOf(this.options, options) ?
-				options
-				: Object.assign(
-					// inherit from .constructor.prototype.options...
-					{__proto__: this.options},
-					options) 
-		options.normalizePath
-			&& (this.normalizePath = options.normalizePath) },
+					{toString: function(){ return handler.toString() }}) },
 	__call__: function*(_, obj, path=[], type='root', seen=new Map()){
 		var that = this
-		var options = this.options
 		path = this.normalizePath ? 
 			this.normalizePath(path) 
 			: path
@@ -148,10 +134,12 @@ object.Constructor('Walk', {
 				// NOTE: we need this to support throwing STOP...
 				.iter()
 				.filter(function([n, h]){
-					return h.list 
-						&& !options['no' + n.capitalize()] })
+					return (typeof(h) == 'function' || h.list)
+						&& !this['no' + n.capitalize()] })
 				.map(function([n, h]){
-					var res = h.list(obj)
+					var res = typeof(h) == 'function' ?
+						h.call(that.listers, obj)
+						: h.list(obj)
 					return res 
 						&& [n, res] })
 				.filter(function(e){
@@ -181,60 +169,65 @@ object.Constructor('Walk', {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+//
+// Format:
+// 	{
+// 		<type>: <func>,
+//
+// 		<type>: {
+// 			list: <func>,
+// 			...
+// 		},
+//
+// 		...
+// 	}
+//
 var OBJECT_LISTERS = 
 module.OBJECT_LISTERS = {
 	// prevent dissecting null...
-	null: {
-		list: function(obj){
-			if(obj === null){
-				throw module.STOP } } },
+	null: function(obj){
+		if(obj === null){
+			throw module.STOP } },
 
-	set: {
-		list: function(obj){
-			return obj instanceof Set
-				&& [...obj.values()]
-					.entries() 
-					.map(function([k, v]){
-						return [[module.CONTENT, k], v] }) } },
-	map: {
-		list: function(obj){
-			return obj instanceof Map
-				&& obj.entries()
-					.map(function*([k, v], i){
-						yield* [
-							[[module.CONTENT, i+'@key'], k],
-							[[module.CONTENT, i], v],
-						] }) } },
+	set: function(obj){
+		return obj instanceof Set
+			&& [...obj.values()]
+				.entries() 
+				.map(function([k, v]){
+					return [[module.CONTENT, k], v] })  },
+	map: function(obj){
+		return obj instanceof Map
+			&& obj.entries()
+				.map(function*([k, v], i){
+					yield* [
+						[[module.CONTENT, i+'@key'], k],
+						[[module.CONTENT, i], v],
+					] }) },
 
 	/* XXX should we handle array elements differently???
 	//		...these to simply mark attr type for the handler(..), not 
 	//		sure if the added complexity is worth it... (???)
-	array: {
-		list: function(obj){
-			return obj instanceof Array
-				&& [...Object.entries(obj)]
-					.filter(function(e){ 
-						return !isNaN(parseInt(e)) }) }},
-	attr: {
-		list: function(obj){
-			return obj instanceof Array ?
-				[...Object.entries(obj)]
-					.filter(function(e){ 
-						return isNaN(parseInt(e)) })
-				: typeof(obj) == 'object'
-					&& [...Object.entries(obj)] } },
+	array: function(obj){
+		return obj instanceof Array
+			&& [...Object.entries(obj)]
+				.filter(function(e){ 
+					return !isNaN(parseInt(e)) }) },
+	attr: function(obj){
+		return obj instanceof Array ?
+			[...Object.entries(obj)]
+				.filter(function(e){ 
+					return isNaN(parseInt(e)) })
+			: typeof(obj) == 'object'
+				&& [...Object.entries(obj)] },
 	/*/
-	attr: {
-		list: function(obj){
-			return typeof(obj) == 'object'
-				&& Object.entries(obj) } },
+	attr: function(obj){
+		return typeof(obj) == 'object'
+			&& Object.entries(obj) },
 	//*/
-	proto: {
-		list: function(obj){
-			return typeof(obj) == 'object'
-				&& obj.constructor.prototype !== obj.__proto__
-				&& [['__proto__', obj.__proto__]] }, },
-
+	proto: function(obj){
+		return typeof(obj) == 'object'
+			&& obj.constructor.prototype !== obj.__proto__
+			&& [['__proto__', obj.__proto__]] },
 }
 
 // XXX add function support...
@@ -261,13 +254,15 @@ Walk(
 					{type: obj.constructor.name}
 				: obj,
 			] }, 
-	module.OBJECT_LISTERS,
-	{ normalizePath: function(path){
-		return path instanceof Array ?
-				path
-			: typeof(path) == 'string' ?
-				str2path(path)
-			: [] }, })
+	{ 
+		listers: module.OBJECT_LISTERS,
+		normalizePath: function(path){
+			return path instanceof Array ?
+					path
+				: typeof(path) == 'string' ?
+					str2path(path)
+				: [] }, 
+	})
 
 
 
