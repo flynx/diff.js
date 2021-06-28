@@ -88,6 +88,17 @@ module.CONTENT =
 
 //---------------------------------------------------------------------
 
+//
+// 	Walk(<handler>[, <options>])
+// 		-> <walker>
+//
+// 	Walk(<options>)
+// 		-> <walker>
+//
+//
+// NOTE: in the Walk(<options>) case, <options> must contain a .handler
+// 		function.
+//
 // XXX need to think about extension use-cases...
 // XXX should we move this to a separate lib???
 var Walk =
@@ -99,6 +110,10 @@ object.Constructor('Walk', {
 
 	// NOTE: handler argument always overwrites the value given in options...
 	__init__: function(handler, options){
+		// handle Walk(<options>) case...
+		if(arguments.length == 1 && typeof(handler) != 'function'){
+			options = handler
+			handler = options.handler }
 		// sanity check...
 		if(typeof(handler) != 'function'){
 			throw new Error('Walk(..): a callable handler us required.') }
@@ -190,6 +205,7 @@ module.OBJECT_LISTERS = {
 			throw module.STOP } },
 
 	/* XXX not sure if this should be here...
+	// XXX TEXT...
 	// XXX also this is diff-specific...
 	text: function(obj){
 		return typeof(obj) == 'string' 
@@ -242,13 +258,14 @@ module.OBJECT_LISTERS = {
 
 // XXX add function support...
 // XXX would be nice to be able to extend this...
-// 		e.g. make this a generic walker and for a diff-specific walker add
-// 		text support...
+// 		e.g. make this a generic walker and for a diff-specific walker 
+// 		add text support...
 var objectWalker = 
 module.objectWalker =
-Walk(
-	function(obj, path, next, type){
+Walk({ 
+	handler: function(obj, path, next, type){
 		// text...
+		// XXX TEXT...
 		// XXX should this be here or in OBJECT_LISTERS???
 		// XXX also this is diff-specific...
 		if(typeof(obj) == 'string' && obj.includes('\n')){
@@ -266,17 +283,20 @@ Walk(
 					obj
 				: typeof(obj) == 'object' ?
 					{type: obj.constructor.name}
+				// XXX TEXT...
+				//: typeof(obj) == 'string' && obj.includes('\n') ?
+				//	{type: 'text'}
 				: obj,
 			] }, 
-	{ 
-		listers: module.OBJECT_LISTERS,
-		normalizePath: function(path){
-			return path instanceof Array ?
-					path
-				: typeof(path) == 'string' ?
-					str2path(path)
-				: [] }, 
-	})
+	listers: module.OBJECT_LISTERS,
+	// support string paths...
+	normalizePath: function(path){
+		return path instanceof Array ?
+				path
+			: typeof(path) == 'string' ?
+				str2path(path)
+			: [] }, 
+})
 
 
 
