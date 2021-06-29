@@ -204,14 +204,6 @@ module.OBJECT_LISTERS = {
 		if(obj === null){
 			throw module.STOP } },
 
-	// XXX this is diff-specific...
-	text: function(obj){
-		return typeof(obj) == 'string' 
-			&& obj.includes('\n')
-			&& obj.split(/\n/g).entries()
-				.map(function([k, v]){
-					return [[module.CONTENT, k], v] }) },
-
 	set: function(obj){
 		return obj instanceof Set
 			&& [...obj.values()]
@@ -253,28 +245,24 @@ module.OBJECT_LISTERS = {
 			&& [['__proto__', obj.__proto__]] },
 }
 
+
 // XXX add function support...
-// XXX would be nice to be able to extend this...
-// 		e.g. make this a generic walker and for a diff-specific walker 
-// 		add text support...
+// XXX this needs .name set correctly...
 var objectWalker = 
 module.objectWalker =
 Walk({ 
-	//noText: true,
 	handler: function(obj, path, next, type){
 		return type == 'LINK' ?
-				[path, 'LINK', next]
+			[path, 'LINK', next]
 			: [
 				path,
+				// null...
 				obj == null ?
 					obj
+				// objects...
 				: typeof(obj) == 'object' ?
 					{type: obj.constructor.name}
-				// text...
-				: !this.noText 
-						&& typeof(obj) == 'string' 
-						&& obj.includes('\n') ?
-					{type: 'text'}
+				// primitives...
 				: obj,
 			] }, 
 	listers: module.OBJECT_LISTERS,
@@ -286,6 +274,31 @@ Walk({
 				str2path(path)
 			: [] }, 
 })
+
+
+// like objectWalker(..) but with 'text' support...
+//
+var objectWalkerWithText =
+module.objectWalkerWithText =
+Object.assign(
+	object.create(objectWalker),
+	//object.create('objectWalkerWithText', objectWalker),
+	{
+		handler: function*(obj, path, next, type){
+			yield* !this.noText 
+					&& typeof(obj) == 'string' 
+					&& obj.includes('\n') ?
+				[ [path, {type: 'text'}] ]
+				: objectWalker.handler.call(this, ...arguments) },
+		listers: Object.assign(
+			{text: function(obj){
+				return typeof(obj) == 'string' 
+					&& obj.includes('\n')
+					&& obj.split(/\n/g).entries()
+						.map(function([k, v]){
+							return [[module.CONTENT, k], v] }) }},
+			objectWalker.listers),
+	})
 
 
 
@@ -849,6 +862,17 @@ console.log('---')
 
 console.log([
 	...objectWalker(
+			`This
+			is
+			a
+			multiline
+			text`)
+		.chain(serializePaths) ])
+
+console.log('---')
+
+console.log([
+	...objectWalkerWithText(
 			`This
 			is
 			a
