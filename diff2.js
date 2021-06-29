@@ -123,7 +123,7 @@ object.Constructor('Walk', {
 			handler instanceof types.Generator ?
 				handler
 				: Object.assign(
-					function*(){ yield handler(...arguments) },
+					function*(){ yield handler.call(this, ...arguments) },
 					{toString: function(){ return handler.toString() }}) },
 	__call__: function*(_, obj, path=[], type='root', seen=new Map()){
 		var that = this
@@ -204,16 +204,13 @@ module.OBJECT_LISTERS = {
 		if(obj === null){
 			throw module.STOP } },
 
-	/* XXX not sure if this should be here...
-	// XXX TEXT...
-	// XXX also this is diff-specific...
+	// XXX this is diff-specific...
 	text: function(obj){
 		return typeof(obj) == 'string' 
 			&& obj.includes('\n')
 			&& obj.split(/\n/g).entries()
 				.map(function([k, v]){
 					return [[module.CONTENT, k], v] }) },
-	//*/
 
 	set: function(obj){
 		return obj instanceof Set
@@ -263,18 +260,8 @@ module.OBJECT_LISTERS = {
 var objectWalker = 
 module.objectWalker =
 Walk({ 
+	//noText: true,
 	handler: function(obj, path, next, type){
-		// text...
-		// XXX TEXT...
-		// XXX should this be here or in OBJECT_LISTERS???
-		// XXX also this is diff-specific...
-		if(typeof(obj) == 'string' && obj.includes('\n')){
-			next.push(['text', 
-				obj.split(/\n/g).entries()
-					.map(function([k, v]){
-						return [[module.CONTENT, k], v] }) ])
-			return [path, {type: 'text'}] }
-		// other types...
 		return type == 'LINK' ?
 				[path, 'LINK', next]
 			: [
@@ -283,9 +270,11 @@ Walk({
 					obj
 				: typeof(obj) == 'object' ?
 					{type: obj.constructor.name}
-				// XXX TEXT...
-				//: typeof(obj) == 'string' && obj.includes('\n') ?
-				//	{type: 'text'}
+				// text...
+				: !this.noText 
+						&& typeof(obj) == 'string' 
+						&& obj.includes('\n') ?
+					{type: 'text'}
 				: obj,
 			] }, 
 	listers: module.OBJECT_LISTERS,
