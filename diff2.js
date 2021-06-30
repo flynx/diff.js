@@ -104,8 +104,36 @@ module.CONTENT =
 var Walk =
 module.Walk =
 object.Constructor('Walk', {
+
+	//
+	//	.handler(obj, path, next, type)
+	//		-> <generator>
+	//		-> [path, ...]
+	//
+	// XXX should there be a default here???
 	handler: undefined,
+
+	//
+	// Format:
+	// 	{
+	// 		<type>: <func>,
+	//
+	// 		<type>: {
+	// 			list: <func>,
+	// 			...
+	// 		},
+	//
+	// 		...
+	// 	}
+	//
+	// XXX should there be a default here???
 	listers: undefined,
+
+	//
+	//	.normalizePath(<path>)
+	//		-> <path>
+	//
+	// (optional)
 	normalizePath: undefined,
 
 	// NOTE: handler argument always overwrites the value given in options...
@@ -184,73 +212,21 @@ object.Constructor('Walk', {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-//
-// Format:
-// 	{
-// 		<type>: <func>,
-//
-// 		<type>: {
-// 			list: <func>,
-// 			...
-// 		},
-//
-// 		...
-// 	}
-//
-var OBJECT_LISTERS = 
-module.OBJECT_LISTERS = {
-	// prevent dissecting null...
-	null: function(obj){
-		if(obj === null){
-			throw module.STOP } },
-
-	set: function(obj){
-		return obj instanceof Set
-			&& [...obj.values()]
-				.entries() 
-				.map(function([k, v]){
-					return [[module.CONTENT, k], v] })  },
-	map: function(obj){
-		return obj instanceof Map
-			&& obj.entries()
-				.map(function*([k, v], i){
-					yield* [
-						[[module.CONTENT, i+'@key'], k],
-						[[module.CONTENT, i], v],
-					] }) },
-
-	/* XXX should we handle array elements differently???
-	//		...these to simply mark attr type for the handler(..), not 
-	//		sure if the added complexity is worth it... (???)
-	array: function(obj){
-		return obj instanceof Array
-			&& [...Object.entries(obj)]
-				.filter(function(e){ 
-					return !isNaN(parseInt(e)) }) },
-	attr: function(obj){
-		return obj instanceof Array ?
-			[...Object.entries(obj)]
-				.filter(function(e){ 
-					return isNaN(parseInt(e)) })
-			: typeof(obj) == 'object'
-				&& [...Object.entries(obj)] },
-	/*/
-	attr: function(obj){
-		return typeof(obj) == 'object'
-			&& Object.entries(obj) },
-	//*/
-	proto: function(obj){
-		return typeof(obj) == 'object'
-			&& obj.constructor.prototype !== obj.__proto__
-			&& [['__proto__', obj.__proto__]] },
-}
-
-
+// XXX we can treat the output as a stack language...
+// 		...need to clear out unneeded stuff...
 // XXX add function support...
 // XXX this needs .name set correctly...
 var objectWalker = 
 module.objectWalker =
 Walk({ 
+	// support string paths...
+	normalizePath: function(path){
+		return path instanceof Array ?
+				path
+			: typeof(path) == 'string' ?
+				str2path(path)
+			: [] }, 
+
 	handler: function(obj, path, next, type){
 		return type == 'LINK' ?
 			[path, 'LINK', next]
@@ -265,16 +241,58 @@ Walk({
 				// primitives...
 				: obj,
 			] }, 
-	listers: module.OBJECT_LISTERS,
-	// support string paths...
-	normalizePath: function(path){
-		return path instanceof Array ?
-				path
-			: typeof(path) == 'string' ?
-				str2path(path)
-			: [] }, 
+
+	listers: {
+		// prevent dissecting null...
+		null: function(obj){
+			if(obj === null){
+				throw module.STOP } },
+
+		set: function(obj){
+			return obj instanceof Set
+				&& [...obj.values()]
+					.entries() 
+					.map(function([k, v]){
+						return [[module.CONTENT, k], v] })  },
+		map: function(obj){
+			return obj instanceof Map
+				&& obj.entries()
+					.map(function*([k, v], i){
+						yield* [
+							[[module.CONTENT, i+'@key'], k],
+							[[module.CONTENT, i], v],
+						] }) },
+
+		/* XXX should we handle array elements differently???
+		//		...these to simply mark attr type for the handler(..), not 
+		//		sure if the added complexity is worth it... (???)
+		array: function(obj){
+			return obj instanceof Array
+				&& [...Object.entries(obj)]
+					.filter(function(e){ 
+						return !isNaN(parseInt(e)) }) },
+		attr: function(obj){
+			return obj instanceof Array ?
+				[...Object.entries(obj)]
+					.filter(function(e){ 
+						return isNaN(parseInt(e)) })
+				: typeof(obj) == 'object'
+					&& [...Object.entries(obj)] },
+		/*/
+		attr: function(obj){
+			return typeof(obj) == 'object'
+				&& Object.entries(obj) },
+		//*/
+		proto: function(obj){
+			return typeof(obj) == 'object'
+				&& obj.constructor.prototype !== obj.__proto__
+				&& [['__proto__', obj.__proto__]] },
+	},
 })
 
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 // like objectWalker(..) but with 'text' support...
 //
