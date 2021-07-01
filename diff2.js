@@ -101,6 +101,7 @@ module.CONTENT =
 //
 // XXX need to think about extension use-cases...
 // XXX should we move this to a separate lib???
+// XXX add a way to do relative/full paths...
 var Walk =
 module.Walk =
 object.Constructor('Walk', {
@@ -153,6 +154,7 @@ object.Constructor('Walk', {
 				: Object.assign(
 					function*(){ yield handler.call(this, ...arguments) },
 					{toString: function(){ return handler.toString() }}) },
+	// XXX add options...
 	__call__: function*(_, obj, path=[], type='root', seen=new Map()){
 		var that = this
 		path = this.normalizePath ? 
@@ -197,6 +199,8 @@ object.Constructor('Walk', {
 					yield* items
 						.iter()
 						.map(function*([key, value]){ 
+							// XXX add relative path support...
+							// 		...maybe [path, key] instead of path.concat(key) ???
 							yield* that(value, path.concat(key), type, seen) }) })
 		// handle STOP...
 		} catch(err){
