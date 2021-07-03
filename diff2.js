@@ -724,9 +724,9 @@ function(A, B, cmp){
 var keyValueDiff =
 function(A, B){
 	return diffSections(
-		[...handle(A)
+		[...objectWalkerWithText(A)
 			.chain(serializePaths)], 
-		[...handle(B)
+		[...objectWalkerWithText(B)
 			.chain(serializePaths)], 
 		// XXX add link support...
 		function([ap, av], [bp, bv]){
@@ -742,9 +742,9 @@ function(A, B){
 var valueDiff =
 function(A, B){
 	return diffSections(
-		[...handle(A)
+		[...objectWalkerWithText(A)
 			.chain(serializePaths)], 
-		[...handle(B)
+		[...objectWalkerWithText(B)
 			.chain(serializePaths)], 
 		// XXX add link support...
 		function([ap, av], [bp, bv]){
@@ -901,6 +901,23 @@ console.log([
 			multiline
 			text`)
 		.chain(serializePaths) ])
+
+console.log('---')
+
+console.log(valueDiff(
+	[1,2,3],
+	[1,2,4,3],
+))
+
+console.log('---')
+
+console.log(valueDiff(
+	new Set([1,2,3]),
+	[1,2,4,3],
+))
+
+
+
 
 
 
