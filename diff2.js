@@ -241,7 +241,10 @@ Walk({
 					obj
 				// objects...
 				: typeof(obj) == 'object' ?
-					{type: obj.constructor.name}
+					{
+						type: obj.constructor.name,
+						source: obj,
+					}
 				// primitives...
 				: obj,
 			] }, 
@@ -310,7 +313,10 @@ Object.assign(
 			yield* !this.noText 
 					&& typeof(obj) == 'string' 
 					&& obj.includes('\n') ?
-				[ [path, {type: 'text'}] ]
+				[ [path, {
+					type: 'text',
+					source: obj,
+				}] ]
 				: objectWalker.handler.call(this, ...arguments) },
 		listers: Object.assign(
 			{text: function(obj){
@@ -839,6 +845,7 @@ console.log([
 	...objectWalker(o)
 		.chain(
 			serializePaths, 
+			stripAttr('source'), 
 		)])
 
 
@@ -889,7 +896,10 @@ console.log([
 			a
 			multiline
 			text`)
-		.chain(serializePaths) ])
+		.chain(
+			serializePaths,
+			stripAttr('source'), 
+		) ])
 
 console.log('---')
 
@@ -900,7 +910,10 @@ console.log([
 			a
 			multiline
 			text`)
-		.chain(serializePaths) ])
+		.chain(
+			serializePaths,
+			stripAttr('source'), 
+		) ])
 
 console.log('---')
 
