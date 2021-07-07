@@ -154,6 +154,12 @@ object.Constructor('Walk', {
 				: Object.assign(
 					function*(){ yield handler.call(this, ...arguments) },
 					{toString: function(){ return handler.toString() }}) },
+	// XXX might be a good idea to form the output of this like a stack 
+	// 		language program...
+	// 		This would require actions to:
+	// 			- block type (BLOCK)
+	// 			- push sub-path (PUSH)
+	// 			- pop / level-end (POP)
 	// XXX add options...
 	__call__: function*(_, obj, path=[], type='root', seen=new Map()){
 		var that = this
@@ -192,6 +198,12 @@ object.Constructor('Walk', {
 		// walk...
 		try {
 			yield* this.handler(obj, path, next, type)
+				// XXX BLOCK...
+				.map(function([p, v]){
+					v && typeof(v) == 'object'
+						&& console.log('  BLOCK', v.type)
+					return [p, v] })
+				//*/
 			// next/children...
 			yield* next
 				.iter()
@@ -199,6 +211,8 @@ object.Constructor('Walk', {
 					yield* items
 						.iter()
 						.map(function*([key, value]){ 
+							// XXX PUSH key
+							console.log('  PUSH', key)
 							// XXX add relative path support...
 							// 		...maybe [path, key] instead of path.concat(key) ???
 							yield* that(value, path.concat(key), type, seen) }) })
@@ -209,7 +223,11 @@ object.Constructor('Walk', {
 			} else if(err instanceof module.STOP){
 				yield err.value
 				return }
-			throw err } },
+			throw err } 
+
+		// XXX POP
+		console.log('  POP')
+	},
 })
 
 
@@ -915,6 +933,7 @@ console.log([
 			stripAttr('source'), 
 		) ])
 
+/* XXX
 console.log('---')
 
 console.log(valueDiff(
@@ -928,6 +947,8 @@ console.log(valueDiff(
 	new Set([1,2,3]),
 	[1,2,4,3],
 ))
+
+//*/
 
 
 
