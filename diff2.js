@@ -197,6 +197,7 @@ object.Constructor('Walk', {
 					return !!e }) ]
 		// walk...
 		try {
+			// XXX should this be a yield* or a simple yield???
 			yield* this.handler(obj, path, next, type)
 				// XXX BLOCK...
 				.map(function([p, v]){
