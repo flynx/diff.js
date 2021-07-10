@@ -951,6 +951,12 @@ console.log(valueDiff(
 
 //*/
 
+// XXX BUG: no change is detected here...
+console.log(valueDiff(
+	[,,,1],
+	[1],
+))
+
 
 
 
