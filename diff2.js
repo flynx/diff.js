@@ -15,10 +15,11 @@ var types = require('ig-types')
 /*********************************************************************/
 //
 // XXX thinks this needs to do:
+// 		- path sepcification		- DONE
 // 		- walk object tree			- DONE
 // 		- generate a spec			- DONE
 // 			- serializable
-// 		- support props
+// 		- support props				- ???
 // 		- build object via spec		- DONE
 // 		- update object via spec
 // 			- contextual updates
