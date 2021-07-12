@@ -14,8 +14,14 @@ var types = require('ig-types')
 
 /*********************************************************************/
 //
+//
+// XXX try using offset from prev element as an index for arrays...
+// 		...this should make it possible to use LCS on the linear diff 
+// 		directly...
+//
+// 
 // XXX thinks this needs to do:
-// 		- path sepcification		- DONE
+// 		- path specification		- DONE
 // 		- walk object tree			- DONE
 // 		- generate a spec			- DONE
 // 			- serializable
@@ -84,6 +90,17 @@ var CONTENT =
 module.CONTENT = 
 //Symbol.CONTENT = 
 	Symbol('CONTENT')
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+// XXX OFFSET: should we also store index???
+var Offset = 
+module.Offset =
+object.Constructor('Offset', {
+	__init__: function(value, index){
+		this.value = value 
+		this.index = index }, })
 
 
 
@@ -155,8 +172,8 @@ object.Constructor('Walk', {
 				: Object.assign(
 					function*(){ yield handler.call(this, ...arguments) },
 					{toString: function(){ return handler.toString() }}) },
-	// XXX might be a good idea to form the output of this like a stack 
-	// 		language program...
+	// XXX STACK: might be a good idea to form the output of this like 
+	// 		a stack language program...
 	// 		This would require actions to:
 	// 			- block type (BLOCK)
 	// 			- push sub-path (PUSH)
@@ -200,7 +217,7 @@ object.Constructor('Walk', {
 		try {
 			// XXX should this be a yield* or a simple yield???
 			yield* this.handler(obj, path, next, type)
-				// XXX BLOCK...
+				/* XXX STACK: BLOCK...
 				.map(function([p, v]){
 					v && typeof(v) == 'object'
 						&& console.log('  BLOCK', v.type)
@@ -213,8 +230,8 @@ object.Constructor('Walk', {
 					yield* items
 						.iter()
 						.map(function*([key, value]){ 
-							// XXX PUSH key
-							console.log('  PUSH', key)
+							// XXX STACK: PUSH key
+							//console.log('  PUSH', key)
 							// XXX add relative path support...
 							// 		...maybe [path, key] instead of path.concat(key) ???
 							yield* that(value, path.concat(key), type, seen) }) })
@@ -227,8 +244,8 @@ object.Constructor('Walk', {
 				return }
 			throw err } 
 
-		// XXX POP
-		console.log('  POP')
+		// XXX STACK: POP
+		//console.log('  POP')
 	},
 })
 
@@ -275,6 +292,7 @@ Walk({
 			if(obj === null){
 				throw module.STOP } },
 
+		// XXX do we use offsets here or indexes...
 		set: function(obj){
 			return obj instanceof Set
 				&& [...obj.values()]
@@ -290,19 +308,26 @@ Walk({
 							[[module.CONTENT, i], v],
 						] }) },
 
-		/* XXX should we handle array elements differently???
+		//* XXX should we handle array elements differently???
 		//		...these to simply mark attr type for the handler(..), not 
 		//		sure if the added complexity is worth it... (???)
 		array: function(obj){
+			var prev = 0
 			return obj instanceof Array
 				&& [...Object.entries(obj)]
-					.filter(function(e){ 
-						return !isNaN(parseInt(e)) }) },
+					.filter(function([k, v]){ 
+						return !isNaN(parseInt(k)) })
+					// NOTE: we are outputting index offsets instead of 
+					// 		actual indexes...
+					// XXX need to make this a syntax...
+	   				.map(function([k, v]){
+						[prev, k] = [k, k-prev]
+						return [module.Offset(k, prev), v] }) },
 		attr: function(obj){
 			return obj instanceof Array ?
 				[...Object.entries(obj)]
-					.filter(function(e){ 
-						return isNaN(parseInt(e)) })
+					.filter(function([k, v]){ 
+						return isNaN(parseInt(k)) })
 				: typeof(obj) == 'object'
 					&& [...Object.entries(obj)] },
 		/*/
@@ -368,13 +393,23 @@ Object.assign(
 // 		A: there should be a difference....
 // 			[...d.handle({'':new Set([1,2,3]), x:123}).chain(d.serializePaths)]
 //		...the problem is in path2str(..)
+// XXX OFFSET: add option to either encode offset or index...
 var serializePathElem = function(p, i, l){
-	return typeof(p) == 'object' ?
+	return (
+		p instanceof Offset ?
+			// XXX OFFSET: add option to either encode offset or index...
+			// XXX OFFSET: should we use + or : ???
+			// XXX OFFSET: should we use .toString() or something like .toKey()???
+	   		':'+ p.value
+		: typeof(p) == 'object' ?
 			JSON.stringify(p)
 		// quote special chars...
 		: typeof(p) == 'string' ?
+			// XXX OFFSET: should we use + or : ???
+			//p.replace(/([\/:+])/g, '\\$1')
 			p.replace(/([\/:])/g, '\\$1')
-		: p }
+		: p )}
+// XXX OFFSET: add option to either encode offset or index...
 var path2str = 
 module.path2str =
 function(p){
@@ -384,10 +419,10 @@ function(p){
 		.map(serializePathElem)
 		.reduce(function(res, e){
 			e = e === module.CONTENT ?
-				(res.length == 0 ? 
-						'' 
-						: res.pop()) 
-					+ ':CONTENT'
+					(res.length == 0 ? 
+							'' 
+							: res.pop()) 
+						+ ':CONTENT'
 				// special case: '' as key...
 				: e === '' ?
 					"''"
@@ -496,6 +531,8 @@ function(...attrs){
 // 				???
 // 		...revise...
 // XXX str2path and passing in a list path produce different results...
+// XXX OFFSET: add offset support...
+// 		...get prev in context and add offset...
 var atPath = 
 module.atPath =
 function(root, path, value){
@@ -953,13 +990,28 @@ console.log(valueDiff(
 ))
 
 //*/
+console.log('---')
+
+console.log([
+	...objectWalkerWithText(
+			[,,,1])
+		.chain(
+			serializePaths,
+			stripAttr('source'), 
+		) ])
+
+
+
+console.log('---')
 
 // XXX BUG: no change is detected here...
-console.log(valueDiff(
-	[,,,1],
-	[1],
-))
+console.dir(
+	keyValueDiff(
+		[,,,1,2,3],
+		[1,2,3],
+	), {depth: null})
 
+console.log('---')
 
 
 
