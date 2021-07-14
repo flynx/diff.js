@@ -94,15 +94,47 @@ module.CONTENT =
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-// XXX OFFSET: should we also store index???
+// XXX OFFSET: should we also store .index???
 var Offset = 
 module.Offset =
 object.Constructor('Offset', {
+	value: undefined,
+	index: undefined,
+
+	// XXX
+	toString: function(){
+		//return `Offset(${this, value})` },
+		return this.index == null ?
+			`Offset(${this.value})`
+   			: `Offset(${this.value}, ${this.index})` },
+	// XXX
+	valueOf: function(){
+		return this.value },
+	// XXX should we consistency check that index is >= offset ???
 	__init__: function(value, index){
 		this.value = value 
-		this.index = index }, })
+		this.index = index }, 
+})
 
 
+// XXX revise... 
+var Path = 
+module.Path =
+object.Constructor('Path', Array, {
+	__str: undefined,
+	get str(){
+		return this.__str
+			|| (this.__str = path2str(this)) },
+	set str(value){
+		delete this.__str
+		this.splice(0, this.length, ...str2path(value)) },
+
+	valueOf: function(){
+		return this.str },
+	toString: function(){
+		return 'Path: '+ this.valueOf() },
+})
+	
 
 //---------------------------------------------------------------------
 
@@ -253,6 +285,9 @@ object.Constructor('Walk', {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+// XXX PATH: might be a good idea to use a Path(..) object instead of 
+// 		current list/string paths and simply use both as a way to 
+// 		serialize...
 // XXX we can treat the output as a stack language...
 // 		...need to clear out unneeded stuff...
 // XXX add function support...
@@ -762,30 +797,25 @@ function(A, B, cmp){
 			return gaps }, []) }	
 
 
-// XXX if two sub-trees are different, to we treat them as a big set of 
+// 
+// XXX if two sub-trees are different, do we treat them as a big set of 
 // 		atomic changes or replace X with Y???
-// XXX at this point array indexes are treated as changes, i.e. if we 
-// 		insert an item into an array, this effectively changes all other 
-// 		items (shifting their indexes by the number of items inserted)... 
-// 		...need to treat this gracefully...
-// 		we can:
-// 			- ignore array index???
-// 				...to do this we need to know object type per element 
-// 				compared...
-// 			- handle item shifts gracefully...
-// 			- diff recursively instead of flat...
-// 		XXX another way to approach this is to treat indexes in a relative 
-// 			manner, i.e. keep track of relative order of elements...
-// 			e.g. if we insert a sub-array then all the elements after it are 
-// 			simply shifted, that is, their relative order is maintained...
-// 			...this is already tracked by diffSections(..) but after 
-// 			handler(..) arrays are more like hashes, and we need to 
-// 			account for this....
-// 		XXX yet another approach to this is to work in two stages:
-// 				1) diff ignoring keys...
-// 				2) selectively match keys...
-// 			...need to test how complex this will be...
-//
+// XXX might be a good idea to strip out (optionally) differences within 
+// 		a container that differ only in container path, i.e.:
+// 			/a/b/:4/x 123
+// 		and
+// 			/a/b/:1/x 123
+// 		are not different...
+// 		example:
+// 			// this will list that every element within the nested array
+// 			// is different...
+// 			keyValueDiff(
+// 				[ ,, [1,2,3] ],
+// 				[ [1,2,3] ])
+// 		...would be nice to do this as early as possible, possibly even 
+// 		within commonSections(..)
+// 		...can this be done by simply comparing the last path element 
+// 		for any contained element???
 var keyValueDiff =
 function(A, B){
 	return diffSections(
