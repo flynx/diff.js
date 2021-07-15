@@ -816,8 +816,11 @@ function(A, B, cmp){
 // 		within commonSections(..)
 // 		...can this be done by simply comparing the last path element 
 // 		for any contained element???
+// 		.....will we have container border issues here???
+// 		........should this be optional???
+// 		this can also be achieved by nesting...
 var keyValueDiff =
-function(A, B){
+function(A, B, options={}){
 	return diffSections(
 		[...objectWalkerWithText(A)
 			.chain(serializePaths)], 
@@ -850,7 +853,7 @@ function(A, B){
 					&& av.type == bv.type ) }) }
 
 
-var diff = valueDiff
+var diff = keyValueDiff
 
 
 
