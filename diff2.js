@@ -760,6 +760,7 @@ function(A, B, cmp){
 // 	[
 // 		// change...
 // 		[
+// 			// XXX do we need the indexes???
 // 			<a-index>, <a-chunk>,
 // 			<b-index>, <b-chunk>,
 // 		],
@@ -779,7 +780,9 @@ function(A, B, cmp){
 	var pa = 0
 	var pb = 0
 	return commonSections(A, B, cmp)
+		// remove length...
 		.slice(1)
+		// add rear block...
 		.concat([[A.length, B.length, 0]])
 		.reduce(function(gaps, [a, b, l]){
 			// only push changes of >0 length...
@@ -795,6 +798,7 @@ function(A, B, cmp){
 			pa = a + l
 			pb = b + l
 			return gaps }, []) }	
+
 
 
 // 
@@ -838,7 +842,7 @@ function(A, B, options={}){
 // XXX this completely ignores the path/key...
 // XXX this works great for arrays but is questionable on other stuff...
 var valueDiff =
-function(A, B){
+function(A, B, options={}){
 	return diffSections(
 		[...objectWalkerWithText(A)
 			.chain(serializePaths)], 
@@ -854,6 +858,31 @@ function(A, B){
 
 
 var diff = keyValueDiff
+
+
+// convert diff sections into diff...
+//
+// XXX add context lines...
+var toDiff =
+module.toDiff =
+function*(A, B, options={}){
+	yield* diff(A, B, options)
+		.iter()
+		.map(function*([ia, ca, ib, cb]){
+			// XXX add pre-context...
+			// 		...if changes are adjacent, then skip context...
+			yield ['=']
+			yield* ca
+				.map(function(change){
+					return ['-', ...change] })
+			yield* cb
+				.map(function(change){
+					return ['+', ...change] }) 
+			// XXX add post-context...
+			// 		...if changes are adjacent, then skip context...
+			yield ['=']
+		}) }
+
 
 
 
@@ -1034,15 +1063,29 @@ console.log([
 		) ])
 
 
+console.log('---')
+
+console.dir(
+	[...toDiff(
+		keyValueDiff(
+			[['a', 'b'], 	2, 3],
+			[1, 			2, {x:1,y:2}],
+		))], {depth: null})
 
 console.log('---')
 
-// XXX BUG: no change is detected here...
 console.dir(
-	keyValueDiff(
+		keyValueDiff(
+			[,,,1,2,3],
+			[1,2,{x:1,y:2}],
+		), {depth: null})
+console.log('')
+// XXX BUG: the first change is wrong, it should be "add 3 empty"...
+console.dir(
+	[...toDiff(
 		[,,,1,2,3],
-		[1,2,3],
-	), {depth: null})
+		[1,2,{x:1,y:2}],
+	)], {depth: null})
 
 console.log('---')
 
