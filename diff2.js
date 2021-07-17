@@ -826,13 +826,11 @@ function(A, B, cmp){
 var keyValueDiff =
 function(A, B, options={}){
 	return diffSections(
-		[...objectWalkerWithText(A)
-			.chain(serializePaths)], 
-		[...objectWalkerWithText(B)
-			.chain(serializePaths)], 
+		[...objectWalkerWithText(A)],
+		[...objectWalkerWithText(B)],
 		// XXX add link support...
 		function([ap, av], [bp, bv]){
-			return ap == bp 
+			return ap.cmp(bp)
 				&& (av == bv 
 					|| (typeof(av) == 'object' 
 						&& typeof(bv) == 'object' 
@@ -844,10 +842,8 @@ function(A, B, options={}){
 var valueDiff =
 function(A, B, options={}){
 	return diffSections(
-		[...objectWalkerWithText(A)
-			.chain(serializePaths)], 
-		[...objectWalkerWithText(B)
-			.chain(serializePaths)], 
+		[...objectWalkerWithText(A)],
+		[...objectWalkerWithText(B)],
 		// XXX add link support...
 		function([ap, av], [bp, bv]){
 			return av == bv 
@@ -862,6 +858,16 @@ var diff = keyValueDiff
 
 // convert diff sections into diff...
 //
+// XXX so this is a bit more complicated than simply converting from one 
+// 		format to another...
+// 		we need to:
+// 			- convert offset changes to one of: 
+// 				- insertions of empty slots
+// 				- ???
+// 			- ...
+// XXX changes to a path should not affect the subtree...
+// 			/a/b/.. -> /a/x/..
+// 		not sure how and where (here or in diff(..)) to handle this yet...
 // XXX add context lines...
 var toDiff =
 module.toDiff =
@@ -871,7 +877,12 @@ function*(A, B, options={}){
 		.map(function*([ia, ca, ib, cb]){
 			// XXX add pre-context...
 			// 		...if changes are adjacent, then skip context...
+			// 		...use atPath(..)
 			yield ['=']
+			// XXX OFFSET: here we have to be a bit more cleaver, if an 
+			// 		offset of an element changed then we need to insert
+			// 		a set of empty slots shifting the rest of the array...
+			// XXX convert offset to index...
 			yield* ca
 				.map(function(change){
 					return ['-', ...change] })
