@@ -837,6 +837,7 @@ function(A, B, options={}){
 						&& av.type
 						&& av.type == bv.type )) }) }
 
+
 // XXX this completely ignores the path/key...
 // XXX this works great for arrays but is questionable on other stuff...
 var valueDiff =
