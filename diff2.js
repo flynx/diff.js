@@ -149,9 +149,9 @@ object.Constructor('Path', Array, {
 // NOTE: in the Walk(<options>) case, <options> must contain a .handler
 // 		function.
 //
+//
 // XXX need a way to produce nested results... 
 // XXX should we move this to a separate lib???
-// XXX add a way to do relative/full paths...
 var Walk =
 module.Walk =
 object.Constructor('Walk', {
