@@ -805,10 +805,13 @@ function(A, B, cmp){
 // XXX if two sub-trees are different, do we treat them as a big set of 
 // 		atomic changes or replace X with Y???
 // XXX might be a good idea to strip out (optionally) differences within 
-// 		a container that differ only in container path, i.e.:
-// 			/a/b/:4/x 123
+// 		a container when the container path changed but nothing else, in
+// 		other words, skip items that did not change locally, i.e.:
+// 			/a/b/:4		{type: 'Object'}
+// 			/a/b/:4/x	123
 // 		and
-// 			/a/b/:1/x 123
+// 			/a/b/:1		{type: 'Object'}
+// 			/a/b/:1/x	123
 // 		are not different...
 // 		example:
 // 			// this will list that every element within the nested array
