@@ -826,6 +826,7 @@ function(A, B, cmp){
 // 		.....will we have container border issues here???
 // 		........should this be optional???
 // 		this can also be achieved by nesting...
+// 		XXX not yet sure if this is not over-complicating things...
 var keyValueDiff =
 function(A, B, options={}){
 	return diffSections(
