@@ -830,6 +830,10 @@ function(A, B, cmp){
 // XXX one different approach that could also be used is to combine this 
 // 		with the original implementation and use diff(..) as a sub-tree 
 // 		comparator...
+// XXX need:
+// 		- skip unchanged subtrees
+// 		- link comparison -- should support linking from both sides...
+// 		- item relative indexing (DONE)
 var keyValueDiff =
 function(A, B, options={}){
 	return diffSections(
