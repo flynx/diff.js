@@ -804,36 +804,11 @@ function(A, B, cmp){
 // 
 // XXX if two sub-trees are different, do we treat them as a big set of 
 // 		atomic changes or replace X with Y???
-// XXX might be a good idea to strip out (optionally) differences within 
-// 		a container when the container path changed but nothing else, in
-// 		other words, skip items that did not change locally, i.e.:
-// 			/a/b/:4		{type: 'Object'}
-// 			/a/b/:4/x	123
-// 		and
-// 			/a/b/:1		{type: 'Object'}
-// 			/a/b/:1/x	123
-// 		are not different...
-// 		example:
-// 			// this will list that every element within the nested array
-// 			// is different...
-// 			keyValueDiff(
-// 				[ ,, [1,2,3] ],
-// 				[ [1,2,3] ])
-// 		...would be nice to do this as early as possible, possibly even 
-// 		within commonSections(..)
-// 		...can this be done by simply comparing the last path element 
-// 		for any contained element???
-// 		.....will we have container border issues here???
-// 		........should this be optional???
-// 		this can also be achieved by nesting...
-// 		XXX not yet sure if this whole thing is not over-complicating things...
-// XXX one different approach that could also be used is to combine this 
-// 		with the original implementation and use diff(..) as a sub-tree 
-// 		comparator...
 // XXX need:
-// 		- skip/clear unchanged subtrees when removed
+// 		- skip/clear unchanged sub-trees when removing root node (optional)
 // 		- link comparison -- should support linking from both sides...
 // 		- item relative indexing (DONE)
+// 			...should calculate actual indexes for patching from context...
 // 		- ... (anything else???)
 var keyValueDiff =
 function(A, B, options={}){
