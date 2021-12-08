@@ -29,6 +29,10 @@ var types = require('ig-types')
 // 		- build object via spec		- DONE
 // 		- update object via spec
 // 			- contextual updates
+// 				- forward
+// 					match context + pre state
+// 				- reverse
+// 					match context + post state
 // 		- subtract specs (diff)
 // 			- full
 // 			- relaxed -- ignore item order
@@ -879,8 +883,7 @@ function*(A, B, options={}){
 					return ['+', ...change] }) 
 			// XXX add post-context...
 			// 		...if changes are adjacent, then skip context...
-			yield ['=']
-		}) }
+			yield ['='] }) }
 
 
 
