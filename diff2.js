@@ -20,7 +20,7 @@ var types = require('ig-types')
 // 		directly...
 //
 // 
-// XXX thinks this needs to do:
+// XXX think this needs to do:
 // 		- path specification		- DONE
 // 		- walk object tree			- DONE
 // 		- generate a spec			- DONE
